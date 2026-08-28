@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宅飲み人生ゲーム</title>
+  <!-- PWA用マニフェストファイルの読み込み -->
+  <link rel="manifest" href="manifest.json">
+  <!-- CSSの読み込み -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+  <!-- 1. プレイヤー登録画面 -->
+  <section id="screen-setup">
+    <h1>🍻 お酒人生ゲーム 🍻</h1>
+    <h2>メンバー登録</h2>
+    <div class="form-group">
+      <label>名前</label>
+      <input type="text" id="input-name" placeholder="例：まさき">
+    </div>
+    <div class="form-group">
+      <label>役職</label>
+      <select id="select-job"></select>
+    </div>
+    <button type="button" id="btn-add-player" style="background:#5c9ebb;">プレイヤーを追加</button>
+    <div id="player-preview" style="margin-top:15px;"></div>
+    <button type="button" id="btn-start-game" class="hidden">ゲームスタート！</button>
+  </section>
+a<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宅飲み人生ゲーム</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+  <!-- 1. プレイヤー登録画面 -->
+  <section id="screen-setup">
+    <h1>🍻 お酒人生ゲーム 🍻</h1>
+    <h2>メンバー登録</h2>
+    <div class="form-group">
+      <label>名前</label>
+      <input type="text" id="input-name" placeholder="例：まさき">
+    </div>
+    <button type="button" id="btn-add-player" style="background:#5c9ebb;">プレイヤーを追加</button>
+    <div id="player-preview" style="margin-top:15px;"></div>
+    <button type="button" id="btn-start-game" class="hidden">ゲームスタート！</button>
+  </section>
+
+  <!-- 2. メインゲーム画面 -->
+  <section id="screen-game" class="hidden">
+    <h2>ゲーム進行中</h2>
+    <div id="players-status-container"></div>
+    
+    <div class="event-display" id="event-text">
+      ゲームを開始してください。ルーレットを回しよう！
+    </div>
+    
+    <button id="btn-roulette">🎲 ルーレットを回す 🎲</button>
+    <button id="btn-next-turn" class="hidden" style="background:#8a63ae;">次のプレイヤーへ</button>
+    
+    <div class="log-box" id="game-log"></div>
+  </section>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+  <!-- 2. メインゲーム画面 -->
+  <section id="screen-game" class="hidden">
+    <h2>ゲーム進行中</h2>
+    <div id="players-status-container"></div>
+    
+    <div class="event-display" id="event-text">
+      ゲームを開始してください。ルーレットを回しよう！
+    </div>
+    
+    <button id="btn-roulette">🎲 ルーレットを回す 🎲</button>
+    <button id="btn-next-turn" class="hidden" style="background:#8a63ae;">次のプレイヤーへ</button>
+    
+    <div class="log-box" id="game-log"></div>
+  </section>
+</div>
+
+<!-- JavaScriptの読み込み（データファイルを先に読み込む） -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

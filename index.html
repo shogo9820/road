@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>宅飲み人生ゲーム 🍺 [親機]</title>
+    <!-- <link rel="manifest" href="manifest.json" /> -->
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="app-container">
+
+      <!-- ========================================== -->
+      <!-- 1. PC: ログイン・部屋作成画面  -->
+      <!-- ========================================== -->
+      <section id="screen-setup" class="screen active pc-screen">
+        <div class="card pc-card">
+          <div class="logo-container">
+            <span class="badge">親機（PC）ディスプレイ</span>
+            <h1 class="main-title">🍻 宅飲み人生ゲーム 🍺</h1>
+            <p class="subtitle">〜 サークル生活の思い出とアルコール 〜</p>
+          </div>
+          <div class="form-group">
+            <label for="pc-host-name">ホストプレイヤー名</label>
+            <input type="text" id="pc-host-name" value="やじま" placeholder="名前を入力" />
+          </div>
+          <button type="button" id="btn-create-room" class="btn btn-primary btn-large">
+            <span class="btn-icon">🚀</span> ルームを作成する
+          </button>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 2. PC: 待機室画面（QRコード表示＆モード設定）-->
+      <!-- ========================================== -->
+      <section id="screen-waiting" class="screen pc-screen" style="display: none;">
+        <div class="waiting-grid">
+          <!-- 左カラム: ルーム情報 & 参加メンバー -->
+          <div class="card">
+            <div class="room-info-header">
+              <div>
+                <span style="font-size:0.8rem; color:#666;">ROOM CODE</span>
+                <div class="room-code-display" id="display-room-code">----</div>
+              </div>
+            </div>
+            
+            <div class="qr-panel">
+              <div id="qrcode" style="display: flex; justify-content: center; margin: 15px 0;"></div>
+              <p style="font-size:0.85rem; color:#666; text-align:center;">
+                スマホでQRコードを読み取って参加！
+              </p>
+            </div>
+
+            <div style="margin-top: 20px;">
+              <h3><span id="player-count-badge">参加メンバー</span></h3>
+              <ul id="player-list" style="list-style: none; padding: 0; margin-top: 10px; font-size: 1.1rem; line-height: 1.8;"></ul>
+              <div id="player-input-list"></div>
+            </div>
+          </div>
+
+          <!-- 右カラム: ゲーム設定 & スタート -->
+          <div class="card">
+            <h2>ゲーム設定</h2>
+            <div class="form-group" style="margin-top: 20px;">
+              <label>プレイモード</label>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <label class="mode-card">
+                  <input type="radio" id="mode-normal" name="game-mode" value="normal" checked />
+                  <strong>通常バージョン</strong>（全100マス）
+                </label>
+                <label class="mode-card">
+                  <input type="radio" id="mode-short" name="game-mode" value="short" />
+                  <strong>ショートバージョン</strong>（35マス）
+                </label>
+              </div>
+            </div>
+
+            <p style="margin-top: 40px; color: #666; font-size: 0.9rem; text-align: center;">
+              ※ ゲームスタートはスマホ（コントローラー）から操作してください
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 3. PC: メインゲーム画面（3カラムダッシュボード） -->
+      <!-- ========================================== -->
+      <section id="screen-game" class="screen pc-screen" style="display: none;">
+        <div class="game-layout">
+          
+          <!-- 【左カラム】プレイヤー情報 & 場所ごとのプレイヤー一覧 -->
+          <div class="layout-left">
+            <!-- 上: 現在の操作プレイヤー & ステータス -->
+            <div class="card current-player-card">
+              <div class="player-header">
+                <div class="player-avatar">👤</div>
+                <div class="player-meta">
+                  <h2 id="current-player-name">プレイヤー1</h2>
+                  <!-- 役職とリア充アイコンを並べるコンテナ -->
+                  <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                    <span class="job-badge" id="current-player-job">モブ</span>
+                    <span id="current-player-lover-icon" style="font-size: 1.1rem; display: none;" title="リア充">❤️</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="player-stats" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                <!-- 肝臓HP & 酔い度 -->
+                <div class="stat-item" style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #fff;">
+                    <span>肝臓HP</span>
+                    <span id="current-player-hp">100 / 100</span>
+                  </div>
+                  <div class="gauge-bar" style="background: rgba(0,0,0,0.2); border-radius: 6px; height: 10px; overflow: hidden; width: 100%;">
+                    <div class="gauge-fill" id="current-player-drunk" style="background: #4caf50; height: 100%; width: 100%; transition: width 0.3s ease;"></div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.8rem; color: #ffeb3b; font-weight: bold;">
+                    酔い度: <strong id="current-player-drunk-percent">0%</strong>
+                  </div>
+                </div>
+
+                <!-- 飲んだ杯数・場所（2カラムですっきりと） -->
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; text-align: center;">
+                  <div>
+                    <div style="font-size: 0.75rem; color: #d0d0d0; font-weight: bold;">飲んだ杯数</div>
+                    <div id="current-player-drinks" style="font-size: 1rem; font-weight: bold; color: #fff;">0 杯</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 0.75rem; color: #d0d0d0; font-weight: bold;">現在の場所</div>
+                    <div id="current-player-location" style="font-size: 0.9rem; font-weight: bold; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 下: 場所ごとのプレイヤー一覧（どこに誰がいるか） -->
+            <div class="card location-players-card">
+              <div class="card-title">📍 場所ごとのメンバー</div>
+              <div id="location-players-list" style="margin-top: 10px; font-size: 0.9rem; line-height: 1.6;">
+                <p style="color: #666; font-size: 0.85rem;">プレイヤーの移動を待っています...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 【中央カラム】盤面マップ -->
+          <div class="layout-center">
+            <div class="card map-card">
+              <div class="map-header">
+                <h3>🗺️ すごろくマップ</h3>
+                <span class="mode-badge" id="current-game-mode-display">通常モード</span>
+              </div>
+              <div class="board-container">
+                <canvas id="board-canvas" width="600" height="600"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- 【右カラム】ルーレット & 現在のマスの内容 -->
+          <div class="layout-right">
+            <!-- 上: ルーム用ルーレット -->
+            <div class="card roulette-card" style="text-align: center;">
+              <h3>🎰 ルーレット</h3>
+              <div class="roulette-container">
+                <div class="roulette-pointer"></div>
+                <div id="controller-roulette-wheel" class="roulette-wheel">
+                  <div class="roulette-num num-1">1</div>
+                  <div class="roulette-num num-2">2</div>
+                  <div class="roulette-num num-3">3</div>
+                  <div class="roulette-num num-4">4</div>
+                  <div class="roulette-num num-5">5</div>
+                  <div class="roulette-num num-6">6</div>
+                  <div class="roulette-num num-7">7</div>
+                  <div class="roulette-num num-8">8</div>
+                  <div class="roulette-num num-9">9</div>
+                  <div class="roulette-num num-10">10</div>
+                </div>
+              </div>
+              <div id="roulette-result-display" class="roulette-result-display" style="font-size: 1.4rem; font-weight: bold; margin-top: 10px;">🎯 待機中...</div>
+            </div>
+
+            <!-- 下: 現在止まっているマスの内容 -->
+            <div class="card tile-event-card">
+              <div class="card-title">📍 現在のマスの内容</div>
+              <div class="event-display" id="event-text">
+                <p class="event-msg">スマホからルーレットを回してください！</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+<!-- カップル成立イベント用モーダル (PC側) -->
+<div id="pc-couple-event-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content couple-event-card">
+    <h2 class="couple-title">💕 カップル成立チャンス 💕</h2>
+    <p class="couple-desc">
+      運命のルーレット！出目が<strong>「偶数」</strong>ならカップル成立！？<br>
+      他のプレイヤーがルーレットの数字に割り当てられます。<br>
+      見事ヒットすれば、2人仲良く <strong>杯数＋1</strong>！
+    </p>
+    
+    <!-- 特殊ルーレット表示枠 -->
+    <div class="special-roulette-container">
+      <!-- 既存のルーレットのCSSを使い回せるようにクラスを付与 -->
+      <div id="pc-couple-roulette-wheel" class="roulette-wheel couple-wheel">
+        <!-- JavaScriptで数字などを描画、または背景画像で設定 -->
+      </div>
+      <div class="roulette-pointer">▼</div>
+    </div>
+    
+    <p id="pc-couple-event-status" class="event-highlight-text">スマホからルーレットを回してね！</p>
+  </div>
+</div>
+    <!-- ライブラリ＆スクリプト -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

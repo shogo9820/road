@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>宅飲み人生ゲーム 🍺 [コントローラー]</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet" />
+    <style>
+      /* 画面切替用のスタイル補填 */
+      .screen { display: none; }
+      .screen.active { display: block; }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="app-container mobile-container">
+
+      <!-- 1. ルーム参加画面 -->
+      <section id="phone-screen-join" class="screen active">
+        <div class="card">
+          <div class="logo-container" style="text-align: center;">
+            <h2>📱 コントローラー</h2>
+            <p style="font-size: 0.85rem; color: #666;">PC画面に表示されているルームコードを入力してください</p>
+          </div>
+          <div class="form-group" style="margin-top: 20px;">
+            <label for="input-room-code"><strong>ルームコード（4桁）</strong></label>
+            <input type="number" id="input-room-code" class="input-field" placeholder="例: 2465" style="width: 100%; padding: 12px; font-size: 1.2rem; text-align: center; border-radius: 8px; border: 1px solid #ccc; margin-top: 8px;" />
+          </div>
+          <button type="button" id="btn-join-room" class="btn btn-gold" style="width: 100%; padding: 15px; font-size: 1.1rem; margin-top: 20px;">
+            🔑 ルームに接続する
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. 設定・待機画面 -->
+      <section id="phone-screen-setup" class="screen">
+        <div class="card">
+          <h2 style="text-align: center;">⚙️ 設定</h2>
+          
+          <div style="margin-top: 20px;">
+            <label><strong>参加プレイヤー設定</strong></label>
+            <div id="phone-player-list" style="margin-top: 10px;"></div>
+            <button type="button" id="btn-phone-add-player" class="btn" style="width: 100%; padding: 10px; background: #e0e0e0; border: none; border-radius: 6px; margin-top: 8px;">
+              ➕ プレイヤーを追加
+            </button>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <label><strong>ゲームモード</strong></label>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+              <label style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; text-align: center;">
+                <input type="radio" name="phone-mode" value="normal" checked /> 通常
+              </label>
+              <label style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; text-align: center;">
+                <input type="radio" name="phone-mode" value="short" /> ショート
+              </label>
+            </div>
+          </div>
+
+          <button type="button" id="btn-phone-start" class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1.2rem; margin-top: 30px; background: #2ecc71; color: white; border: none; border-radius: 8px;">
+            🎮 ゲームスタート！
+          </button>
+        </div>
+      </section>
+
+      <!-- 3. ゲームプレイ画面 -->
+      <section id="phone-screen-play" class="screen">
+        <div class="card" style="text-align: center;">
+          <div id="current-player-banner" style="font-weight: bold; font-size: 1.2rem; padding: 10px; background: #f0f0f0; border-radius: 6px; margin-bottom: 15px;">
+            TURN: ----
+          </div>
+
+          <!-- 本格人生ゲーム風ルーレット盤 -->
+          <div class="roulette-container">
+            <div class="roulette-pointer"></div>
+            <div id="controller-roulette-wheel" class="roulette-wheel">
+              <div class="roulette-num num-1">1</div>
+              <div class="roulette-num num-2">2</div>
+              <div class="roulette-num num-3">3</div>
+              <div class="roulette-num num-4">4</div>
+              <div class="roulette-num num-5">5</div>
+              <div class="roulette-num num-6">6</div>
+              <div class="roulette-num num-7">7</div>
+              <div class="roulette-num num-8">8</div>
+              <div class="roulette-num num-9">9</div>
+              <div class="roulette-num num-10">10</div>
+            </div>
+          </div>
+
+          <div id="roulette-result-display" style="font-size: 1.3rem; font-weight: bold; height: 35px; margin-bottom: 10px; color: #2c3e50;">
+            🎯 タップして回そう！
+          </div>
+
+          <button type="button" id="btn-phone-spin" class="btn btn-gold" style="width: 100%; padding: 18px; font-size: 1.3rem; margin-bottom: 15px;">
+            🌀 ルーレットを回す！
+          </button>
+
+          <button type="button" id="btn-phone-next" class="btn hidden" style="width: 100%; padding: 15px; font-size: 1.1rem; background: #3498db; color: white; border: none; border-radius: 8px;">
+            ➡️ 次のプレイヤーへ
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ★追加: 役職選択ダイアログ用モーダル枠（初期状態は非表示） -->
+    <div id="job-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+      <div style="background: #fff; padding: 24px; border-radius: 12px; text-align: center; width: 80%; max-width: 320px;">
+        <h3 style="margin-bottom: 12px;">✨ 役職マス発見！</h3>
+        <p id="job-modal-desc" style="margin-bottom: 20px; white-space: pre-wrap; font-size: 0.9rem; color: #333;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button type="button" id="btn-job-yes" style="padding: 10px 20px; background: #4caf50; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">はい</button>
+          <button type="button" id="btn-job-no" style="padding: 10px 20px; background: #ccc; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">いいえ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- カップル成立イベント用モーダル (スマホ側) -->
+<div id="mobile-couple-event-modal" class="modal-overlay"">
+  <div class="modal-content mobile-couple-card">
+    <h2 class="couple-title">💕 カップルイベント 💕</h2>
+    <p class="couple-desc">運命のルーレットを回そう！</p>
+    
+    <div class="action-buttons">
+      <button id="btn-couple-spin" class="btn-large btn-pink">ルーレットを回す！</button>
+    </div>
+  </div>
+</div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/controller.js"></script>
+  </body>
+</html>
