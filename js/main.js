@@ -142,8 +142,10 @@ function initSocketListeners() {
   socket.on("coupleEventFinished", (data) => {
     // PC側のカップルモーダルを閉じる
     const pcModal = document.getElementById("pc-couple-event-modal");
-    if (pcModal) pcModal.style.display = "none";
-
+    if (pcModal) {
+      pcModal.classList.remove("active", "theme-couple");
+    }
+  isPCEventMode = false; // 通常モードに戻す
     // 結果をPC画面中央のイベントテキストにデカデカと表示
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -297,21 +299,44 @@ function executeSyncedRoulette(resultNum) {
   const eventBox = document.getElementById("event-text");
   if (eventBox) eventBox.innerHTML = `<p class="event-msg">ルーレット回転中...</p>`;
 
-  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+  // 角度計算用の設定
+  const targetDegrees =[342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
 
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  const wheel = document.getElementById("controller-roulette-wheel");
-  if (wheel) {
-    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
-    wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
+  // 🎯 修正①：イベント中ならモーダル内のルーレット、通常時なら通常ルーレットを回す
+  let wheel;
+  if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+    // 共通CSS案のクラス名（#pc-event-modal の中にあるホイール）を正確に狙い撃ち
+    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
+    
+    // 【保険】もしHTML側のID名がまだ以前の「pc-couple-event-modal」ならそこから探す
+    if (!wheel) wheel = document.querySelector("#pc-couple-event-modal .couple-wheel");
+  } else {
+    wheel = document.getElementById("controller-roulette-wheel");
   }
 
+  if (wheel) {
+    console.log("[PCルーレット回転開始]", wheel);
+    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+    wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
+  } else {
+    console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見veかりません。");
+  }
+
+  // 3秒後に回転が停止した時の処理
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
+    // 🎯 修正②：イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
+    if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+      console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
+      return; 
+    }
+
+    // ─── ここから下は「通常モード時」のすごろく移動ロジック（既存のコード） ───
     let targetPosition = p.position + resultNum;
     
     if (typeof MAP_SQUARES !== 'undefined') {
@@ -359,7 +384,7 @@ function executeSyncedRoulette(resultNum) {
 
     p.location = squareLocation;
 
-if (window.boardManager) {
+    if (window.boardManager) {
       window.boardManager.draw(players, activePlayerIndex);
     }
 
@@ -378,7 +403,6 @@ if (window.boardManager) {
         drinkCount: pl.drinkCount,
         isLover: pl.isLover,
         skipTurn: pl.skipTurn
-        // ※ hasJob や job はここに入れない！
       }))
     });
   }, 3000);
