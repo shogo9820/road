@@ -404,20 +404,30 @@ function handleForceStopSquare(player, square) {
       console.log(`${player.name} が入学式で強制停止しました。`);
       break;
 
-    case 35:
-      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
-      
-      // 1. PC側のモーダルを表示する
-      const pcModal = document.getElementById("pc-couple-event-modal");
-      if (pcModal) pcModal.style.display = "flex";
+case 35:
+  console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
+  
+  // 1. 共通の親モーダルを取得
+  const pcModal = document.getElementById("pc-event-modal");
+  if (pcModal) {
+    // ⭕ 対策：CSSのルールに合わせて 'active' クラスを付与して画面に出す
+    // 同時に、今回提案したカップル用の着せ替えクラス 'theme-couple' も付与する
+    pcModal.classList.add("active", "theme-couple");
+    
+    // モーダル内のタイトルや説明文も、カップル用にその場で書き換える
+    const titleEl = pcModal.querySelector(".event-title");
+    const descEl = pcModal.querySelector(".event-desc");
+    if (titleEl) titleEl.textContent = "💕 カップル成立チャンス！？ 💕";
+    if (descEl) descEl.textContent = `${player.name} さんがカップルマスに到着！運命の1回目スピンを回して【偶数】を狙え！`;
+  }
 
-      // 2. スマホ側へカップルイベントの開始を通知する
-      socket.emit("triggerCoupleEvent", {
-        roomCode: roomCode,
-        playerId: player.id,
-        playerName: player.name
-      });
-      break;
+  // 2. スマホ側へカップルイベントの開始を通知する
+  socket.emit("triggerCoupleEvent", {
+    roomCode: roomCode,
+    playerId: player.id,
+    playerName: player.name
+  });
+  break;
 
     case 52:
       console.log(`${player.name} がランクアップチャンスで強制停止しました。`);
