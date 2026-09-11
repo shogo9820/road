@@ -129,14 +129,20 @@ window.addEventListener("DOMContentLoaded", () => {
       targetPlayerId: null
     };
 
-    const modal = document.getElementById("mobile-couple-event-modal");
-    if (modal) {
-      const descEl = modal.querySelector(".couple-desc");
-      if (descEl) {
-        descEl.innerHTML = `${data.playerName}さん、カップル成立マスに止まりました！<br>運命のルーレットを回そう！<br>（偶数が出ればチャンス！）`;
-      }
-      modal.style.display = "flex";
+    // 🎯 修正：スマホのカードに 'theme-couple' を付与して見た目を変身させる
+    // 画面全体に反映させるため、body やメインのコンテナに付与するのが一番確実です
+    document.body.classList.add("theme-couple");
+
+    // スマホ側の「🎯 タップして回そう！」のテキストをイベント用に書き換える
+    const resultDisplay = document.getElementById("roulette-result-display");
+    if (resultDisplay) {
+      resultDisplay.innerHTML = `<span style="color: #d81b60; font-weight: bold; font-size: 1.1rem;">
+        💖 カップルチャンス（1回目）<br>偶数を出して告白に進め！
+      </span>`;
     }
+
+    // もし古い文字だけのモーダル（mobile-couple-event-modal）を開く処理が残っていたら、
+    // 画面がゴチャつくので、その処理はコメントアウトするか消してしまって大丈夫です！
   });
 
   // 偶数だった場合：2回目のルーレット開始指示を受信
@@ -164,16 +170,19 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // カップルイベントが終了した時の処理（新規追加）
+  // カップルイベントが終了した時（通常スピンに戻る時）
   socket.on("coupleEventFinished", (data) => {
-    alert(data.message); // スマホ画面に結果をポップアップ
+    alert(data.message);
     
-    // イベント状態をリセットしてテーマを元に戻す
     coupleEventState.active = false;
     coupleEventState.step = 1;
-    applyRouletteTheme('');
     
-    // 次のターンのボタンを出せるように、通常のスピン後と同じ処理へ
+    // 🎯 修正：イベントが終わったら着せ替えクラスを外して元のデザインに戻す
+    document.body.classList.remove("theme-couple");
+
+    const resultDisplay = document.getElementById("roulette-result-display");
+    if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
+
     const nextBtn = document.getElementById("btn-phone-next");
     if (nextBtn) {
       nextBtn.disabled = false;

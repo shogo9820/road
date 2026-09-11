@@ -4,6 +4,7 @@ let roomCode = "";
 let players = [];
 let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
+let isPCEventMode = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   initEventListeners();
@@ -398,43 +399,92 @@ function applySquareEffects(player, square) {
   }
 }
 
+// 🎯 追加：各イベントの共通設定データ（見た目のクラスやテキスト）
+const GAME_EVENTS = {
+  入学式: {
+    class: "theme-entrance", // 入学式用のCSSを作ったらここに指定
+    title: "🌸 入学式 🌸",
+    desc: (name) => `${name} さんの大学生活がスタート！最初の新歓イベントに向けてルーレットを回そう！`
+  },
+  カップル: {
+    class: "theme-couple",
+    title: "💕 カップル成立チャンス！？ 💕",
+    desc: (name) => `${name} さんがカップルマスに到着！運命の1回目スピンを回して【偶数】を狙え！`
+  },
+  ランクアップ: {
+    class: "theme-rankup",
+    title: "🔥 ランクアップチャンス 🔥",
+    desc: (name) => `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`
+  },
+  引退: {
+    class: "theme-retirement",
+    title: "🎓 サークル引退式 🎓",
+    desc: (name) => `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`
+  }
+};
+
+// 🎯 追加：共通モーダルを綺麗に開くためのヘルパー関数
+function openPCEventModal(eventType, playerName) {
+  isPCEventMode = true; // 👈 前のステップで追加した「PCがイベント中か」のフラグをON
+  
+  const pcModal = document.getElementById("pc-event-modal");
+  if (!pcModal) return;
+
+  const config = GAME_EVENTS[eventType];
+  if (!config) return;
+
+  // 1. 一旦ついている可能性のある過去の着せ替えクラスをすべて綺麗に掃除する
+  pcModal.className = "event-modal-overlay"; 
+
+  // 2. 表示用のクラス（active）と、今回のイベント用の着せ替えクラス（theme-〇〇）を付与
+  pcModal.classList.add("active", config.class);
+
+  // 3. テキストを動的に書き換える
+  const titleEl = pcModal.querySelector(".event-title");
+  const descEl = pcModal.querySelector(".event-desc");
+  if (titleEl) titleEl.textContent = config.title;
+  if (descEl) descEl.textContent = config.desc(playerName);
+}
+
+// ─── 修正する handleForceStopSquare はここから ───
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 15:
       console.log(`${player.name} が入学式で強制停止しました。`);
+      // 🎯 共通関数で入学式モーダルを開く
+      openPCEventModal("入学式", player.name);
+      
+      // スマホ（子機）側へ入学式イベント開始を通知する場合はここに socket.emit を足す
       break;
 
-case 35:
-  console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
-  
-  // 1. 共通の親モーダルを取得
-  const pcModal = document.getElementById("pc-event-modal");
-  if (pcModal) {
-    // ⭕ 対策：CSSのルールに合わせて 'active' クラスを付与して画面に出す
-    // 同時に、今回提案したカップル用の着せ替えクラス 'theme-couple' も付与する
-    pcModal.classList.add("active", "theme-couple");
-    
-    // モーダル内のタイトルや説明文も、カップル用にその場で書き換える
-    const titleEl = pcModal.querySelector(".event-title");
-    const descEl = pcModal.querySelector(".event-desc");
-    if (titleEl) titleEl.textContent = "💕 カップル成立チャンス！？ 💕";
-    if (descEl) descEl.textContent = `${player.name} さんがカップルマスに到着！運命の1回目スピンを回して【偶数】を狙え！`;
-  }
+    case 35:
+      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
+      
+      // 🎯 共通関数でスッキリとカップルモーダルを開く
+      openPCEventModal("カップル", player.name);
 
-  // 2. スマホ側へカップルイベントの開始を通知する
-  socket.emit("triggerCoupleEvent", {
-    roomCode: roomCode,
-    playerId: player.id,
-    playerName: player.name
-  });
-  break;
+      // スマホ側へカップルイベントの開始を通知する
+      socket.emit("triggerCoupleEvent", {
+        roomCode: roomCode,
+        playerId: player.id,
+        playerName: player.name
+      });
+      break;
 
     case 52:
       console.log(`${player.name} がランクアップチャンスで強制停止しました。`);
+      // 🎯 共通関数でランクアップモーダルを開く
+      openPCEventModal("ランクアップ", player.name);
+      
+      // スマホ（子機）側へランクアップ用の通知を送るならココに追記
       break;
 
     case 78:
       console.log(`${player.name} が引退マスで強制停止しました。`);
+      // 🎯 共通関数で引退モーダルを開く
+      openPCEventModal("引退", player.name);
+      
+      // スマホ（子機）側へ引退用の通知を送るならココに追記
       break;
 
     default:
