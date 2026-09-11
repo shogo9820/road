@@ -194,26 +194,20 @@
       </section>
 
     </div>
-<!-- カップル成立イベント用モーダル (PC側) -->
-<div id="pc-couple-event-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content couple-event-card">
-    <h2 class="couple-title">💕 カップル成立チャンス 💕</h2>
-    <p class="couple-desc">
-      運命のルーレット！出目が<strong>「偶数」</strong>ならカップル成立！？<br>
-      他のプレイヤーがルーレットの数字に割り当てられます。<br>
-      見事ヒットすれば、2人仲良く <strong>杯数＋1</strong>！
-    </p>
+<!-- PC側：共通イベントモーダル（親） -->
+<div id="pc-event-modal" class="modal-overlay">
+  <!-- この中身（カード全体）に .theme-couple や .theme-rankup を付与して見た目を変える -->
+  <div class="event-card-container">
+    <h1 class="event-title">イベントタイトル（動的に変更）</h1>
+    <p class="event-desc">イベントの説明文（動的に変更）</p>
     
-    <!-- 特殊ルーレット表示枠 -->
+    <!-- 共通のイベント用ルーレット -->
     <div class="special-roulette-container">
-      <!-- 既存のルーレットのCSSを使い回せるようにクラスを付与 -->
-      <div id="pc-couple-roulette-wheel" class="roulette-wheel couple-wheel">
-        <!-- JavaScriptで数字などを描画、または背景画像で設定 -->
+      <div class="roulette-pointer"></div>
+      <div class="event-roulette-wheel">
+        <!-- 1〜10の数字が入ったルーレット盤 -->
       </div>
-      <div class="roulette-pointer">▼</div>
     </div>
-    
-    <p id="pc-couple-event-status" class="event-highlight-text">スマホからルーレットを回してね！</p>
   </div>
 </div>
     <!-- ライブラリ＆スクリプト -->

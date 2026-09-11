@@ -591,3 +591,206 @@ label:has(input[name="phone-mode"]:checked),
   50% { transform: scale(1.05); opacity: 0.8; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* ==========================================
+   A. 共通イベントモーダル（親の土台）
+   ========================================== */
+
+/* 全画面を覆う半透明の背景（親） */
+.event-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* モーダル表示時用のクラス */
+.event-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* イベントカードのベース（中身の箱） */
+.event-card-container {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  border: 4px solid #cccccc; /* デフォルトの枠線 */
+  transition: all 0.3s ease;
+}
+
+/* タイトルと説明文 */
+.event-card-container .event-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 12px;
+  transition: color 0.3s ease;
+}
+
+.event-card-container .event-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333333;
+  margin-bottom: 20px;
+}
+
+
+/* ==========================================
+   B. イベント用共通ルーレットの土台
+   ========================================== */
+.event-roulette-container {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 20px;
+}
+
+/* ルーレット本体 */
+.event-roulette-wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 6px solid #333333;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+  background: #eceff1; /* デフォルトの仮色 */
+  transition: transform 3s cubic-bezier(0.15, 0.9, 0.2, 1);
+}
+
+/* 真ん中のピン */
+.event-roulette-wheel::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, #ffffff, #cccccc);
+  border: 3px solid #333333;
+  border-radius: 50%;
+  z-index: 5;
+}
+
+/* 上部の矢印ポインター */
+.event-roulette-pointer {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 26px solid #e74c3c;
+  z-index: 10;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+
+
+/* ==========================================
+   C. 【バージョン別】着せ替え定義（ここが重要！）
+   ========================================== */
+
+/* ------------------------------------------
+   1. カップル VER (.theme-couple)
+   ------------------------------------------ */
+/* カードの背景と枠線変更 */
+.theme-couple .event-card-container {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
+  border-color: #ff69b4;
+  box-shadow: 0 12px 35px rgba(255, 105, 180, 0.4);
+}
+/* 文字色 */
+.theme-couple .event-title {
+  color: #d81b60;
+}
+/* ルーレットの配色（ピンク＆赤系に変化） */
+.theme-couple .event-roulette-wheel {
+  border-color: #d81b60;
+  background: conic-gradient(
+    #ff4d4d 0deg 36deg,     #ff6b8b 36deg 72deg,
+    #ff4d4d 72deg 108deg,   #ff6b8b 108deg 144deg,
+    #ff4d4d 144deg 180deg,  #ff6b8b 180deg 216deg,
+    #ff4d4d 216deg 252deg,  #ff6b8b 252deg 288deg,
+    #ff4d4d 288deg 324deg,  #ff6b8b 324deg 360deg
+  );
+}
+/* 子機のボタンもピンクに */
+.theme-couple .btn-event-spin {
+  background: #ff4081;
+}
+.theme-couple .btn-event-spin:active {
+  background: #d81b60;
+}
+
+/* ------------------------------------------
+   2. ランクアップ VER (.theme-rankup)
+   ------------------------------------------ */
+.theme-rankup .event-card-container {
+  background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%);
+  border-color: #f5a623;
+  box-shadow: 0 12px 35px rgba(245, 166, 35, 0.4);
+}
+.theme-rankup .event-title {
+  color: #b78103;
+}
+/* ルーレットの配色（ゴールド＆イエロー系に変化） */
+.theme-rankup .event-roulette-wheel {
+  border-color: #d98e19;
+  background: conic-gradient(
+    #ffca28 0deg 36deg,     #ffe082 36deg 72deg,
+    #ffca28 72deg 108deg,   #ffe082 108deg 144deg,
+    #ffca28 144deg 180deg,  #ffe082 180deg 216deg,
+    #ffca28 216deg 252deg,  #ffe082 252deg 288deg,
+    #ffca28 288deg 324deg,  #ffe082 324deg 360deg
+  );
+}
+.theme-rankup .btn-event-spin {
+  background: #f5a623;
+}
+.theme-rankup .btn-event-spin:active {
+  background: #d98e19;
+}
+
+/* ------------------------------------------
+   3. 就職チャレンジ VER (.theme-job)
+   ------------------------------------------ */
+.theme-job .event-card-container {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-color: #9c27b0;
+  box-shadow: 0 12px 35px rgba(156, 39, 176, 0.4);
+}
+.theme-job .event-title {
+  color: #4a148c;
+}
+/* ルーレットの配色（パープル＆マゼンタ系に変化） */
+.theme-job .event-roulette-wheel {
+  border-color: #6a1b9a;
+  background: conic-gradient(
+    #ab47bc 0deg 36deg,     #e1bee7 36deg 72deg,
+    #ab47bc 72deg 108deg,   #e1bee7 108deg 144deg,
+    #ab47bc 144deg 180deg,  #e1bee7 180deg 216deg,
+    #ab47bc 216deg 252deg,  #e1bee7 252deg 288deg,
+    #ab47bc 288deg 324deg,  #e1bee7 324deg 360deg
+  );
+}
+.theme-job .btn-event-spin {
+  background: #9c27b0;
+}
+.theme-job .btn-event-spin:active {
+  background: #6a1b9a;
+}
