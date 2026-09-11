@@ -142,19 +142,43 @@ window.addEventListener("DOMContentLoaded", () => {
   // 偶数だった場合：2回目のルーレット開始指示を受信
   socket.on("startCoupleSecondRoulette", (data) => {
     console.log("スマホ側：告白チャンス！2回目のルーレット指示を受信", data);
+    
+    // 状態をステップ2（相手決定/告白スピン）に更新
     coupleEventState = {
       active: true,
       step: 2,
       targetPlayerId: data.targetPlayerId
     };
 
+    // スマホの画面（モーダル）を2回目用に書き換えて再表示
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) {
       const descEl = modal.querySelector(".couple-desc");
       if (descEl) {
-        descEl.innerHTML = `💕 偶数が出た！告白チャンス発動！<br>相手を決定するためのルーレットを回せ！`;
+        descEl.innerHTML = `💕 偶数が出た！告白チャンス発動！<br>もう一度ルーレットを回して【偶数】ならカップル成立！`;
       }
+      // ボタンをもう一度押せるように表示
+      const btn = document.getElementById("btn-couple-spin");
+      if (btn) btn.style.display = "block";
       modal.style.display = "flex";
+    }
+  });
+
+  // カップルイベントが終了した時の処理（新規追加）
+  socket.on("coupleEventFinished", (data) => {
+    alert(data.message); // スマホ画面に結果をポップアップ
+    
+    // イベント状態をリセットしてテーマを元に戻す
+    coupleEventState.active = false;
+    coupleEventState.step = 1;
+    applyRouletteTheme('');
+    
+    // 次のターンのボタンを出せるように、通常のスピン後と同じ処理へ
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.classList.remove("hidden");
+      nextBtn.style.display = "block";
     }
   });
 

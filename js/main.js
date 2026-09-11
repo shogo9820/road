@@ -124,6 +124,42 @@ function initSocketListeners() {
       }
     }
   });
+
+    // initSocketListeners() の中に追加してな！
+  
+  // 偶数が出て2回目に突入した時
+  socket.on("startCoupleSecondRoulette", (data) => {
+    const eventBox = document.getElementById("event-text");
+    if (eventBox) {
+      eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
+        🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
+      </p>`;
+    }
+  });
+
+  // カップルイベントが完全に終わった時
+  socket.on("coupleEventFinished", (data) => {
+    // PC側のカップルモーダルを閉じる
+    const pcModal = document.getElementById("pc-couple-event-modal");
+    if (pcModal) pcModal.style.display = "none";
+
+    // 結果をPC画面中央のイベントテキストにデカデカと表示
+    const eventBox = document.getElementById("event-text");
+    if (eventBox) {
+      if (data.success) {
+        eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#ffe4e1; border:3px solid #ff69b4; border-radius:12px;">
+          <h2 style="color:#d81b60; font-size:2rem; margin-bottom:5px;">💕 カップル成立！！ 💕</h2>
+          <p style="font-weight:bold; font-size:1.2rem;">${data.message}</p>
+        </div>`;
+      } else {
+        eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#eceff1; border:3px solid #b0bec5; border-radius:12px;">
+          <h2 style="color:#37474f; font-size:1.8rem; margin-bottom:5px;">💦 告白失敗... 💦</h2>
+          <p style="font-weight:bold;">運命の人は別にいるさ！ドンマイ！</p>
+        </div>`;
+      }
+    }
+  });
+
 }
 
 function switchScreen(targetId) {

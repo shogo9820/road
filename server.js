@@ -132,19 +132,19 @@ io.on("connection", (socket) => {
         const isEven = (result % 2 === 0);
 
         if (isEven) {
-          // 偶数が出た場合：自分以外のプレイヤーからランダムで1人選び、2回目の指示を送る
-          const otherPlayers = gamePlayers.filter(p => String(p.id) !== String(targetPlayer.id));
-          if (otherPlayers.length > 0) {
-            const randomPartner = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
-            console.log(`[カップルチャンス] 偶数達成！相手候補として ${randomPartner.name} を選択しました。2回目の指示を送ります。`);
-            
-            socket.emit("startCoupleSecondRoulette", {
-              targetPlayerId: randomPartner.id,
-              targetPlayerName: randomPartner.name
-            });
-          }
+          // ⭕ 1人プレイ（親1・子1）想定に修正：
+          // 自分以外のプレイヤーがいなくても、そのまま2回目のスピン（告白）に進ませる
+          console.log(`[カップルチャンス] 偶数達成！2回目の告白ルーレットの指示をスマホへ送ります。`);
+          
+          // ルーム全体（PCとスマホ両方）に「2回目のルーレット準備」を通知
+          io.to(roomCode).emit("startCoupleSecondRoulette", {
+            targetPlayerId: targetPlayer.id, // 自分自身が2回目を回す
+            targetPlayerName: "運命の相手"    // 固定のテキストにするか、親機に表示する用
+          });
         } else {
           console.log(`[カップル不成立] 奇数だったためイベント終了です。`);
+          // PC側に「失敗」を伝えるイベントを送ると親切
+          io.to(roomCode).emit("coupleEventFinished", { success: false, message: "奇数！フラれてしもた..." });
         }
       }
     }
@@ -152,28 +152,31 @@ io.on("connection", (socket) => {
 
   // スマホ側からの2回目カップルルーレット結果の受け取り
   socket.on("coupleSecondRouletteResult", (data) => {
-    const { roomCode, playerId, targetPlayerId, result } = data;
+    const { roomCode, playerId, result } = data;
     if (roomCode && rooms[roomCode]) {
       const gamePlayers = rooms[roomCode].gamePlayers;
       const player = gamePlayers.find(p => String(p.id) === String(playerId));
-      const partner = gamePlayers.find(p => String(p.id) === String(targetPlayerId));
 
-      if (player && partner) {
-        console.log(`[カップル2回目] ${player.name} と ${partner.name} の出目: ${result}`);
-        
-        // 例：偶数ならカップル成立
+      if (player) {
+        console.log(`[カップル2回目] ${player.name} の出目: ${result}`);
         const isSuccess = (result % 2 === 0);
 
         if (isSuccess) {
           player.isLover = true;
-          partner.isLover = true;
           player.drinkCount = (player.drinkCount || 0) + 1;
-          partner.drinkCount = (partner.drinkCount || 0) + 1;
-          console.log(`[カップル成立 💕] ${player.name} と ${partner.name} が結ばれました！杯数+1`);
+          console.log(`[カップル成立 💕] ${player.name} が結ばれました！杯数+1`);
+          
+          // PCとスマホに成功を通知
+          io.to(roomCode).emit("coupleEventFinished", { 
+            success: true, 
+            message: `💕 カップル成立！ ${player.name} は、2人仲良く 杯数＋1！ 🍺` 
+          });
         } else {
           console.log(`[カップル失敗 💦] 告白は失敗に終わりました……`);
+          io.to(roomCode).emit("coupleEventFinished", { success: false, message: "告白失敗...！💦" });
         }
 
+        // 状態を全員（PC・スマホ）に同期
         io.to(roomCode).emit("syncGameState", {
           players: rooms[roomCode].gamePlayers,
           activePlayerIndex: rooms[roomCode].activePlayerIndex
