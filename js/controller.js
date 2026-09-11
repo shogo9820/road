@@ -187,6 +187,25 @@ window.addEventListener("DOMContentLoaded", () => {
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
   });
+
+    // 開発用：ボタンを押したら即座に35マス目の手前（34マス目）にプレイヤーを移動させて同期する
+  document.getElementById("btn-debug-warp-couple")?.addEventListener("click", () => {
+    const p = players[activePlayerIndex];
+    if (p) {
+      // 次に「1」を出せば35マス目に止まるように、34マス目にセット
+      p.position = 34; 
+      p.location = "とりき"; // マス目データに合わせておく
+      
+      // サーバーに現在の状態を強制同期
+      socket.emit("updateGameState", {
+        roomCode: currentRoomCode,
+        activePlayerIndex: activePlayerIndex,
+        players: players
+      });
+      alert("34マス目にワープしました！次スピンで確定でカップルマスです。");
+    }
+  });
+
 });
 
 // --- イベントに応じたルーレット画面のテーマ切り替え関数 ---
