@@ -466,16 +466,16 @@ function sendNextTurn() {
 
 // ─── controller.js : 開発デバッグ用メニューのワープボタンを機能させる修正 ───
 
-// HTML側にある「35マス目（カップル）にワープ」ボタンのID名に完全に紐付けます
-const btnWarp35 = document.getElementById("btn-warp-35") || document.querySelector('button[onclick*="35"]') || document.evaluate("//button[contains(text(), '35マス目')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+// HTML側にある「34マス目（カップル）にワープ」ボタンのID名に完全に紐付けます
+const btnWarp34 = document.getElementById("btn-warp-34") || document.querySelector('button[onclick*="34"]') || document.evaluate("//button[contains(text(), '34マス目')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-if (btnWarp35) {
-  console.log("[デバッグ] 35マス目ワープボタンを検知。通信リスナーを直結します。");
+if (btnWarp34) {
+  console.log("[デバッグ] 34マス目ワープボタンを検知。通信リスナーを直結します。");
   
   // 既存の古いインラインonclick属性があれば干渉防止のためクリア
-  btnWarp35.removeAttribute("onclick");
+  btnWarp34.removeAttribute("onclick");
   
-  btnWarp35.addEventListener("click", (e) => {
+  btnWarp34.addEventListener("click", (e) => {
     e.preventDefault();
     
     // 現在のターンプレイヤーを強制特定
@@ -485,10 +485,10 @@ if (btnWarp35) {
       return;
     }
 
-    console.log(`[デバッグ発動] ${p.name} を35マス目（カップルマス）へ強制ワープさせます。`);
+    console.log(`[デバッグ発動] ${p.name} を34マス目（カップルマス）へ強制ワープさせます。`);
     
-    // 1. 位置データを強制的に「35」へ書き換える
-    p.position = 35;
+    // 1. 位置データを強制的に「34」へ書き換える
+    p.position = 34;
     p.location = "宅飲み"; // マスのロケーション属性と同期
 
     // 2. サーバー主導型の構造に合わせ、最新のワープ状態をサーバーへ強制同期（即座にPC大画面へ反映）
