@@ -334,6 +334,8 @@ function updateCurrentPlayerDisplay() {
 }
 
 // ─── pc.js : executeSyncedRoulette の修正 ───
+// ─── pc.js : PC右上の通常ルーレット回転を遅延ゼロ（0秒目）でスマホと同時発動させる修正 ───
+
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -345,12 +347,14 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
+  // 1. ルーレットが回り始めた瞬間（0秒目）のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
   const eventBox = document.getElementById("event-text");
-  if (eventBox)
-    eventBox.innerHTML = `<p class="event-msg">ルーレット回転中...</p>`;
+  if (eventBox) {
+    eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
+  }
 
   // 角度計算用の設定
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
@@ -359,56 +363,44 @@ function executeSyncedRoulette(resultNum) {
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // ★修正：イベント中か通常時かで、回転させるホイール（要素）を100%正確に切り替える
+  // 回転させるホイール（要素）の特定
   let wheel;
-  if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
-    // 開いている専用モーダル（#pc-event-modal）の中にあるルーレットを狙い撃ち
+  if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
     wheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
-    if (!wheel)
-      wheel = document.querySelector("#pc-couple-event-modal .couple-wheel");
+    if (!wheel) wheel = document.querySelector("#pc-couple-event-modal .couple-wheel");
   } else {
-    // 通常時はメイン画面の通常ルーレット（※HTMLのIDに合わせて適宜調整してください）
-    wheel =
-      document.getElementById("controller-roulette-wheel") ||
-      document.getElementById("pc-roulette-wheel");
+    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
+  // 🎯 修正：回転アニメーションの実行をタイマーの外（0秒目）へ移動！
+  // これにより、スマホでボタンを押した瞬間にPC右上の通常ルーレットも「遅延ゼロ」で同時に回り始めます
   if (wheel) {
     console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   } else {
-    console.error(
-      "⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。",
-    );
+    console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // 3秒後に回転が停止した時の処理
+  // ─── ★ここからは3秒後に回転が「停止した瞬間」の処理（マスの計算やテキストネタバレ防止） ───
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
-    // ★修正：イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
-    if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
-      console.log(
-        `[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`,
-      );
-      return;
+    // イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
+    if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+      console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
+      return; 
     }
 
-    // ─── ここから下は「通常モード時」のすごろく移動ロジック（既存のコード） ───
+    // ルーレットが停止したタイミング（3秒後）で初めて移動マスを計算し、マスのテキストを表示する！
     let targetPosition = p.position + resultNum;
-
-    if (typeof MAP_SQUARES !== "undefined") {
+    
+    if (typeof MAP_SQUARES !== 'undefined') {
       for (let pos = p.position + 1; pos <= targetPosition; pos++) {
         const sq = MAP_SQUARES[pos];
-        if (
-          sq &&
-          (sq.type === "force_stop" || sq.type === "force_stop_rankup")
-        ) {
+        if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
           targetPosition = pos;
-          console.log(
-            `強制ストップマス（ID: ${sq.id}, ${sq.text}）でピタッと停止します。`,
-          );
+          console.log(`強制ストップマス（ID: ${sq.id}, ${sq.text}）でピタッと停止します。`);
           break;
         }
       }
@@ -417,35 +409,28 @@ function executeSyncedRoulette(resultNum) {
     p.position = targetPosition;
 
     let squareLocation = "";
-    if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
+    if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
       const sq = MAP_SQUARES[p.position];
       squareLocation = sq.location || "";
-
+      
+      // 止まった瞬間にマスの説明テキストを画面中央（event-text）へ表示
       if (eventBox) {
-        eventBox.innerHTML = `<p class="event-msg">${sq.text || "何もないマスです。"}</p>`;
+        eventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${sq.text || "何もないマスです。"}</p>`;
       }
 
       applySquareEffects(p, sq);
 
-      const isJobSquare =
-        sq.type === "jobChallenge" ||
-        sq.jobId ||
-        (sq.text && sq.text.includes("【役職マス】"));
+      const isJobSquare = sq.type === "jobChallenge" || sq.jobId || (sq.text && sq.text.includes("【役職マス】"));
       if (isJobSquare && !p.hasJob) {
         const jobId = sq.jobId || sq.type || "unknown_job";
-        const jobName = sq.text
-          ? sq.text.replace(/【役職マス】/g, "").trim()
-          : "新しい役職";
+        const jobName = sq.text ? sq.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
 
-        console.log(
-          "役職マスに到達しました。スマホへダイアログ表示を要求します:",
-          { jobId, jobName },
-        );
+        console.log("役職マスに到達しました。スマホへダイアログ表示を要求します:", { jobId, jobName });
         socket.emit("triggerJobChoice", {
           roomCode: roomCode,
           playerId: p.id,
           jobId: jobId,
-          jobName: jobName,
+          jobName: jobName
         });
       }
 
@@ -463,10 +448,11 @@ function executeSyncedRoulette(resultNum) {
     renderLocationPlayersList();
     updateCurrentPlayerDisplay();
 
+    // 止まった瞬間の最新ステータスを全員へ強制同期
     socket.emit("updateGameState", {
       roomCode: roomCode,
       activePlayerIndex: activePlayerIndex,
-      players: players.map((pl) => ({
+      players: players.map(pl => ({
         id: pl.id,
         position: pl.position,
         location: pl.location,
@@ -476,10 +462,10 @@ function executeSyncedRoulette(resultNum) {
         skipTurn: pl.skipTurn,
         hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
         jobId: pl.jobId || null,
-        job: pl.job || "モブ",
-      })),
+        job: pl.job || "モブ"
+      }))
     });
-  }, 3000);
+  }, 3000); // 3秒間、回転中のテキスト表示をキープする
 }
 
 function applySquareEffects(player, square) {
