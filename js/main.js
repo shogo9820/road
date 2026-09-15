@@ -282,6 +282,7 @@ function updateCurrentPlayerDisplay() {
   renderLocationPlayersList();
 }
 
+// ─── pc.js : executeSyncedRoulette の修正 ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -300,22 +301,21 @@ function executeSyncedRoulette(resultNum) {
   if (eventBox) eventBox.innerHTML = `<p class="event-msg">ルーレット回転中...</p>`;
 
   // 角度計算用の設定
-  const targetDegrees =[342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18] ;
   const stopAngle = targetDegrees[resultNum - 1];
 
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 🎯 修正①：イベント中ならモーダル内のルーレット、通常時なら通常ルーレットを回す
+  // ★修正：イベント中か通常時かで、回転させるホイール（要素）を100%正確に切り替える
   let wheel;
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
-    // 共通CSS案のクラス名（#pc-event-modal の中にあるホイール）を正確に狙い撃ち
+    // 開いている専用モーダル（#pc-event-modal）の中にあるルーレットを狙い撃ち
     wheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
-    
-    // 【保険】もしHTML側のID名がまだ以前の「pc-couple-event-modal」ならそこから探す
     if (!wheel) wheel = document.querySelector("#pc-couple-event-modal .couple-wheel");
   } else {
-    wheel = document.getElementById("controller-roulette-wheel");
+    // 通常時はメイン画面の通常ルーレット（※HTMLのIDに合わせて適宜調整してください）
+    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
   if (wheel) {
@@ -323,14 +323,14 @@ function executeSyncedRoulette(resultNum) {
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   } else {
-    console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見veかりません。");
+    console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
   // 3秒後に回転が停止した時の処理
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
-    // 🎯 修正②：イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
+    // ★修正：イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
     if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
       console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
       return; 
@@ -391,7 +391,6 @@ function executeSyncedRoulette(resultNum) {
     renderLocationPlayersList();
     updateCurrentPlayerDisplay();
 
-    // ★ 役職データ（hasJob等）を絶対に含めないことで、サーバー側の「いいえ(false)」を保護する
     socket.emit("updateGameState", {
       roomCode: roomCode,
       activePlayerIndex: activePlayerIndex,
@@ -402,7 +401,10 @@ function executeSyncedRoulette(resultNum) {
         currentHp: pl.currentHp,
         drinkCount: pl.drinkCount,
         isLover: pl.isLover,
-        skipTurn: pl.skipTurn
+        skipTurn: pl.skipTurn,
+        hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
+        jobId: pl.jobId || null,
+        job: pl.job || "モブ"
       }))
     });
   }, 3000);
