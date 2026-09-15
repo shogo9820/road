@@ -601,14 +601,12 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   `;
 }
 
+// ─── pc.js : 開発効率化のため、仕様未定のマスは即座に自動クローズしてパスする修正 ───
+
 function handleForceStopSquare(player, square) {
   switch (square.id) {
-    case 15:
-      console.log(`${player.name} が入学式で強制停止しました。`);
-      openPCEventModal("入学式", player.name, player.id);
-      break;
-
     case 35:
+      // 🎯 今確認したい「カップル成立マス」だけは、通常通りモーダルを開いてイベントを開始する
       console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
       openPCEventModal("カップル", player.name, player.id);
       socket.emit("triggerCoupleEvent", {
@@ -618,18 +616,33 @@ function handleForceStopSquare(player, square) {
       });
       break;
 
-    case 52:
-      console.log(`${player.name} がランクアップチャンスで強制停止しました。`);
-      openPCEventModal("ランクアップ", player.name, player.id);
-      break;
-
-    case 78:
-      console.log(`${player.name} が引退マスで強制停止しました。`);
-      openPCEventModal("引退", player.name, player.id);
-      break;
-
+    case 15: // 入学式
+    case 52: // ランクアップ
+    case 78: // 引退
     default:
-      console.log(`${player.name} が強制ストップマスで停止しました。`);
+      // 🎯 修正：カップルマス以外（仕様未定のマス）に止まった時は、画面ロックを防ぐため即座にパスする！
+      console.log(`[開発デバッグ] マスID: ${square.id} は仕様未定のため、自動でスキップ処理を行います。`);
+      
+      // 1. 一瞬だけ対応するモーダルを開く（または開かずに直接でもOK）
+      const eventName = square.id === 15 ? "入学式" : square.id === 52 ? "ランクアップ" : "引退";
+      openPCEventModal(eventName, player.name, player.id);
+
+      // 2. わずか 300ミリ秒（0.3秒）後に、サーバーへ「イベント終了」の電波を自動で偽装発信してモーダルを速攻で閉じさせます
+      setTimeout(() => {
+        console.log(`[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`);
+        socket.emit("playerAction", { 
+          roomCode: roomCode, 
+          action: "nextTurn" 
+        });
+        
+        // 既存の汎用モーダル消去ロジックを直接叩いて画面を綺麗に戻す
+        const pcModal = document.getElementById("pc-event-modal");
+        if (pcModal) {
+          pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
+          pcModal.style.display = "none";
+        }
+        isPCEventMode = false;
+      }, 300);
       break;
   }
 }
