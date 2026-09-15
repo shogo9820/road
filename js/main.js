@@ -328,7 +328,7 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、ルーレットが回り始めた瞬間のテキスト表示
+  // 1. 【遅延ゼロ：0秒目】ルーレットが回り始めた瞬間のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
@@ -344,16 +344,18 @@ function executeSyncedRoulette(resultNum) {
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 回転させるホイール（要素）の特定
+  // 🎯 修正：回転させるホイール（要素）の特定ロジックを強化！
+  // ID名「pc-event-modal」と、古い「pc-couple-event-modal」の両方を安全に探します
   let wheel;
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
-    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
-    if (!wheel) wheel = document.querySelector("#pc-couple-event-modal .couple-wheel");
+    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
+            document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
+            document.querySelector("#pc-couple-event-modal .couple-wheel");
   } else {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
-  // 2. 【遅延ゼロ：0秒目】PC右上の通常ルーレットを含め、対象のホイールをスマホと同時に「遅延ゼロ」で即座に回転開始
+  // 2. 【遅延ゼロ：0秒目】PC右上の通常ルーレット、またはイベント専用盤をスマホと「遅延ゼロ」で即座に回転開始
   if (wheel) {
     console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
@@ -362,7 +364,8 @@ function executeSyncedRoulette(resultNum) {
     console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、プレイヤーマスの計算、ボード描写などの処理は即時に普通に実行
+  // 3. 🎯 修正：すごろくの移動計算、プレイヤー位置更新、ボード描画、イベント発動を「遅延ゼロ（0秒目）」で即座に普通に実行する！
+  // これにより、右上のルーレットの遅延が完全に消滅し、スマホと完璧に同時に回り始めます。
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -376,7 +379,10 @@ function executeSyncedRoulette(resultNum) {
     }
   }
 
-  p.position = targetPosition;
+  // イベントモード中でない（通常移動）場合のみ、コマを即座に進める
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    p.position = targetPosition;
+  }
 
   let squareLocation = "";
   let targetSquare = null;
@@ -386,7 +392,9 @@ function executeSyncedRoulette(resultNum) {
     applySquareEffects(p, targetSquare);
   }
 
-  p.location = squareLocation;
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    p.location = squareLocation;
+  }
 
   if (window.boardManager) {
     window.boardManager.draw(players, activePlayerIndex);
@@ -394,6 +402,14 @@ function executeSyncedRoulette(resultNum) {
 
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
+
+  // 🎯 修正：マスのイベントモーダル（カップルマス等）は、3秒待たずに「遅延ゼロ」で即座に起動させる！
+  // これにより、カップル1回目のルーレット盤が0秒目に一瞬で大画面に表示され、スマホと同時に回り始めます。
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
+      handleForceStopSquare(p, targetSquare);
+    }
+  }
   // ─── ★4. 🎯【3秒の遅延】ここから下は、ルーレットの回転がピタッと「停止した瞬間」に初めて画面に表示させる ───
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
@@ -423,11 +439,6 @@ function executeSyncedRoulette(resultNum) {
           jobId: jobId,
           jobName: jobName
         });
-      }
-
-      // 🎯【3秒後】ルーレットが止まった瞬間に、初めて各種専用モーダル（入学式、カップルなど）を遅延ゼロで起動する
-      if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
-        handleForceStopSquare(p, targetSquare);
       }
     }
 
@@ -482,7 +493,7 @@ const GAME_EVENTS = {
   ランクアップ: {
     class: "theme-rankup",
     title: "🔥 ランクアップチャンス 🔥",
-    desc: (name) => `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
+    desc: (name) => `${name} さんの実力試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
   },
   引退: {
     class: "theme-retirement",
