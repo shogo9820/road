@@ -127,9 +127,6 @@ function initSocketListeners() {
       }
     }
   });
-
-  // initSocketListeners() の中に追加してな！
-
   // ─── pc.js : サーバーから2回目突入（mapping付き）を受け取った時の処理 ───
   socket.on("startCoupleSecondRoulette", (data) => {
     const eventBox = document.getElementById("event-text");
@@ -145,7 +142,6 @@ function initSocketListeners() {
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
 
-      // サーバーから届いた 1〜10 のマッピングをそのまま画面に表示するだけ
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
         let targetText =
@@ -169,23 +165,21 @@ function initSocketListeners() {
 
   // カップルイベントが完全に終わった時
   socket.on("coupleEventFinished", (data) => {
-    // 1. サーバーから結果が届いた瞬間（ルーレットが回り始めた瞬間）は、画面中央のテキストを「回転中」にする
+    // 1. 【遅延ゼロ：0秒目】結果データが届いた瞬間は、画面中央を回転中にしてネタバレ防止
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
       eventBox.innerHTML = `<p class="event-msg" style="font-size:1.5rem; color:#666; font-weight:bold; animation: pulse 1s infinite;">🌀 運命の判定中... ルーレットを注視せよ！ 🌀</p>`;
     }
 
-    // 2. ★ここで3秒（ルーレットが回り切る長さ）の遅延を入れ、止まった瞬間に結果を表示してモーダルを閉じる！
+    isPCEventMode = false; // フラグは即座に通常モードに戻しておく
+
+    // 2. 🎯【3秒の遅延】ルーレットが止まるタイミング（3秒後）に合わせて結果を表示し、モーダルを閉じる
     setTimeout(() => {
-      // 正しい共通モーダルのID名「pc-event-modal」を指定して閉じる
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
         pcModal.classList.remove("active", "theme-couple");
       }
 
-      isPCEventMode = false; // 通常モードに戻す
-
-      // ルーレットが停止したタイミングで結果をデカデカと表示！
       if (eventBox) {
         if (data.success) {
           eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#ffe4e1; border:3px solid #ff69b4; border-radius:12px;">
@@ -199,7 +193,7 @@ function initSocketListeners() {
         </div>`;
         }
       }
-    }, 3000); // ★3秒の遅延（ルーレットが止まるタイミングにジャストフィット）
+    }, 3000); // 3秒の回転時間待ち
   });
 }
 
@@ -279,27 +273,17 @@ function updateCurrentPlayerDisplay() {
   if (nameEl) nameEl.textContent = p.name;
   if (jobEl) jobEl.textContent = jobMaster ? jobMaster.label : p.job || "モブ";
 
-  // プレイヤーカードの色設定（board.jsのカラー配列と同期）
   const playerColors = [
-    "#f44336", // 赤
-    "#2196f3", // 青
-    "#4caf50", // 緑
-    "#ff9800", // オレンジ
-    "#9c27b0", // 紫
-    "#00bcd4", // シアン
-    "#e91e63", // ピンク
-    "#795548", // 茶色
+    "#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"
   ];
 
   const playerCardEl = document.querySelector(".current-player-card");
   if (playerCardEl) {
-    // p.color があればそれを使用し、なければインデックスから自動割り当て
     const playerColor =
       p.color || playerColors[activePlayerIndex % playerColors.length];
     playerCardEl.style.background = `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`;
   }
 
-  // リア充アイコン（❤️）の表示切り替え
   const loverIconEl = document.getElementById("current-player-lover-icon");
   if (loverIconEl) {
     if (p.isLover) {
@@ -332,10 +316,7 @@ function updateCurrentPlayerDisplay() {
 
   renderLocationPlayersList();
 }
-
-// ─── pc.js : executeSyncedRoulette の修正 ───
-// ─── pc.js : PC右上の通常ルーレット回転を遅延ゼロ（0秒目）でスマホと同時発動させる修正 ───
-
+// ─── pc.js : executeSyncedRoulette ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -347,7 +328,7 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 1. ルーレットが回り始めた瞬間（0秒目）のテキスト表示
+  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、ルーレットが回り始めた瞬間のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
@@ -372,8 +353,7 @@ function executeSyncedRoulette(resultNum) {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
-  // 🎯 修正：回転アニメーションの実行をタイマーの外（0秒目）へ移動！
-  // これにより、スマホでボタンを押した瞬間にPC右上の通常ルーレットも「遅延ゼロ」で同時に回り始めます
+  // 2. 【遅延ゼロ：0秒目】PC右上の通常ルーレットを含め、対象のホイールをスマホと同時に「遅延ゼロ」で即座に回転開始
   if (wheel) {
     console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
@@ -382,48 +362,59 @@ function executeSyncedRoulette(resultNum) {
     console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // ─── ★ここからは3秒後に回転が「停止した瞬間」の処理（マスの計算やテキストネタバレ防止） ───
+  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、プレイヤーマスの計算、ボード描写などの処理は即時に普通に実行
+  let targetPosition = p.position + resultNum;
+  
+  if (typeof MAP_SQUARES !== 'undefined') {
+    for (let pos = p.position + 1; pos <= targetPosition; pos++) {
+      const sq = MAP_SQUARES[pos];
+      if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
+        targetPosition = pos;
+        console.log(`強制ストップマス（ID: ${sq.id}, ${sq.text}）でピタッと停止します。`);
+        break;
+      }
+    }
+  }
+
+  p.position = targetPosition;
+
+  let squareLocation = "";
+  let targetSquare = null;
+  if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
+    targetSquare = MAP_SQUARES[p.position];
+    squareLocation = targetSquare.location || "";
+    applySquareEffects(p, targetSquare);
+  }
+
+  p.location = squareLocation;
+
+  if (window.boardManager) {
+    window.boardManager.draw(players, activePlayerIndex);
+  }
+
+  renderLocationPlayersList();
+  updateCurrentPlayerDisplay();
+  // ─── ★4. 🎯【3秒の遅延】ここから下は、ルーレットの回転がピタッと「停止した瞬間」に初めて画面に表示させる ───
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
-    // イベントモード中の場合は、すごろくの通常移動処理をスキップしてここで終了
+    // イベントモード中の場合は、すごろくの通常移動のテキスト描画やイベントの多重発動をスキップ
     if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
       console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
       return; 
     }
 
-    // ルーレットが停止したタイミング（3秒後）で初めて移動マスを計算し、マスのテキストを表示する！
-    let targetPosition = p.position + resultNum;
-    
-    if (typeof MAP_SQUARES !== 'undefined') {
-      for (let pos = p.position + 1; pos <= targetPosition; pos++) {
-        const sq = MAP_SQUARES[pos];
-        if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
-          targetPosition = pos;
-          console.log(`強制ストップマス（ID: ${sq.id}, ${sq.text}）でピタッと停止します。`);
-          break;
-        }
-      }
-    }
-
-    p.position = targetPosition;
-
-    let squareLocation = "";
-    if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
-      const sq = MAP_SQUARES[p.position];
-      squareLocation = sq.location || "";
-      
-      // 止まった瞬間にマスの説明テキストを画面中央（event-text）へ表示
+    if (targetSquare) {
+      // 🎯【3秒後】ルーレットが止まった瞬間に、右下のマスの説明テキストを画面中央（event-text）へ普通に表示！
       if (eventBox) {
-        eventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${sq.text || "何もないマスです。"}</p>`;
+        eventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
       }
 
-      applySquareEffects(p, sq);
-
-      const isJobSquare = sq.type === "jobChallenge" || sq.jobId || (sq.text && sq.text.includes("【役職マス】"));
+      // 🎯【3秒後】ルーレットが止まった瞬間に、初めてスマホ側へ役職選択ダイアログの表示指示を送信（ネタバレ防止）
+      const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
       if (isJobSquare && !p.hasJob) {
-        const jobId = sq.jobId || sq.type || "unknown_job";
-        const jobName = sq.text ? sq.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+        const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
 
         console.log("役職マスに到達しました。スマホへダイアログ表示を要求します:", { jobId, jobName });
         socket.emit("triggerJobChoice", {
@@ -434,21 +425,13 @@ function executeSyncedRoulette(resultNum) {
         });
       }
 
-      if (sq.type === "force_stop" || sq.type === "force_stop_rankup") {
-        handleForceStopSquare(p, sq);
+      // 🎯【3秒後】ルーレットが止まった瞬間に、初めて各種専用モーダル（入学式、カップルなど）を遅延ゼロで起動する
+      if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+        handleForceStopSquare(p, targetSquare);
       }
     }
 
-    p.location = squareLocation;
-
-    if (window.boardManager) {
-      window.boardManager.draw(players, activePlayerIndex);
-    }
-
-    renderLocationPlayersList();
-    updateCurrentPlayerDisplay();
-
-    // 止まった瞬間の最新ステータスを全員へ強制同期
+    // 止まった瞬間の最新ステータスを全員へ同期
     socket.emit("updateGameState", {
       roomCode: roomCode,
       activePlayerIndex: activePlayerIndex,
@@ -465,7 +448,7 @@ function executeSyncedRoulette(resultNum) {
         job: pl.job || "モブ"
       }))
     });
-  }, 3000); // 3秒間、回転中のテキスト表示をキープする
+  }, 3000); // ルーレット回転時間と同じ3秒の遅延
 }
 
 function applySquareEffects(player, square) {
@@ -485,53 +468,40 @@ function applySquareEffects(player, square) {
   }
 }
 
-// 🎯 追加：各イベントの共通設定データ（見た目のクラスやテキスト）
 const GAME_EVENTS = {
   入学式: {
-    class: "theme-entrance", // 入学式用のCSSを作ったらここに指定
+    class: "theme-entrance",
     title: "🌸 入学式 🌸",
-    desc: (name) =>
-      `${name} さんの大学生活がスタート！最初の新歓イベントに向けてルーレットを回そう！`,
+    desc: (name) => `${name} さんの大学生活がスタート！最初の新歓イベントに向けてルーレットを回そう！`,
   },
   カップル: {
     class: "theme-couple",
     title: "💕 カップル成立チャンス！？ 💕",
-    desc: (name) =>
-      `${name} さんがカップルマスに到着！運命の1回目スピンを回して【偶数】を狙え！`,
+    desc: (name) => `${name} さんがカップルマスに到着！運命の1回目スピンを回して【偶数】を狙え！`,
   },
   ランクアップ: {
     class: "theme-rankup",
     title: "🔥 ランクアップチャンス 🔥",
-    desc: (name) =>
-      `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
+    desc: (name) => `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
   },
   引退: {
     class: "theme-retirement",
     title: "🎓 サークル引退式 🎓",
-    desc: (name) =>
-      `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
+    desc: (name) => `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
   },
 };
 
-// ─── pc.js : openPCEventModal を動的・大画面対応に完全書き換え ───
-
-// ─── pc.js : 2回目のランダムプレイヤー割り当て対応表を生成するヘルパー関数 ───
 function generateCoupleTargetTable(activePlayerId) {
-  // 自分以外の参加プレイヤーを抽出
   const otherPlayers = players.filter(
     (p) => String(p.id) !== String(activePlayerId),
   );
 
-  let html = `<div class="event-table-title">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
+  let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
 
-  // 1〜10の数字に対して、他プレイヤーをランダム、または1マス飛ばし等で綺麗に割り振る（今回は奇数マスにランダム配置）
-  // 再現性を保つ、または完全にランダムにするため、現在のシャッフルか固定ロジックを適用
   for (let i = 1; i <= 10; i++) {
     let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
 
-    // 奇数番号（1, 3, 5, 7, 9）のマスに、自分以外のプレイヤーをランダムに割り振る
     if (i % 2 === 1 && otherPlayers.length > 0) {
-      // 完全にランダム、もしくはインデックスベースで割り当て
       const idx = Math.floor((i - 1) / 2) % otherPlayers.length;
       targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
     }
@@ -547,7 +517,6 @@ function generateCoupleTargetTable(activePlayerId) {
   return html;
 }
 
-// ─── pc.js : openPCEventModal のカップル部分を修正 ───
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
@@ -562,9 +531,8 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   let tableHTML = "";
 
   if (eventType === "カップル") {
-    // 1回目：偶数か奇数かの運命の判定表
     tableHTML = `
-      <div class="event-table-title">🎯 1回目：運命の判定条件</div>
+      <div class="event-table-title">🎯 1回目：運命 of 判定条件</div>
       <ul class="event-table-list">
         <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5;"><div class="event-table-num-badge">偶</div> <strong>💕 偶数：告白チャンス突入！ (2回目のスピンへ)</strong></li>
         <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">奇</div> <strong>💦 奇数：失敗... フラれて終了</strong></li>
@@ -593,7 +561,6 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
     tableHTML += `</ul>`;
   }
 
-  // HTMLの書き換え（数字入りルーレットの構造を維持）
   pcModal.innerHTML = `
     <div class="event-card-container">
       <div class="event-title">${config.title}</div>
@@ -625,9 +592,7 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   `;
 }
 
-// ─── pc.js : handleForceStopSquare の引数にIDを渡すように調整 ───
 function handleForceStopSquare(player, square) {
-  // ★タイマーを完全に撤去し、マスに止まったら「即座に」モーダルを開いてスマホへ中継する
   switch (square.id) {
     case 15:
       console.log(`${player.name} が入学式で強制停止しました。`);
@@ -635,9 +600,7 @@ function handleForceStopSquare(player, square) {
       break;
 
     case 35:
-      console.log(
-        `${player.name} がカップル成立マスで停止しました。イベント開始！`,
-      );
+      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
       openPCEventModal("カップル", player.name, player.id);
       socket.emit("triggerCoupleEvent", {
         roomCode: roomCode,
