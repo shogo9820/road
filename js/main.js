@@ -451,34 +451,60 @@ const GAME_EVENTS = {
 
 // ─── pc.js : openPCEventModal を動的・大画面対応に完全書き換え ───
 
-function openPCEventModal(eventType, playerName) {
-  isPCEventMode = true; // PCをイベントモードに固定
+// ─── pc.js : 2回目のランダムプレイヤー割り当て対応表を生成するヘルパー関数 ───
+function generateCoupleTargetTable(activePlayerId) {
+  // 自分以外の参加プレイヤーを抽出
+  const otherPlayers = players.filter(p => String(p.id) !== String(activePlayerId));
   
+  let html = `<div class="event-table-title">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
+  
+  // 1〜10の数字に対して、他プレイヤーをランダム、または1マス飛ばし等で綺麗に割り振る（今回は奇数マスにランダム配置）
+  // 再現性を保つ、または完全にランダムにするため、現在のシャッフルか固定ロジックを適用
+  for (let i = 1; i <= 10; i++) {
+    let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
+    
+    // 奇数番号（1, 3, 5, 7, 9）のマスに、自分以外のプレイヤーをランダムに割り振る
+    if (i % 2 === 1 && otherPlayers.length > 0) {
+      // 完全にランダム、もしくはインデックスベースで割り当て
+      const idx = (Math.floor((i - 1) / 2)) % otherPlayers.length;
+      targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
+    }
+    
+    html += `
+      <li class="event-table-item">
+        <div class="event-table-num-badge">${i}</div>
+        <div>${targetText}</div>
+      </li>
+    `;
+  }
+  html += `</ul>`;
+  return html;
+}
+
+// ─── pc.js : openPCEventModal のカップル部分を修正 ───
+function openPCEventModal(eventType, playerName, activePlayerId) {
+  isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
 
   const config = GAME_EVENTS[eventType];
   if (!config) return;
 
-  // 1. 過去のクラスをリセットして今回のイベントクラスを付与
   pcModal.className = "event-modal-overlay"; 
   pcModal.classList.add("active", config.class);
 
-  // 2. 対応表のデータ（テキストやプレイヤーの割り当て）を動的に作成
   let tableHTML = "";
 
   if (eventType === "カップル") {
-    // 💡 カップルマスの1回目判定用の対応表（偶数・奇数）
+    // 1回目：偶数か奇数かの運命の判定表
     tableHTML = `
-      <div class="event-table-title">🎯 運命の判定条件</div>
+      <div class="event-table-title">🎯 1回目：運命の判定条件</div>
       <ul class="event-table-list">
-        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5;"><div class="event-table-num-badge">偶</div> <strong>💕 告白チャンス突入！ (2回目のスピンへ)</strong></li>
-        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">奇</div> <strong>💦 告白失敗... フラれて終了</strong></li>
+        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5;"><div class="event-table-num-badge">偶</div> <strong>💕 偶数：告白チャンス突入！ (2回目のスピンへ)</strong></li>
+        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">奇</div> <strong>💦 奇数：失敗... フラれて終了</strong></li>
       </ul>
     `;
-  } 
-  else if (eventType === "ランクアップ") {
-    // 💡 ランクアップ用の対応表（4以上で成功）
+  } else if (eventType === "ランクアップ") {
     tableHTML = `
       <div class="event-table-title">🎯 ランクアップ条件</div>
       <ul class="event-table-list">
@@ -486,49 +512,30 @@ function openPCEventModal(eventType, playerName) {
         <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">1〜3</div> <strong>💦 ランクアップ失敗... 現状維持</strong></li>
       </ul>
     `;
-  }
-  else {
-    // 💡 その他のマス（入学式や引退など）では、1〜10に出席プレイヤーを自動で割り振る対応表を作成！
+  } else {
     tableHTML = `<div class="event-table-title">👥 出目ごとのターゲットプレイヤー</div><ul class="event-table-list">`;
-    
-    // 現在ルームにいる全プレイヤーの名前リスト（いなければ仮のモブ）
     const playerNames = players.length > 0 ? players.map(p => p.name) : ["プレイヤー1"];
-    
     for (let i = 1; i <= 10; i++) {
-      // 1:P1, 2:無し, 3:P2, 4:無し... のように1マス飛ばし、または人数に応じて循環配置
       let targetText = '<span style="color:#aaa;">（何もなし）</span>';
-      
       if (i % 2 === 1) {
-        // 奇数の時だけプレイヤーを順番に割り当てる例
         const playerIndex = Math.floor((i - 1) / 2) % playerNames.length;
         targetText = `<span style="color:#2196f3; font-weight:bold;">👤 ${playerNames[playerIndex]}</span>`;
       }
-
-      tableHTML += `
-        <li class="event-table-item">
-          <div class="event-table-num-badge">${i}</div>
-          <div>${targetText}</div>
-        </li>
-      `;
+      tableHTML += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
     }
     tableHTML += `</ul>`;
   }
 
-  // 3. モーダルの中身のHTMLを「数字入りルーレット」と「対応表」の構造へダイナミックに書き換える
+  // HTMLの書き換え（数字入りルーレットの構造を維持）
   pcModal.innerHTML = `
     <div class="event-card-container">
       <div class="event-title">${config.title}</div>
       <div class="event-desc">${config.desc(playerName)}</div>
-      
-      <!-- 左右分割の特大メインエリア -->
       <div class="event-main-flex">
-        
-        <!-- 左側：数字付きルーレット -->
         <div class="event-roulette-area">
           <div class="event-roulette-container">
             <div class="event-roulette-pointer"></div>
             <div class="event-roulette-wheel">
-              <!-- ルーレット盤の表面に浮かび上がる1〜10の数字 -->
               <div class="roulette-num num-1">1</div>
               <div class="roulette-num num-2">2</div>
               <div class="roulette-num num-3">3</div>
@@ -543,60 +550,52 @@ function openPCEventModal(eventType, playerName) {
           </div>
           <div class="event-highlight-text" style="margin-top:10px;">スマホからルーレットを回してね！</div>
         </div>
-        
-        <!-- 右側：動的対応表 -->
-        <div class="event-table-area">
+        <div class="event-table-area" id="pc-event-table-dynamic-zone">
           ${tableHTML}
         </div>
-        
       </div>
     </div>
   `;
 }
 
-// ─── 修正する handleForceStopSquare はここから ───
+// ─── pc.js : handleForceStopSquare の引数にIDを渡すように調整 ───
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 15:
-      console.log(`${player.name} が入学式で強制停止しました。`);
-      // 🎯 共通関数で入学式モーダルを開く
-      openPCEventModal("入学式", player.name);
-      
-      // スマホ（子機）側へ入学式イベント開始を通知する場合はここに socket.emit を足す
+      openPCEventModal("入学式", player.name, player.id);
       break;
-
     case 35:
-      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
-      
-      // 🎯 共通関数でスッキリとカップルモーダルを開く
-      openPCEventModal("カップル", player.name);
-
-      // スマホ側へカップルイベントの開始を通知する
+      openPCEventModal("カップル", player.name, player.id);
       socket.emit("triggerCoupleEvent", {
         roomCode: roomCode,
         playerId: player.id,
         playerName: player.name
       });
       break;
-
     case 52:
-      console.log(`${player.name} がランクアップチャンスで強制停止しました。`);
-      // 🎯 共通関数でランクアップモーダルを開く
-      openPCEventModal("ランクアップ", player.name);
-      
-      // スマホ（子機）側へランクアップ用の通知を送るならココに追記
+      openPCEventModal("ランクアップ", player.name, player.id);
       break;
-
     case 78:
-      console.log(`${player.name} が引退マスで強制停止しました。`);
-      // 🎯 共通関数で引退モーダルを開く
-      openPCEventModal("引退", player.name);
-      
-      // スマホ（子機）側へ引退用の通知を送るならココに追記
+      openPCEventModal("引退", player.name, player.id);
       break;
-
     default:
-      console.log(`${player.name} が強制ストップマスで停止しました。`);
       break;
   }
 }
+
+// ─── pc.js : サーバーから2回目突入の指示（偶数達成）を受けた時の処理 ───
+socket.on("startCoupleSecondRoulette", (data) => {
+  // 1. 画面中央の状況テキストを書き換える
+  const eventBox = document.getElementById("event-text");
+  if (eventBox) {
+    eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
+      🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
+    </p>`;
+  }
+
+  // 2. モーダル内の右側にある対応表エリアを、参加プレイヤーがランダムに割り振られた「告白決定表」に即座に差し替える！
+  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+  if (dynamicTableZone) {
+    dynamicTableZone.innerHTML = generateCoupleTargetTable(data.playerId || players[activePlayerIndex].id);
+  }
+});
