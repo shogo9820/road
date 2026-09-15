@@ -6,7 +6,7 @@ let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
 let isPCEventMode = false;
 
-// 🎯 画面初期化時に確実にボタン要素を特定してクリックイベントをバインドする
+// 🎯 画面初期化のタイミングで確実に各ボタンへクリックイベントをバインド
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[PC] 画面初期化開始...");
   initEventListeners();
@@ -97,7 +97,9 @@ function initSocketListeners() {
     updateCurrentPlayerDisplay();
     renderLocationPlayersList();
   });
-
+}
+// 🎯 注意：initSocketListeners関数が途中で途切れないよう、既存の関数にイベントを後から安全に継承・追加します
+function appendSocketListeners() {
   socket.on("spinRoulette", (data) => {
     if (data) {
       if (data.activePlayerIndex !== undefined) {
@@ -107,6 +109,7 @@ function initSocketListeners() {
       executeSyncedRoulette(resultNum);
     }
   });
+
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined)
@@ -148,12 +151,7 @@ function initSocketListeners() {
           targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (カップル成立)</span>`;
         }
 
-        html += `
-        <li class="event-table-item">
-          <div class="event-table-num-badge">${i}</div>
-          <div>${targetText}</div>
-        </li>
-      `;
+        html += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
       dynamicTableZone.innerHTML = html;
@@ -189,7 +187,13 @@ function initSocketListeners() {
       }
     }, 3000);
   });
-}function switchScreen(targetId) {
+}
+
+// 🎯 初期化のトリガーへ追加したリスナーをフックします
+document.addEventListener("DOMContentLoaded", () => {
+  appendSocketListeners();
+});
+function switchScreen(targetId) {
   const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
   screenIds.forEach((id) => {
     const el = document.getElementById(id);
@@ -237,7 +241,6 @@ function renderLocationPlayersList() {
     html ||
     '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
 }
-
 function updateCurrentPlayerDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -308,6 +311,170 @@ function updateCurrentPlayerDisplay() {
 
   renderLocationPlayersList();
 }
+function executeSyncedRoulette(resultNum) {
+  const p = players[activePlayerIndex];
+  if (!p) return;
+
+  if (p.skipTurn) {
+    p.skipTurn = false;
+    alert(`${p.name} は潰れていたため、このターンは1回休みです。`);
+    socket.emit("playerAction", { roomCode, action: "nextTurn" });
+    return;
+  }
+
+  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、回り始めた瞬間のテキスト表示
+  const resEl = document.getElementById("roulette-result-display");
+  if (resEl) resEl.textContent = "🎯 回転中...";
+
+  const eventBox = document.getElementById("event-text");
+  if (eventBox) {
+    eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
+  }
+
+  // 角度計算用の設定
+  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+  const stopAngle = targetDegrees[resultNum - 1];
+
+  const currentMod = pcCurrentRotation % 360;
+  pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
+
+  // 回転させるホイール（要素）の特定
+  let wheel;
+  if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
+            document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
+            document.querySelector("#pc-couple-event-modal .couple-wheel");
+  } else {
+    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
+  }
+
+  // 2. 【遅延ゼロ：0秒目】ホイールをスマホと「遅延ゼロ」で即座に回転開始
+  if (wheel) {
+    console.log("[PCルーレット回転開始]", wheel);
+    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+    wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
+  }
+
+  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスのデータ処理、ボード描写は即時実行
+  let targetPosition = p.position + resultNum;
+  
+  if (typeof MAP_SQUARES !== 'undefined') {
+    for (let pos = p.position + 1; pos <= targetPosition; pos++) {
+      const sq = MAP_SQUARES[pos];
+      if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
+        targetPosition = pos;
+        break;
+      }
+    }
+  }
+
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    p.position = targetPosition;
+  }
+
+  let squareLocation = "";
+  let targetSquare = null;
+  if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
+    targetSquare = MAP_SQUARES[p.position];
+    squareLocation = targetSquare.location || "";
+    applySquareEffects(p, targetSquare);
+  }
+
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    p.location = squareLocation;
+  }
+
+  if (window.boardManager) {
+    window.boardManager.draw(players, activePlayerIndex);
+  }
+
+  renderLocationPlayersList();
+  updateCurrentPlayerDisplay();
+
+  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
+    if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
+      handleForceStopSquare(p, targetSquare);
+    }
+  }
+
+  // 🎯 パーツ7の遅延表示関数を呼び出すために、出目と止まったマスを安全に中継
+  triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox);
+}
+
+function applySquareEffects(player, square) {
+  const drinkAmount = square.drink !== undefined ? square.drink : 0;
+
+  if (drinkAmount > 0) {
+    if (!player.drinkCount) player.drinkCount = 0;
+    player.drinkCount += drinkAmount;
+
+    if (player.currentHp !== undefined) {
+      player.currentHp = Math.max(0, player.currentHp - drinkAmount * 10);
+    }
+  }
+}
+// ─── pc.js : 3秒後の表示制御＆イベントモーダル定義 ───
+
+function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
+  setTimeout(() => {
+    // 🎯 修正：スコープエラーを完全に直すため、タイマー内で再度DOM要素を安全に再取得して上書きします
+    const innerResEl = document.getElementById("roulette-result-display");
+    const innerEventBox = document.getElementById("event-text");
+    const tileDescEl = document.getElementById("current-tile-desc");
+    const p = players[activePlayerIndex];
+
+    if (innerResEl) innerResEl.textContent = `🎯 出目: ${resultNum}`;
+
+    if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+      console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
+      return; 
+    }
+
+    if (targetSquare && p) {
+      if (innerEventBox) {
+        innerEventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
+      }
+
+      if (tileDescEl) {
+        let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
+        let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
+        tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
+      }
+
+      const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
+      if (isJobSquare && !p.hasJob) {
+        const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+
+        console.log("役職マスに到達しました。スマホへダイアログ表示を要求します:", { jobId, jobName });
+        socket.emit("triggerJobChoice", {
+          roomCode: roomCode,
+          playerId: p.id,
+          jobId: jobId,
+          jobName: jobName
+        });
+      }
+    }
+
+    socket.emit("updateGameState", {
+      roomCode: roomCode,
+      activePlayerIndex: activePlayerIndex,
+      players: players.map(pl => ({
+        id: pl.id,
+        position: pl.position,
+        location: pl.location,
+        currentHp: pl.currentHp,
+        drinkCount: pl.drinkCount,
+        isLover: pl.isLover,
+        skipTurn: pl.skipTurn,
+        hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
+        jobId: pl.jobId || null,
+        job: pl.job || "モブ"
+      }))
+    });
+  }, 3000);
+}
+
 const GAME_EVENTS = {
   入学式: {
     class: "theme-entrance",
@@ -346,12 +513,7 @@ function generateCoupleTargetTable(activePlayerId) {
       targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
     }
 
-    html += `
-      <li class="event-table-item">
-        <div class="event-table-num-badge">${i}</div>
-        <div>${targetText}</div>
-      </li>
-    `;
+    html += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
   }
   html += `</ul>`;
   return html;
@@ -388,8 +550,7 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
     `;
   } else {
     tableHTML = `<div class="event-table-title">👥 出目ごとのターゲットプレイヤー</div><ul class="event-table-list">`;
-    const playerNames =
-      players.length > 0 ? players.map((p) => p.name) : ["プレイヤー1"];
+    const playerNames = players.length > 0 ? players.map((p) => p.name) : ["プレイヤー1"];
     for (let i = 1; i <= 10; i++) {
       let targetText = '<span style="color:#aaa;">（何もなし）</span>';
       if (i % 2 === 1) {
@@ -431,6 +592,7 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
     </div>
   `;
 }
+
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 15:
