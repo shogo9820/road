@@ -1,162 +1,113 @@
 /* ==========================================
-   スマホ（コントローラー）専用の固有レイアウト
+   1. スマホ制御画面 (controller.css) 専用スタイル
    ========================================== */
 body {
-  padding: 10px;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  color: #333333;
+  transition: background-color 0.3s ease;
 }
 
-.app-container {
+/* 🎯 制御画面全体がピンク色ベースに着せ替わる時のベース背景（これだけ残します） */
+body.theme-couple {
+  background-color: #fff5f7 !important;
+}
+
+.phone-screen {
+  box-sizing: border-box;
   width: 100%;
-  max-width: 420px; /* スマホ幅に完全固定 */
+  max-width: 480px; /* スマートフォン縦画面サイズ */
   margin: 0 auto;
-}
-
-.phone-card {
   padding: 20px;
-  text-align: center;
-}
-
-.roulette-display {
-  font-size: 4.5rem;
-  margin: 20px 0;
-}
-
-/* ==========================================
-   スマホ専用：ルーレット内側の数字配置（直径200px用）
-   ========================================== */
-/* 🎯 スマホの円盤サイズに合わせて、数字の位置を中心に綺麗に収める（-65px） */
-.roulette-num {
-  position: absolute;
-  z-index: 4;
-}
-
-.num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
-.num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
-.num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
-.num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
-.num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
-.num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
-.num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
-.num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
-.num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
-.num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
-
-/* ==========================================
-   特殊イベントテーマ：カップル（ピンク系着せ替え）
-   ========================================== */
-/* クラス「theme-couple」が付与された時、中にあるカードの背景と外枠を変更 */
-.theme-couple .card,
-.theme-couple .phone-card {
-  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%) !important;
-  border: 4px solid #ff69b4 !important;
-  box-shadow: 0 10px 25px rgba(255, 105, 180, 0.2) !important;
-}
-
-.theme-couple h1,
-.theme-couple .turn-indicator,
-.theme-couple #current-player-banner {
-  color: #d81b60 !important;
-}
-
-/* 通常盤・制御盤の「着せ替え」によるピンク系上書き */
-.theme-couple #controller-roulette-wheel,
-.theme-couple .couple-wheel {
-  border-color: #d81b60 !important;
-  background: conic-gradient(
-    #ff4d4d 0deg 36deg,     #ff6b8b 36deg 72deg,
-    #ff4d4d 72deg 108deg,   #ff6b8b 108deg 144deg,
-    #ff4d4d 144deg 180deg,  #ff6b8b 180deg 216deg,
-    #ff4d4d 216deg 252deg,  #ff6b8b 252deg 288deg,
-    #ff4d4d 288deg 324deg,  #ff6b8b 324deg 360deg
-  ) !important;
-}
-
-/* ボタンをイベント用ピンクに変更 */
-.theme-couple .btn {
-  background-color: #ff4081 !important;
-  box-shadow: 0 4px 6px rgba(255, 64, 129, 0.3) !important;
-}
-
-.theme-couple .btn:active {
-  background-color: #d81b60 !important;
-}
-
-/* ==========================================
-   スマホ専用：モーダル・オーバーレイ設定
-   ========================================== */
-/* スマホ側カップルチャンス（2回目用）カード */
-.mobile-couple-card {
-  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
-  border: 4px solid #ff69b4;
-  border-radius: 16px;
-  padding: 24px;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(255, 105, 180, 0.4);
-  width: 100%;
-}
-
-.couple-title {
-  color: #d81b60;
-  font-size: 1.6rem;
-  margin-bottom: 12px;
-  font-weight: bold;
-}
-
-.couple-desc {
-  color: #333;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-/* 役職選択などのオーバーレイダイアログ */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.75);
-  display: none; /* JSでflexに切り替え */
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.job-modal-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  text-align: center;
-  width: 100%;
-  max-width: 360px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.job-modal-title {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: var(--accent-color);
-  margin-bottom: 12px;
-}
-
-.job-modal-desc {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: #333;
-  margin-bottom: 20px;
-  white-space: pre-wrap;
-}
-
-.modal-btn-group {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px; /* 縦の並び順に沿って要素間に綺麗な一律のスキマを確保 */
+  align-items: center;
 }
 
-.btn-yes {
-  background: #4caf50;
+/* 1. 現在操作中のプレイヤー名バナー */
+.player-banner-zone {
+  width: 100%;
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+  box-sizing: border-box;
 }
-.btn-no {
-  background: #d9534f;
+
+/* 2. 【共通パーツ】ルーレットコンテナのサイズ補正のみ（見た目の色やグラデーション、数字、出目はcommon.cssへ完全移譲したため記述しません） */
+.controller-roulette-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+/* 3. 現在のマスもしくはイベント内容のテキストボックス */
+.current-tile-or-event-status-box {
+  width: 100%;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* 4 & 5. 各種操作用ボタン共通設定（はみ出しや重なりを完全に防ぐブロック配置） */
+button {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: block;
+  position: relative;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.btn-orange { background-color: #ff9800; color: #ffffff; }
+.btn-blue   { background-color: #2196f3; color: #ffffff; }
+.btn-pink   { background-color: #ff4081; color: #ffffff; }
+
+.hidden { display: none !important; }
+
+/* 6. 開発用デバッグメニュー（最下部） */
+.developer-debug-zone-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.btn-dark-debug {
+  background-color: #333333;
+  color: #ffffff;
+  font-size: 1rem;
+  padding: 12px;
+  box-shadow: none;
+}
+
+.btn-dark-debug:hover {
+  background-color: #444444;
 }

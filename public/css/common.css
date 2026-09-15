@@ -1,200 +1,66 @@
 /* ==========================================
-   A. 全画面共通設定 & カラー定義
+   宅飲み人生ゲーム : 3画面共通グローバルCSS（共通パーツ定義）
    ========================================== */
+@import url('https://googleapis.com');
+
 :root {
-  --bg-color: #f2efe9;
+  --primary-color: #6a11cb;
+  --secondary-color: #2575fc;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --danger-color: #f44336;
+  --pink-color: #ff4081;
+  
+  --bg-color: #f5f5f5;
   --card-bg: #ffffff;
-  --text-color: #2c2c2c;
-  --primary-color: #e06d53;
-  --primary-hover: #c85a42;
-  --accent-color: #8a63ae;
-  --gold-color: #f5a623;
-  --gold-hover: #d98e19;
-  --border-color: #e0dad0;
-  --font-family: 'M PLUS Rounded 1c', 'Segoe UI', sans-serif;
+  --text-color: #333333;
+  --border-color: #e0e0e0;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-family);
-}
-
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  min-height: 100vh;
+/* 🎯 3つのルーレットで100%使い回す【共通パーツ】の見た目定義 */
+.roulette-section-container {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
-}
-
-/* 画面切り替え制御 */
-.screen {
-  display: none !important;
-  width: 100%;
-}
-
-.screen.active {
-  display: block !important;
-}
-
-/* ==========================================
-   B. 共通コンポーネント (ボタン・フォーム等)
-   ========================================== */
-h1 {
-  font-size: 1.8rem;
-  color: var(--primary-color);
-  margin-bottom: 8px;
-}
-
-.btn {
-  display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  width: 100%;
-  padding: 14px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn:active {
-  opacity: 0.85;
-}
-
-.btn-gold {
-  background: var(--gold-color);
-}
-
-.form-group {
-  margin-bottom: 16px;
-  text-align: left;
-}
-
-.form-group label {
-  display: block;
-  font-weight: bold;
-  font-size: 0.9rem;
-  margin-bottom: 6px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-.player-list-item {
-  background: #f7f5f0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  margin-top: 8px;
-}
-
-.gauge-bar {
-  width: 100%;
-  height: 10px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.gauge-fill {
-  height: 100%;
-  background: #4caf50;
-  transition: width 0.3s ease;
-}
-/* ==========================================
-   C. モード選択カード (赤枠連動設定)
-   ========================================== */
-.mode-card, label:has(input[name="game-mode"]), label:has(input[name="phone-mode"]) {
-  display: block;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  cursor: pointer;
+  gap: 12px;
   background: var(--card-bg);
-  transition: all 0.2s ease;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.mode-card:has(input:checked),
-label:has(input[name="game-mode"]:checked),
-label:has(input[name="phone-mode"]:checked),
-.mode-card.active,
-.mode-card.selected {
-  border-color: var(--primary-color) !important;
-  background-color: #fffdfa;
-  box-shadow: 0 0 12px rgba(224, 109, 83, 0.2);
-}
-
-/* ==========================================
-   D. 人生ゲーム風ルーレット盤（通常・イベント時10分割共通）
-   ========================================== */
-.roulette-container {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  margin: 15px auto;
-}
-
-.roulette-wheel,
-#controller-roulette-wheel,
+/* 通常時の通常ルーレット盤（10色等分カラーグラデーション） */
+.roulette-wheel-board,
 .event-roulette-wheel {
+  position: absolute;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 6px solid #333;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-  /* 🖥️📱 PCとスマホで完全に統一されたプロ仕様の10分割グラデーション */
+  border: 4px solid #333333;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: conic-gradient(
-    #ff4d4d 0deg 36deg,     /* 1: 赤 */
-    #ff9f43 36deg 72deg,    /* 2: オレンジ */
-    #feca57 72deg 108deg,   /* 3: 黄 */
-    #1dd1a1 108deg 144deg,  /* 4: 青緑 */
-    #48dbfb 144deg 180deg,  /* 5: 水 */
-    #2e86de 180deg 216deg,  /* 6: 青 */
-    #5f27cd 216deg 252deg,  /* 7: 紫 */
-    #9b59b6 252deg 288deg,  /* 8: 明るい紫 */
-    #ff6b8b 288deg 324deg,  /* 9: ピンク */
-    #ee5253 324deg 360deg   /* 10: 濃い赤 */
+    #f44336 0deg 36deg,   #e91e63 36deg 72deg,   #9c27b0 72deg 108deg, #673ab7 108deg 144deg, #3f51b5 144deg 180deg,
+    #2196f3 180deg 216deg, #03a9f4 216deg 252deg, #00bcd4 252deg 288deg, #009688 288deg 324deg, #4caf50 324deg 360deg
   );
-  position: relative;
-  transition: transform 3s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
 
-.roulette-wheel::after,
-#controller-roulette-wheel::after,
-.event-roulette-wheel::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 50px;
-  height: 50px;
-  background: radial-gradient(circle, #fff, #ccc);
-  border: 3px solid #333;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  z-index: 5;
+/* 🎯 修正：カップルイベント発動（ .theme-couple ）時、3つのどのルーレットであっても
+   このクラスが親に付与されれば、ホイール自体が連動して自動で美しいピンクグラデーションへ100%同期変化するスタイル */
+.theme-couple .roulette-wheel-board,
+.theme-couple .event-roulette-wheel {
+  background: conic-gradient(
+    #ffb6c1 0deg 36deg,  #ffc0cb 36deg 72deg,  #ffe4e1 72deg 108deg, #ff69b4 108deg 144deg, #ff1493 144deg 180deg,
+    #ffb6c1 180deg 216deg, #ffc0cb 216deg 252deg, #ffe4e1 252deg 288deg, #ff69b4 288deg 324deg, #d81b60 324deg 360deg
+  ) !important;
+  border-color: #ff4081 !important;
 }
 
-.roulette-pointer {
+/* 共通の赤い矢印（針） */
+.event-roulette-pointer {
   position: absolute;
   top: -12px;
   left: 50%;
@@ -203,12 +69,28 @@ label:has(input[name="phone-mode"]:checked),
   height: 0;
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
-  border-top: 24px solid #e74c3c;
+  border-top: 18px solid #f44336;
   z-index: 10;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
 }
 
-/* ─── common.css : ルーレット内の数字が止まった時に一番見やすくなるように角度を最適化 ─── */
+/* イベント時は矢印もピンクに同期 */
+.theme-couple .event-roulette-pointer {
+  border-top-color: #ff4081 !important;
+}
+
+/* 共通の出目テキスト領域 */
+.result-display-zone {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--text-color);
+}
+
+.theme-couple .result-display-zone {
+  color: #d81b60 !important;
+}
+/* ==========================================
+   C. ルーレット内数字の配置と正立角度の共通補正
+   ========================================== */
 .roulette-num {
   position: absolute;
   width: 30px;
@@ -219,14 +101,14 @@ label:has(input[name="phone-mode"]:checked),
   margin-left: -15px;
   font-weight: 900;
   font-size: 1.1rem;
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+  color: #ffffff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
   text-align: center;
   line-height: 30px;
   z-index: 4;
 }
 
-/* 🎯 各数字の回転（rotate）の値を調整し、止まった出目が最上部に来た時にプレイヤーから正立して読めるように修正 */
+/* 🎯 3つのルーレットに共通：最上部（矢印の位置）で止まった数字が、逆さにならずプレイヤーから常に一番読みやすくなる配置設定 */
 .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
 .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
 .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
@@ -237,3 +119,19 @@ label:has(input[name="phone-mode"]:checked),
 .num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
 .num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
 .num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+
+/* モーダル内の巨大ルーレット（直径300pxサイズ）用の位置拡大補正 */
+.event-roulette-wheel .roulette-num {
+  font-size: 1.3rem;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
+}
+.event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
+.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
+.event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
+.event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
+.event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
+.event-roulette-wheel .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
+.event-roulette-wheel .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
+.event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
+.event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
+.event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }

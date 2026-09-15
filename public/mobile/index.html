@@ -68,53 +68,59 @@
         </div>
       </section>
 
-      <!-- 3. ゲームプレイ画面 -->
-      <section id="phone-screen-play" class="screen">
-        <div class="card" style="text-align: center;">
-          <div id="current-player-banner" style="font-weight: bold; font-size: 1.2rem; padding: 10px; background: #f0f0f0; border-radius: 6px; margin-bottom: 15px;">
-            TURN: ----
-          </div>
+<!-- 🎯 修正：ご指示通りの並び順 ➔ プレイヤー名 ➔ 共通ルーレット＆出目 ➔ テキストボックス ➔ 各種ボタン ➔ デバッグ -->
+<div id="phone-screen-play" class="phone-screen" style="display: none;">
+  
+  <!-- 1. 現在操作中のプレイヤー名 -->
+  <div id="current-player-banner" class="player-banner-zone">
+    TURN: ----
+  </div>
 
-          <!-- 本格人生ゲーム風ルーレット盤 -->
-          <div class="roulette-container">
-            <div class="roulette-pointer"></div>
-            <div id="controller-roulette-wheel" class="roulette-wheel">
-              <div class="roulette-num num-1">1</div>
-              <div class="roulette-num num-2">2</div>
-              <div class="roulette-num num-3">3</div>
-              <div class="roulette-num num-4">4</div>
-              <div class="roulette-num num-5">5</div>
-              <div class="roulette-num num-6">6</div>
-              <div class="roulette-num num-7">7</div>
-              <div class="roulette-num num-8">8</div>
-              <div class="roulette-num num-9">9</div>
-              <div class="roulette-num num-10">10</div>
-            </div>
-          </div>
+  <!-- 2. 【共通パーツ】ルーレットと出目がセットになったエリア（他画面と100%使い回す構造） -->
+  <div class="roulette-section-container">
+    <div class="controller-roulette-container">
+      <div class="event-roulette-pointer"></div>
+      <div id="controller-roulette-wheel" class="roulette-wheel-board">
+        <div class="roulette-num num-1">1</div>
+        <div class="roulette-num num-2">2</div>
+        <div class="roulette-num num-3">3</div>
+        <div class="roulette-num num-4">4</div>
+        <div class="roulette-num num-5">5</div>
+        <div class="roulette-num num-6">6</div>
+        <div class="roulette-num num-7">7</div>
+        <div class="roulette-num num-8">8</div>
+        <div class="roulette-num num-9">9</div>
+        <div class="roulette-num num-10">10</div>
+      </div>
+    </div>
+    
+    <!-- 出目表示（ルーレットのすぐ下に直結配置） -->
+    <div class="result-display-zone">
+      <span id="roulette-result-display">🎯 タップして回そう！</span>
+    </div>
+  </div>
 
-          <div id="roulette-result-display" style="font-size: 1.3rem; font-weight: bold; height: 35px; margin-bottom: 10px; color: #2c3e50;">
-            🎯 タップして回そう！
-          </div>
+  <!-- 3. 現在のマスもしくはイベント内容のテキストボックス -->
+  <div class="current-tile-or-event-status-box">
+    <p id="phone-current-tile-text">スタート前</p>
+  </div>
 
-          <button type="button" id="btn-phone-spin" class="btn btn-gold" style="width: 100%; padding: 18px; font-size: 1.3rem; margin-bottom: 15px;">
-            🌀 ルーレットを回す！
-          </button>
+  <!-- 4. ルーレットを回すボタン -->
+  <button id="btn-phone-spin" class="btn-orange">🌀 ルーレットを回す！</button>
+  
+  <!-- カップルマスの時に出現する2回目専用スピンボタン -->
+  <button id="btn-couple-spin" class="btn-pink" style="display: none;">💖 運命の告白スピン！</button>
 
-          <button type="button" id="btn-phone-next" class="btn hidden" style="width: 100%; padding: 15px; font-size: 1.1rem; background: #3498db; color: white; border: none; border-radius: 8px;">
-            ➡️ 次のプレイヤーへ
-          </button>
+  <!-- 5. 次のプレイヤーへボタン -->
+  <button id="btn-phone-next" class="btn-blue hidden" style="display: none;">➡️ 次のプレイヤーへ</button>
 
-          <!-- テストが終わったら消すか非表示にする -->
-          <div style="margin: 10px 0; padding: 10px; background: #eee; border-radius: 8px;">
-           <p style="font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">🔧 開発用デバッグメニュー</p>
-           <button id="btn-debug-warp-couple" type="button" class="btn" style="background: #333; font-size: 0.9rem; padding: 8px;">
-              35マス目（カップル）にワープ
-           </button>
-          </div>
+  <!-- 6. 開発用デバッグメニュー（最下部） -->
+  <div class="developer-debug-zone-panel" style="margin-top: 24px;">
+    <div class="debug-title-text" style="font-size: 0.9rem; color: #666; margin-bottom: 8px;">🛠️ 開発用デバッグメニュー</div>
+    <button id="btn-warp-35" class="btn-dark-debug">35マス目（カップル）にワープ</button>
+  </div>
 
-        </div>
-      </section>
-
+</div>
     </div>
 
     <!-- ★追加: 役職選択ダイアログ用モーダル枠（初期状態は非表示） -->
