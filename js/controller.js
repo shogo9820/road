@@ -570,10 +570,12 @@ function prepareCoupleRouletteTheme() {
 
 // ステップ2: 色が変わった後に、通常の「ルーレットを回す」ボタンが押されたときの処理
 // ─── controller.js : カップルイベントの結果送信をルーレット停止後（3秒後）に遅延 ───
+// ─── controller.js : 通常時もボタンを押した瞬間（0秒目）にPCへ送信するように修正 ───
 function sendSpin() {
   if (isSpinning) return;
   isSpinning = true;
 
+  // 1. 【0秒目】出目をその場で確定させる
   const steps = Math.floor(Math.random() * 10) + 1;
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[steps - 1];
@@ -581,19 +583,20 @@ function sendSpin() {
   const currentMod = currentRotation % 360;
   currentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // カップルイベント中（step2）の場合でも、PC大画面側へ出目を先に送り、ルーレットを同時に回し始める
-  if (coupleEventState.active && coupleEventState.step === 2) {
+  // 2. 🎯【0秒目】通常時・イベント時（step2）問わず、即座にPC大画面へ出目を送信する！
+  // これにより、スマホでタップした瞬間にPC右上の通常ルーレット（またはイベント盤）が遅延なく同時に回り始めます。
+  if (!coupleEventState.active || (coupleEventState.active && coupleEventState.step === 2)) {
     socket.emit("spinRoulette", {
       roomCode: currentRoomCode,
       result: steps
     });
   }
 
-  // スマホ側のルーレットアニメーション開始（3秒間まわる）
+  // 3. 【0秒目】手元のスマホルーレットもアニメーション回転を開始（3秒間）
   playMobileRouletteAnimation(steps, currentRotation, (finalSteps) => {
     isSpinning = false;
     
-    // 🎯 ルーレットが完全に停止した（3秒経った）ここからイベント処理を実行する
+    // ─── ★ここからは3秒後（ルーレットがピタッと止まった瞬間）の処理 ───
 
     if (coupleEventState.active) {
       const p = players[activePlayerIndex];
@@ -617,12 +620,10 @@ function sendSpin() {
         }
       }
     } else {
-      // 通常時の通常マス移動
+      // 通常時：ルーレットが止まったので、初めてマスを移動させる（ネタバレ防止）
       handleRouletteStop(finalSteps);
-      socket.emit("spinRoulette", {
-        roomCode: currentRoomCode,
-        result: finalSteps
-      });
+      
+      // 🎯 修正：0秒目で既に送っているため、ここでの重複した「spinRoulette」の送信は削除（バグ防止）
     }
   });
 }
