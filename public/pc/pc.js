@@ -160,6 +160,8 @@ function initSocketListeners() {
     }
   });
 
+  // 🎯 修正：カップルイベントだけでなく、今後追加するすべてのイベントマスに完全対応！
+  // サーバーからイベント終了通知（ finished ）を受け取ったら、付与されている見た目の着せ替えクラス（theme-couple等）をすべて一網打尽に剥ぎ取って確実にモーダルを消し去る汎用設計に書き換えました。
   socket.on("coupleEventFinished", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -171,7 +173,8 @@ function initSocketListeners() {
     setTimeout(() => {
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
-        pcModal.classList.remove("active", "theme-couple");
+        // 🎯 どのイベント（着せ替えテーマ）であっても例外なく、画面を覆っているactiveクラスごと全消去して隠す
+        pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
       }
 
       if (eventBox) {
@@ -187,208 +190,9 @@ function initSocketListeners() {
         </div>`;
         }
       }
-    }, 3000);
-  });
-}
-function switchScreen(targetId) {
-  const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
-  screenIds.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.style.display = "none";
-      el.classList.remove("active");
-    }
+    }, 3000); // 3秒の回転時間待ち
   });
 
-  const target = document.getElementById(targetId);
-  if (target) {
-    target.style.display = "";
-    target.classList.add("active");
-  }
-}
-
-function renderPlayerWaitingList() {
-  const ul = document.getElementById("player-list");
-  if (!ul) return;
-  ul.innerHTML = "";
-  players.forEach((p) => {
-    const li = document.createElement("li");
-    li.textContent = `👤 ${p.name}`;
-    ul.appendChild(li);
-  });
-}
-
-function renderLocationPlayersList() {
-  const container = document.getElementById("location-players-list");
-  if (!container) return;
-
-  const locationMap = {};
-  players.forEach((p) => {
-    const loc =
-      p.location && p.location.trim() !== "" ? p.location : "スタート前";
-    if (!locationMap[loc]) locationMap[loc] = [];
-    locationMap[loc].push(p.name);
-  });
-
-  let html = "";
-  for (const [loc, names] of Object.entries(locationMap)) {
-    html += `<div style="margin-bottom: 4px;"><strong>${loc}：</strong> ${names.join("、")}</div>`;
-  }
-  container.innerHTML =
-    html ||
-    '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
-}
-
-function updateCurrentPlayerDisplay() {
-  const p = players[activePlayerIndex];
-  if (!p) return;
-
-  const jobMaster =
-    typeof JOBS !== "undefined"
-      ? JOBS.find(
-          (j) => j.id === p.jobId || j.label === p.job || j.title === p.job,
-        )
-      : null;
-
-  const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 100;
-  const bonusCap = p.bonusCap || 0;
-  const maxHp = baseCap + bonusCap;
-
-  if (p.currentHp === undefined) p.currentHp = maxHp;
-  const currentHp = Math.max(0, p.currentHp);
-  const drunkPercent = Math.min(
-    100,
-    Math.round(((maxHp - currentHp) / maxHp) * 100),
-  );
-
-  const nameEl = document.getElementById("current-player-name");
-  const jobEl = document.getElementById("current-player-job");
-  if (nameEl) nameEl.textContent = p.name;
-  if (jobEl) jobEl.textContent = jobMaster ? jobMaster.label : p.job || "モブ";
-
-  const playerColors = [
-    "#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"
-  ];
-
-  const playerCardEl = document.querySelector(".current-player-card");
-  if (playerCardEl) {
-    const playerColor =
-      p.color || playerColors[activePlayerIndex % playerColors.length];
-    playerCardEl.style.background = `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`;
-  }
-
-  const loverIconEl = document.getElementById("current-player-lover-icon");
-  if (loverIconEl) {
-    if (p.isLover) {
-      loverIconEl.style.display = "inline-block";
-    } else {
-      loverIconEl.style.display = "none";
-    }
-  }
-
-  const hpTextEl = document.getElementById("current-player-hp");
-  const hpBarEl = document.getElementById("current-player-drunk");
-  const drunkPercentEl = document.getElementById(
-    "current-player-drunk-percent",
-  );
-
-  if (hpTextEl) hpTextEl.textContent = `${currentHp} / ${maxHp}`;
-  if (hpBarEl) {
-    const hpRate = Math.max(0, (currentHp / maxHp) * 100);
-    hpBarEl.style.width = `${hpRate}%`;
-    hpBarEl.style.backgroundColor =
-      hpRate > 50 ? "#4caf50" : hpRate > 20 ? "#ff9800" : "#f44336";
-  }
-  if (drunkPercentEl) drunkPercentEl.textContent = `${drunkPercent}%`;
-
-  const drinksEl = document.getElementById("current-player-drinks");
-  if (drinksEl) drinksEl.textContent = `${p.drinkCount || 0} 杯`;
-
-  const locationEl = document.getElementById("current-player-location");
-  if (locationEl) locationEl.textContent = p.location ? p.location : "-";
-
-  renderLocationPlayersList();
-}
-
-function executeSyncedRoulette(resultNum) {
-  const p = players[activePlayerIndex];
-  if (!p) return;
-
-  if (p.skipTurn) {
-    p.skipTurn = false;
-    alert(`${p.name} は潰れていたため、このターンは1回休みです。`);
-    socket.emit("playerAction", { roomCode, action: "nextTurn" });
-    return;
-  }
-
-  const resEl = document.getElementById("roulette-result-display");
-  if (resEl) resEl.textContent = "🎯 回転中...";
-
-  const eventBox = document.getElementById("event-text");
-  if (eventBox) {
-    eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
-  }
-
-  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-  const stopAngle = targetDegrees[resultNum - 1];
-
-  const currentMod = pcCurrentRotation % 360;
-  pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
-
-  let wheel;
-  if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
-    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
-            document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
-            document.querySelector("#pc-couple-event-modal .couple-wheel");
-  } else {
-    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
-  }
-
-  if (wheel) {
-    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
-    wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
-  }
-
-  let targetPosition = p.position + resultNum;
-  
-  if (typeof MAP_SQUARES !== 'undefined') {
-    for (let pos = p.position + 1; pos <= targetPosition; pos++) {
-      const sq = MAP_SQUARES[pos];
-      if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
-        targetPosition = pos;
-        break;
-      }
-    }
-  }
-
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    p.position = targetPosition;
-  }
-
-  let squareLocation = "";
-  let targetSquare = null;
-  if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
-    targetSquare = MAP_SQUARES[p.position];
-    squareLocation = targetSquare.location || "";
-    applySquareEffects(p, targetSquare);
-  }
-
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    p.location = squareLocation;
-  }
-
-  if (window.boardManager) {
-    window.boardManager.draw(players, activePlayerIndex);
-  }
-
-  renderLocationPlayersList();
-  updateCurrentPlayerDisplay();
-
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
-      handleForceStopSquare(p, targetSquare);
-    }
-  }
   // ─── ★4. 🎯【3秒の遅延】ここから下は、ルーレットがピタッと「停止した瞬間」に初めて画面に表示させる ───
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
@@ -465,7 +269,6 @@ function applySquareEffects(player, square) {
     );
   }
 }
-
 const GAME_EVENTS = {
   入学式: {
     class: "theme-entrance",
@@ -589,7 +392,6 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
     </div>
   `;
 }
-
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 15:
