@@ -1,5 +1,5 @@
 /* ==========================================
-   1. PC用レイアウト (index.html) と画面表示制御
+   1. PC用レイアウト (index.html) と表示画面の厳密な制御
    ========================================== */
 body:has(.pc-screen) .app-container {
   width: 100%;
@@ -7,17 +7,33 @@ body:has(.pc-screen) .app-container {
   margin: 0 auto;
 }
 
-/* 🎯 修正：PC側の各画面が最初から全部露出しないように、非表示制御を確実に復活 */
+/* 🎯 修正：ゲーム開始前に関係のない画面や、はみ出したイベントテキストを完全に非表示にする */
 #screen-setup,
 #screen-waiting,
-#screen-game {
+#screen-game,
+.event-modal-overlay,
+#pc-event-modal,
+[id*="event-"] {
   display: none;
 }
 
+/* アクティブな画面だけを正しく表示 */
 #screen-setup.active,
 #screen-waiting.active,
 #screen-game.active {
-  display: block;
+  display: block !important;
+}
+
+/* 🎯 修正：最初のルーム作成画面を画面中央に綺麗に配置（前のデザインを完全再現） */
+#screen-setup .pc-card {
+  max-width: 500px;
+  margin: 60px auto 0;
+  text-align: center;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
 }
 
 .card {
@@ -29,17 +45,10 @@ body:has(.pc-screen) .app-container {
   margin-bottom: 20px;
 }
 
-/* PC: ルーム作成画面 */
-#screen-setup .pc-card {
-  max-width: 500px;
-  margin: 60px auto 0;
-  text-align: center;
-}
-
 /* PC: 待機室 2カラムグリッド配置 */
 .waiting-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 左右均等分割 */
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
   align-items: start;
 }
@@ -72,7 +81,6 @@ body:has(.pc-screen) .app-container {
   border-radius: 12px;
   border: 2px dashed var(--border-color);
 }
-
 /* ==========================================
    5. ゲーム画面 (3カラムレイアウト)
    ========================================== */
@@ -194,7 +202,7 @@ body:has(.pc-screen) .app-container {
   min-height: 40px;
 }
 
-/* --- PC右上：通常盤ルーレット内の数字配置設定 --- */
+/* --- PC右上：通常盤ルーレット内の数字配置 --- */
 body:not(:has(.phone-screen)) .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
 body:not(:has(.phone-screen)) .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
 body:not(:has(.phone-screen)) .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
@@ -205,6 +213,8 @@ body:not(:has(.phone-screen)) .num-7  { transform: rotate(234deg) translate(0, -
 body:not(:has(.phone-screen)) .num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
 body:not(:has(.phone-screen)) .num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
 body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+
+
 /* ==========================================
    A. 共通イベントモーダル（親の土台）
    ========================================== */
@@ -215,7 +225,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75);
-  display: none; /* 🎯 修正：通常時は絶対に非表示にする（これが漏れて露出していました） */
+  display: none; /* 🎯 通常時は完全に非表示 */
   justify-content: center;
   align-items: center;
   z-index: 9999;
@@ -224,7 +234,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   transition: opacity 0.3s ease;
 }
 
-/* 🎯 修正：.active が付与されたイベント中のみ flex で画面最前面に出現させる */
+/* 🎯 イベント中（active追加時）のみ最前面に出現 */
 .event-modal-overlay.active {
   display: flex !important;
   opacity: 1;
@@ -275,30 +285,21 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   border-color: #ff69b4;
   box-shadow: 0 12px 35px rgba(255, 105, 180, 0.4);
 }
-
-.theme-couple .event-title {
-  color: #d81b60;
-}
+.theme-couple .event-title { color: #d81b60; }
 
 .theme-rankup .event-card-container {
   background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%);
   border-color: #f5a623;
   box-shadow: 0 12px 35px rgba(245, 166, 35, 0.4);
 }
-
-.theme-rankup .event-title {
-  color: #b78103;
-}
+.theme-rankup .event-title { color: #b78103; }
 
 .theme-job .event-card-container {
   background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
   border-color: #9c27b0;
   box-shadow: 0 12px 35px rgba(156, 39, 176, 0.4);
 }
-
-.theme-job .event-title {
-  color: #4a148c;
-}
+.theme-job .event-title { color: #4a148c; }
 
 /* ==========================================
    D. PC側 イベント専用モーダルの特大レイアウト
