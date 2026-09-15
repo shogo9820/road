@@ -128,15 +128,39 @@ function initSocketListeners() {
 
     // initSocketListeners() の中に追加してな！
   
-  // 偶数が出て2回目に突入した時
-  socket.on("startCoupleSecondRoulette", (data) => {
-    const eventBox = document.getElementById("event-text");
-    if (eventBox) {
-      eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
-        🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
-      </p>`;
+// ─── pc.js : サーバーから2回目突入（mapping付き）を受け取った時の処理 ───
+socket.on("startCoupleSecondRoulette", (data) => {
+  const eventBox = document.getElementById("event-text");
+  if (eventBox) {
+    eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
+      🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
+    </p>`;
+  }
+
+  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+  if (dynamicTableZone && data.mapping) {
+    let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
+    
+    // サーバーから届いた 1〜10 のマッピングをそのまま画面に表示するだけ
+    for (let i = 1; i <= 10; i++) {
+      const target = data.mapping[i];
+      let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
+      
+      if (target) {
+        targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (カップル成立)</span>`;
+      }
+      
+      html += `
+        <li class="event-table-item">
+          <div class="event-table-num-badge">${i}</div>
+          <div>${targetText}</div>
+        </li>
+      `;
     }
-  });
+    html += `</ul>`;
+    dynamicTableZone.innerHTML = html;
+  }
+});
 
   // カップルイベントが完全に終わった時
   socket.on("coupleEventFinished", (data) => {
@@ -582,20 +606,3 @@ function handleForceStopSquare(player, square) {
       break;
   }
 }
-
-// ─── pc.js : サーバーから2回目突入の指示（偶数達成）を受けた時の処理 ───
-socket.on("startCoupleSecondRoulette", (data) => {
-  // 1. 画面中央の状況テキストを書き換える
-  const eventBox = document.getElementById("event-text");
-  if (eventBox) {
-    eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
-      🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
-    </p>`;
-  }
-
-  // 2. モーダル内の右側にある対応表エリアを、参加プレイヤーがランダムに割り振られた「告白決定表」に即座に差し替える！
-  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
-  if (dynamicTableZone) {
-    dynamicTableZone.innerHTML = generateCoupleTargetTable(data.playerId || players[activePlayerIndex].id);
-  }
-});

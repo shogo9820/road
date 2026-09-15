@@ -2,10 +2,66 @@ const socket = io();
 let currentRoomCode = "";
 let activePlayerIndex = 0;
 let players = [
-  { id: "p1", name: "プレイヤー1", jobId: "mob", job: "モブ", baseCap: 80, bonusCap: 0, currentHp: 90, drinkCount: 0, position: 0, location: "スタート前", isLover: false, skipTurn: false, hasJob: false },
-  { id: "p2", name: "プレイヤー2", jobId: "mob", job: "モブ", baseCap: 80, bonusCap: 0, currentHp: 90, drinkCount: 0, position: 0, location: "スタート前", isLover: false, skipTurn: false, hasJob: false },
-  { id: "p3", name: "プレイヤー3", jobId: "mob", job: "モブ", baseCap: 80, bonusCap: 0, currentHp: 90, drinkCount: 0, position: 0, location: "スタート前", isLover: false, skipTurn: false, hasJob: false },
-  { id: "p4", name: "プレイヤー4", jobId: "mob", job: "モブ", baseCap: 80, bonusCap: 0, currentHp: 90, drinkCount: 0, position: 0, location: "スタート前", isLover: false, skipTurn: false, hasJob: false }
+  {
+    id: "p1",
+    name: "プレイヤー1",
+    jobId: "mob",
+    job: "モブ",
+    baseCap: 80,
+    bonusCap: 0,
+    currentHp: 90,
+    drinkCount: 0,
+    position: 0,
+    location: "スタート前",
+    isLover: false,
+    skipTurn: false,
+    hasJob: false,
+  },
+  {
+    id: "p2",
+    name: "プレイヤー2",
+    jobId: "mob",
+    job: "モブ",
+    baseCap: 80,
+    bonusCap: 0,
+    currentHp: 90,
+    drinkCount: 0,
+    position: 0,
+    location: "スタート前",
+    isLover: false,
+    skipTurn: false,
+    hasJob: false,
+  },
+  {
+    id: "p3",
+    name: "プレイヤー3",
+    jobId: "mob",
+    job: "モブ",
+    baseCap: 80,
+    bonusCap: 0,
+    currentHp: 90,
+    drinkCount: 0,
+    position: 0,
+    location: "スタート前",
+    isLover: false,
+    skipTurn: false,
+    hasJob: false,
+  },
+  {
+    id: "p4",
+    name: "プレイヤー4",
+    jobId: "mob",
+    job: "モブ",
+    baseCap: 80,
+    bonusCap: 0,
+    currentHp: 90,
+    drinkCount: 0,
+    position: 0,
+    location: "スタート前",
+    isLover: false,
+    skipTurn: false,
+    hasJob: false,
+  },
 ];
 let isSpinning = false;
 let currentRotation = 0;
@@ -14,13 +70,13 @@ let currentRotation = 0;
 let coupleEventState = {
   active: false,
   step: 1, // 1: 最初の判定, 2: 相手を決定する2回目
-  targetPlayerId: null
+  targetPlayerId: null,
 };
 
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get("room");
-  
+
   if (roomParam) {
     const inputEl = document.getElementById("input-room-code");
     if (inputEl) inputEl.value = roomParam;
@@ -45,16 +101,26 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  document.getElementById("btn-phone-add-player")?.addEventListener("click", addPlayerRow);
-  document.getElementById("btn-phone-start")?.addEventListener("click", sendStartGame);
-  document.getElementById("btn-phone-spin")?.addEventListener("click", sendSpin);
-  document.getElementById("btn-phone-next")?.addEventListener("click", sendNextTurn);
+  document
+    .getElementById("btn-phone-add-player")
+    ?.addEventListener("click", addPlayerRow);
+  document
+    .getElementById("btn-phone-start")
+    ?.addEventListener("click", sendStartGame);
+  document
+    .getElementById("btn-phone-spin")
+    ?.addEventListener("click", sendSpin);
+  document
+    .getElementById("btn-phone-next")
+    ?.addEventListener("click", sendNextTurn);
 
   // カップル用モーダルの「ルーレットを回す」ボタン設定
-  document.getElementById("btn-couple-spin")?.addEventListener("click", prepareCoupleRouletteTheme);
+  document
+    .getElementById("btn-couple-spin")
+    ?.addEventListener("click", prepareCoupleRouletteTheme);
 
-  document.querySelectorAll('input[name="phone-mode"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
+  document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => {
       e.target.checked = true;
       syncSettingsToServer();
     });
@@ -72,12 +138,19 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   socket.on("applySettings", (data) => {
-    if (data.players && Array.isArray(data.players) && data.players.length > 0) {
+    if (
+      data.players &&
+      Array.isArray(data.players) &&
+      data.players.length > 0
+    ) {
       const activeEl = document.activeElement;
-      const isUserTyping = activeEl && activeEl.tagName === "INPUT" && activeEl.closest("#phone-player-list");
+      const isUserTyping =
+        activeEl &&
+        activeEl.tagName === "INPUT" &&
+        activeEl.closest("#phone-player-list");
       if (!isUserTyping) {
-        players = data.players; 
-        renderPlayerInputs();   
+        players = data.players;
+        renderPlayerInputs();
       } else {
         players = data.players;
       }
@@ -85,19 +158,24 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const targetMode = data.mode || data.gameMode;
     if (targetMode) {
-      const targetRadio = document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`);
+      const targetRadio = document.querySelector(
+        `input[name="phone-mode"][value="${targetMode}"]`,
+      );
       if (targetRadio) targetRadio.checked = true;
     }
   });
-  
+
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
-      activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+      activePlayerIndex =
+        data.activePlayerIndex !== undefined
+          ? data.activePlayerIndex
+          : activePlayerIndex;
       const activeName = data.activePlayerName || `プレイヤー`;
-      
+
       const banner = document.getElementById("current-player-banner");
       if (banner) banner.textContent = `TURN: ${activeName}`;
-      
+
       const spinBtn = document.getElementById("btn-phone-spin");
       if (spinBtn) spinBtn.disabled = false;
 
@@ -126,7 +204,7 @@ window.addEventListener("DOMContentLoaded", () => {
     coupleEventState = {
       active: true,
       step: 1,
-      targetPlayerId: null
+      targetPlayerId: null,
     };
 
     // 🎯 修正：スマホのカードに 'theme-couple' を付与して見た目を変身させる
@@ -148,12 +226,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // 偶数だった場合：2回目のルーレット開始指示を受信
   socket.on("startCoupleSecondRoulette", (data) => {
     console.log("スマホ側：告白チャンス！2回目のルーレット指示を受信", data);
-    
+
     // 状態をステップ2（相手決定/告白スピン）に更新
     coupleEventState = {
       active: true,
       step: 2,
-      targetPlayerId: data.targetPlayerId
+      targetPlayerId: data.targetPlayerId,
     };
 
     // スマホの画面（モーダル）を2回目用に書き換えて再表示
@@ -173,10 +251,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // カップルイベントが終了した時（通常スピンに戻る時）
   socket.on("coupleEventFinished", (data) => {
     alert(data.message);
-    
+
     coupleEventState.active = false;
     coupleEventState.step = 1;
-    
+
     // 🎯 修正：イベントが終わったら着せ替えクラスを外して元のデザインに戻す
     document.body.classList.remove("theme-couple");
 
@@ -193,36 +271,40 @@ window.addEventListener("DOMContentLoaded", () => {
 
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
-    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    if (data.activePlayerIndex !== undefined)
+      activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
   });
 
-    // 開発用：ボタンを押したら即座に35マス目の手前（34マス目）にプレイヤーを移動させて同期する
-  document.getElementById("btn-debug-warp-couple")?.addEventListener("click", () => {
-    const p = players[activePlayerIndex];
-    if (p) {
-      // 次に「1」を出せば35マス目に止まるように、34マス目にセット
-      p.position = 34; 
-      p.location = "とりき"; // マス目データに合わせておく
-      
-      // サーバーに現在の状態を強制同期
-      socket.emit("updateGameState", {
-        roomCode: currentRoomCode,
-        activePlayerIndex: activePlayerIndex,
-        players: players
-      });
-      alert("34マス目にワープしました！次スピンで確定でカップルマスです。");
-    }
-  });
+  // 開発用：ボタンを押したら即座に35マス目の手前（34マス目）にプレイヤーを移動させて同期する
+  document
+    .getElementById("btn-debug-warp-couple")
+    ?.addEventListener("click", () => {
+      const p = players[activePlayerIndex];
+      if (p) {
+        // 次に「1」を出せば35マス目に止まるように、34マス目にセット
+        p.position = 34;
+        p.location = "とりき"; // マス目データに合わせておく
 
+        // サーバーに現在の状態を強制同期
+        socket.emit("updateGameState", {
+          roomCode: currentRoomCode,
+          activePlayerIndex: activePlayerIndex,
+          players: players,
+        });
+        alert("34マス目にワープしました！次スピンで確定でカップルマスです。");
+      }
+    });
 });
 
 // --- イベントに応じたルーレット画面のテーマ切り替え関数 ---
 function applyRouletteTheme(themeClass) {
-  const phoneCard = document.querySelector('.phone-screen .card') || document.querySelector('.phone-card');
+  const phoneCard =
+    document.querySelector(".phone-screen .card") ||
+    document.querySelector(".phone-card");
   if (!phoneCard) return;
 
-  phoneCard.classList.remove('theme-couple');
+  phoneCard.classList.remove("theme-couple");
 
   if (themeClass) {
     phoneCard.classList.add(themeClass);
@@ -242,8 +324,12 @@ function joinRoom() {
 }
 
 function showScreen(targetId) {
-  const screens = ["phone-screen-join", "phone-screen-setup", "phone-screen-play"];
-  screens.forEach(id => {
+  const screens = [
+    "phone-screen-join",
+    "phone-screen-setup",
+    "phone-screen-play",
+  ];
+  screens.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       if (id === targetId) {
@@ -320,7 +406,7 @@ function addPlayerRow() {
     location: "スタート前",
     isLover: false,
     skipTurn: false,
-    hasJob: false
+    hasJob: false,
   });
   renderPlayerInputs();
   syncSettingsToServer();
@@ -328,12 +414,14 @@ function addPlayerRow() {
 
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
-  const selectedMode = document.querySelector('input[name="phone-mode"]:checked')?.value || "normal";
+  const selectedMode =
+    document.querySelector('input[name="phone-mode"]:checked')?.value ||
+    "normal";
   socket.emit("updateSettings", {
     roomCode: currentRoomCode,
     players: players,
     mode: selectedMode,
-    gameMode: selectedMode
+    gameMode: selectedMode,
   });
 }
 
@@ -345,8 +433,15 @@ function sendStartGame() {
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   // ★修正：イベント中（theme-couple等のクラスがある時）はモーダル内のホイール、通常時は通常のホイールを狙う
   let wheel = document.getElementById("controller-roulette-wheel");
-  if (document.body.classList.contains("theme-couple") || document.querySelector('.phone-screen .card')?.classList.contains("theme-couple")) {
-    wheel = document.querySelector("#mobile-couple-event-modal .couple-wheel") || document.getElementById("controller-roulette-wheel");
+  if (
+    document.body.classList.contains("theme-couple") ||
+    document
+      .querySelector(".phone-screen .card")
+      ?.classList.contains("theme-couple")
+  ) {
+    wheel =
+      document.querySelector("#mobile-couple-event-modal .couple-wheel") ||
+      document.getElementById("controller-roulette-wheel");
   }
 
   const spinBtn = document.getElementById("btn-phone-spin");
@@ -384,7 +479,7 @@ function handleRouletteStop(steps) {
   }
 
   p.position = (p.position || 0) + steps;
-  if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
+  if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
     p.location = MAP_SQUARES[p.position].location || "";
   }
 
@@ -433,7 +528,7 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
       choice: "yes",
       jobId: jobId,
       jobName: jobName,
-      playerId: playerId
+      playerId: playerId,
     });
     overlay.style.display = "none";
   });
@@ -443,7 +538,7 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
       roomCode: currentRoomCode,
       action: "chooseJob",
       choice: "no",
-      playerId: playerId
+      playerId: playerId,
     });
     overlay.style.display = "none";
   });
@@ -457,7 +552,7 @@ function prepareCoupleRouletteTheme() {
   if (modal) modal.style.display = "none"; // モーダルを閉じる
 
   // ★ここでスマホのルーレット画面のテーマ（色）を専用カラーに変更する（まだ回らない）
-  applyRouletteTheme('theme-couple');
+  applyRouletteTheme("theme-couple");
 }
 
 // ステップ2: 色が変わった後に、通常の「ルーレットを回す」ボタンが押されたときの処理
@@ -486,41 +581,50 @@ function sendSpin() {
       // PC側の通常ルーレットではなく、イベント処理を動かすために数値を先に同期
       socket.emit("spinRoulette", {
         roomCode: currentRoomCode,
-        result: steps
+        result: steps,
       });
 
       if (coupleEventState.step === 1) {
         socket.emit("coupleRouletteResult", {
           roomCode: currentRoomCode,
           playerId: p.id,
-          result: steps
+          result: steps,
         });
       } else if (coupleEventState.step === 2) {
+        const p = players[activePlayerIndex];
+
+        // 1. 通常通りPC大画面と出目を同期して回転させる
+        socket.emit("spinRoulette", {
+          roomCode: currentRoomCode,
+          result: steps, // 実際の出目（1〜10）
+        });
+
+        // 2. サーバーへ実際の出目をストレートに送信（判定はサーバーに一任）
         socket.emit("coupleSecondRouletteResult", {
           roomCode: currentRoomCode,
           playerId: p.id,
-          targetPlayerId: coupleEventState.targetPlayerId,
-          result: steps
+          result: steps, // ★細工をせず、出た数字をそのまま送る！
         });
+
         coupleEventState.active = false;
-        applyRouletteTheme('');
+        applyRouletteTheme("");
       }
     }
   } else {
     // 通常時のスピン
     socket.emit("spinRoulette", {
       roomCode: currentRoomCode,
-      result: steps
+      result: steps,
     });
   }
 }
 
 function sendNextTurn() {
-  socket.emit("playerAction", { 
-    roomCode: currentRoomCode, 
-    action: "nextTurn" 
+  socket.emit("playerAction", {
+    roomCode: currentRoomCode,
+    action: "nextTurn",
   });
-  
+
   const nextBtn = document.getElementById("btn-phone-next");
   if (nextBtn) {
     nextBtn.disabled = true;
