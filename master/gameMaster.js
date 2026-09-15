@@ -17,8 +17,6 @@ const JOBS = [
 ];
 
 // マス目マスターデータ（全100マス）
-// mode: "all" (共通), "short" (ショートのみ), "long" (ロングのみ)
-// nextId: 次に進むマスIDの配列（将来の分岐に対応）
 const MAP_SQUARES = [
   { id: 0, type: "start", text: "宅飲みスタート！", mode: "all", nextId: [1] },
   
@@ -56,7 +54,7 @@ const MAP_SQUARES = [
   { id: 29, type: "location", text: "いつまで一緒におんねん", drink: 1, degree: 5, location: "宅飲み", mode: "all", nextId: [30] },
   { id: 30, type: "normal", text: "龍大カップで飲むな！", drink: 1, degree: 40, location: "家", mode: "all", nextId: [31] },
   { id: 31, type: "normal", text: "【秋キャン】パックワイン不味すぎやせんか？？", drink: 1, degree: 16, location: "家", mode: "all", nextId: [32] },
-  { id: 32, type: "normal", text: "【秋キャン】昼に黒潮市場でビールま？", drink: 1, degree: 5, location: "家", mode: "all", nextId: [33] },
+  { id: 32, type: "normal", text: "【秋キャン】昼に黒潮市場でビールま？？", drink: 1, degree: 5, location: "家", mode: "all", nextId: [33] },
   { id: 33, type: "location", text: "練習終わりはやっぱり酔うね！", drink: 1, degree: 13, location: "ぱいぱい", mode: "all", nextId: [34] },
   { id: 34, type: "location", text: "ばおわ合致で", drink: 1, degree: 5, location: "とりき", mode: "all", nextId: [35] },
   { id: 35, type: "force_stop", text: "【強制ストップ】カップル成立！？", eventType: "couple", eventClass: "theme-couple", nextId: [36] },
@@ -126,7 +124,5 @@ const MAP_SQUARES = [
   { id: 99, type: "goal", text: "【ゴール】", isGoal: true, mode: "all", nextId: [] }
 ];
 
-// Node.js (CommonJS) や ES Module 環境での互換エクスポート
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { JOBS, MAP_SQUARES };
-}
+// Node.js (CommonJS) 環境へ確実にマスターデータを公開・引き渡す
+module.exports = { JOBS, MAP_SQUARES };

@@ -1,0 +1,404 @@
+/* ==========================================
+   1. PC用レイアウト (index.html)
+   ========================================== */
+body:has(.pc-screen) .app-container {
+  width: 100%;
+  max-width: 1200px; /* 横長大画面を最大限活かす */
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+/* PC: ルーム作成画面 */
+#screen-setup .pc-card {
+  max-width: 500px;
+  margin: 60px auto 0;
+  text-align: center;
+}
+
+/* PC: 待機室 2カラムグリッド配置 */
+.waiting-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 左右均等分割 */
+  gap: 24px;
+  align-items: start;
+}
+
+.room-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  background: #faf8f5;
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.room-code-display {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  letter-spacing: 3px;
+}
+
+.qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+}
+
+/* ==========================================
+   5. ゲーム画面 (3カラムレイアウト)
+   ========================================== */
+.game-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 280px; /* 左:300px, 中央:可変, 右:280px */
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+}
+
+.layout-left, .layout-center, .layout-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* --- 左カラム: プレイヤー情報（美しくリファイン） --- */
+.current-player-card {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.player-avatar {
+  font-size: 2.2rem;
+  background: rgba(255, 255, 255, 0.25);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.player-meta h2 {
+  font-size: 1.4rem;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.job-badge {
+  display: inline-block;
+  background: #ffffff;
+  color: #333;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.player-stats {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.stat-item:last-child {
+  margin-bottom: 0;
+}
+
+.tile-event-card .card-title {
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+/* --- 中央カラム: 盤面 --- */
+.map-card {
+  text-align: center;
+  padding: 16px;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mode-badge {
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+/* --- 右カラム: ルーレット & イベント --- */
+.roulette-card {
+  text-align: center;
+}
+
+.roulette-result-display {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  min-height: 40px;
+}
+
+/* --- PC右上：通常盤ルーレット内の数字配置（直径200pxサイズ用の位置を上書き指定） --- */
+body:not(:has(.phone-screen)) .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
+body:not(:has(.phone-screen)) .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
+body:not(:has(.phone-screen)) .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
+body:not(:has(.phone-screen)) .num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
+body:not(:has(.phone-screen)) .num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
+body:not(:has(.phone-screen)) .num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
+body:not(:has(.phone-screen)) .num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
+body:not(:has(.phone-screen)) .num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
+body:not(:has(.phone-screen)) .num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
+body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+/* ==========================================
+   A. 共通イベントモーダル（親の土台）
+   ========================================== */
+.event-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.event-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.event-card-container {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  border: 4px solid #cccccc;
+  transition: all 0.3s ease;
+}
+
+.event-card-container .event-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 12px;
+  transition: color 0.3s ease;
+}
+
+.event-card-container .event-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333333;
+  margin-bottom: 20px;
+}
+
+/* ==========================================
+   B. イベント用共通ルーレットの土台
+   ========================================== */
+.event-roulette-container {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 20px;
+}
+
+/* ==========================================
+   C. 【バージョン別】着せ替え定義
+   ========================================== */
+.theme-couple .event-card-container {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
+  border-color: #ff69b4;
+  box-shadow: 0 12px 35px rgba(255, 105, 180, 0.4);
+}
+
+.theme-couple .event-title {
+  color: #d81b60;
+}
+
+.theme-rankup .event-card-container {
+  background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%);
+  border-color: #f5a623;
+  box-shadow: 0 12px 35px rgba(245, 166, 35, 0.4);
+}
+
+.theme-rankup .event-title {
+  color: #b78103;
+}
+
+.theme-job .event-card-container {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-color: #9c27b0;
+  box-shadow: 0 12px 35px rgba(156, 39, 176, 0.4);
+}
+
+.theme-job .event-title {
+  color: #4a148c;
+}
+
+/* ==========================================
+   D. PC側 イベント専用モーダルの特大レイアウト
+   ========================================== */
+.theme-couple .event-card-container,
+.theme-rankup .event-card-container {
+  max-width: 1000px;
+  width: 95%;
+  padding: 40px;
+}
+
+.event-main-flex {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 40px;
+  margin-top: 25px;
+}
+
+.event-roulette-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.theme-couple .event-roulette-container,
+.theme-rankup .event-roulette-container {
+  width: 300px;
+  height: 300px;
+}
+
+.event-table-area {
+  flex: 1.2;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+  text-align: left;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+.event-table-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 3px solid currentColor;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-table-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-table-item {
+  display: flex;
+  align-items: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.event-table-num-badge {
+  background: #333333;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.theme-couple .event-table-title { color: #d81b60; border-color: #ff69b4; }
+.theme-couple .event-table-num-badge { background: #ff4081; }
+.theme-rankup .event-table-title { color: #b78103; border-color: #f5a623; }
+.theme-rankup .event-table-num-badge { background: #f5a623; }
+
+.event-roulette-wheel .roulette-num {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  top: 50%;
+  left: 50%;
+  margin-top: -15px;
+  margin-left: -15px;
+  font-weight: 900;
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
+  text-align: center;
+  line-height: 30px;
+  z-index: 4;
+}
+
+/* 💻 PC側専用モーダル（直径300pxサイズ）用に配置位置を拡大調整 */
+.event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
+.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
+.event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
+.event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
+.event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
+.event-roulette-wheel .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
+.event-roulette-wheel .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
+.event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
+.event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
+.event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }

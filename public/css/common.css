@@ -1,0 +1,209 @@
+/* ==========================================
+   A. 全画面共通設定 & カラー定義
+   ========================================== */
+:root {
+  --bg-color: #f2efe9;
+  --card-bg: #ffffff;
+  --text-color: #2c2c2c;
+  --primary-color: #e06d53;
+  --primary-hover: #c85a42;
+  --accent-color: #8a63ae;
+  --gold-color: #f5a623;
+  --gold-hover: #d98e19;
+  --border-color: #e0dad0;
+  --font-family: 'M PLUS Rounded 1c', 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+/* 画面切り替え制御 */
+.screen {
+  display: none !important;
+  width: 100%;
+}
+
+.screen.active {
+  display: block !important;
+}
+
+/* ==========================================
+   B. 共通コンポーネント (ボタン・フォーム等)
+   ========================================== */
+h1 {
+  font-size: 1.8rem;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+}
+
+.btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 14px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn:active {
+  opacity: 0.85;
+}
+
+.btn-gold {
+  background: var(--gold-color);
+}
+
+.form-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.player-list-item {
+  background: #f7f5f0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.gauge-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  background: #4caf50;
+  transition: width 0.3s ease;
+}
+/* ==========================================
+   C. モード選択カード (赤枠連動設定)
+   ========================================== */
+.mode-card, label:has(input[name="game-mode"]), label:has(input[name="phone-mode"]) {
+  display: block;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  background: var(--card-bg);
+  transition: all 0.2s ease;
+}
+
+.mode-card:has(input:checked),
+label:has(input[name="game-mode"]:checked),
+label:has(input[name="phone-mode"]:checked),
+.mode-card.active,
+.mode-card.selected {
+  border-color: var(--primary-color) !important;
+  background-color: #fffdfa;
+  box-shadow: 0 0 12px rgba(224, 109, 83, 0.2);
+}
+
+/* ==========================================
+   D. 人生ゲーム風ルーレット盤（通常・イベント時10分割共通）
+   ========================================== */
+.roulette-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 15px auto;
+}
+
+.roulette-wheel,
+#controller-roulette-wheel,
+.event-roulette-wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 6px solid #333;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+  /* 🖥️📱 PCとスマホで完全に統一されたプロ仕様の10分割グラデーション */
+  background: conic-gradient(
+    #ff4d4d 0deg 36deg,     /* 1: 赤 */
+    #ff9f43 36deg 72deg,    /* 2: オレンジ */
+    #feca57 72deg 108deg,   /* 3: 黄 */
+    #1dd1a1 108deg 144deg,  /* 4: 青緑 */
+    #48dbfb 144deg 180deg,  /* 5: 水 */
+    #2e86de 180deg 216deg,  /* 6: 青 */
+    #5f27cd 216deg 252deg,  /* 7: 紫 */
+    #9b59b6 252deg 288deg,  /* 8: 明るい紫 */
+    #ff6b8b 288deg 324deg,  /* 9: ピンク */
+    #ee5253 324deg 360deg   /* 10: 濃い赤 */
+  );
+  position: relative;
+  transition: transform 3s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.roulette-wheel::after,
+#controller-roulette-wheel::after,
+.event-roulette-wheel::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, #fff, #ccc);
+  border: 3px solid #333;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 5;
+}
+
+.roulette-pointer {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 24px solid #e74c3c;
+  z-index: 10;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+}

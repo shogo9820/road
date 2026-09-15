@@ -1,0 +1,162 @@
+/* ==========================================
+   スマホ（コントローラー）専用の固有レイアウト
+   ========================================== */
+body {
+  padding: 10px;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 420px; /* スマホ幅に完全固定 */
+  margin: 0 auto;
+}
+
+.phone-card {
+  padding: 20px;
+  text-align: center;
+}
+
+.roulette-display {
+  font-size: 4.5rem;
+  margin: 20px 0;
+}
+
+/* ==========================================
+   スマホ専用：ルーレット内側の数字配置（直径200px用）
+   ========================================== */
+/* 🎯 スマホの円盤サイズに合わせて、数字の位置を中心に綺麗に収める（-65px） */
+.roulette-num {
+  position: absolute;
+  z-index: 4;
+}
+
+.num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
+.num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
+.num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
+.num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
+.num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
+.num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
+.num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
+.num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
+.num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
+.num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+
+/* ==========================================
+   特殊イベントテーマ：カップル（ピンク系着せ替え）
+   ========================================== */
+/* クラス「theme-couple」が付与された時、中にあるカードの背景と外枠を変更 */
+.theme-couple .card,
+.theme-couple .phone-card {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%) !important;
+  border: 4px solid #ff69b4 !important;
+  box-shadow: 0 10px 25px rgba(255, 105, 180, 0.2) !important;
+}
+
+.theme-couple h1,
+.theme-couple .turn-indicator,
+.theme-couple #current-player-banner {
+  color: #d81b60 !important;
+}
+
+/* 通常盤・制御盤の「着せ替え」によるピンク系上書き */
+.theme-couple #controller-roulette-wheel,
+.theme-couple .couple-wheel {
+  border-color: #d81b60 !important;
+  background: conic-gradient(
+    #ff4d4d 0deg 36deg,     #ff6b8b 36deg 72deg,
+    #ff4d4d 72deg 108deg,   #ff6b8b 108deg 144deg,
+    #ff4d4d 144deg 180deg,  #ff6b8b 180deg 216deg,
+    #ff4d4d 216deg 252deg,  #ff6b8b 252deg 288deg,
+    #ff4d4d 288deg 324deg,  #ff6b8b 324deg 360deg
+  ) !important;
+}
+
+/* ボタンをイベント用ピンクに変更 */
+.theme-couple .btn {
+  background-color: #ff4081 !important;
+  box-shadow: 0 4px 6px rgba(255, 64, 129, 0.3) !important;
+}
+
+.theme-couple .btn:active {
+  background-color: #d81b60 !important;
+}
+
+/* ==========================================
+   スマホ専用：モーダル・オーバーレイ設定
+   ========================================== */
+/* スマホ側カップルチャンス（2回目用）カード */
+.mobile-couple-card {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
+  border: 4px solid #ff69b4;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(255, 105, 180, 0.4);
+  width: 100%;
+}
+
+.couple-title {
+  color: #d81b60;
+  font-size: 1.6rem;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.couple-desc {
+  color: #333;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* 役職選択などのオーバーレイダイアログ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: none; /* JSでflexに切り替え */
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.job-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.job-modal-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--accent-color);
+  margin-bottom: 12px;
+}
+
+.job-modal-desc {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #333;
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+}
+
+.modal-btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-yes {
+  background: #4caf50;
+}
+.btn-no {
+  background: #d9534f;
+}

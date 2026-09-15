@@ -56,7 +56,7 @@ function initSocketListeners() {
       qrContainer.innerHTML = "";
       if (typeof QRCode !== "undefined") {
         new QRCode(qrContainer, {
-          text: `${window.location.origin}/controller.html?room=${roomCode}`,
+          text: `${window.location.origin}/mobile/index.html?room=${roomCode}`,
           width: 128,
           height: 128,
         });
@@ -97,16 +97,18 @@ function initSocketListeners() {
     renderLocationPlayersList();
   });
 
+  // 🎯【サーバー主導】出目が確定して一斉指示が飛んできた瞬間の処理
   socket.on("spinRoulette", (data) => {
     if (data) {
       if (data.activePlayerIndex !== undefined) {
         activePlayerIndex = data.activePlayerIndex;
       }
       const resultNum = data.result !== undefined ? data.result : 1;
+      
+      // 遅延ゼロ（0秒目）で、PC右上ルーレット、またはイベント専用盤をスマホと完璧に同時に回し始めます
       executeSyncedRoulette(resultNum);
     }
   });
-
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined)
@@ -127,7 +129,8 @@ function initSocketListeners() {
       }
     }
   });
-  // ─── pc.js : サーバーから2回目突入（mapping付き）を受け取った時の処理 ───
+
+  // 🎯【サーバー主導】偶数達成時、サーバーで生成された綺麗なランダム対応表をそのまま受け取って描写するだけ
   socket.on("startCoupleSecondRoulette", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -165,7 +168,7 @@ function initSocketListeners() {
 
   // カップルイベントが完全に終わった時
   socket.on("coupleEventFinished", (data) => {
-    // 1. 【遅延ゼロ：0秒目】結果データが届いた瞬間は、画面中央を回転中にしてネタバレ防止
+    // 1. 【遅延ゼロ：0秒目】結果が届いた瞬間（ルーレットが回り始めた瞬間）は、画面中央を判定中にしてネタバレ防止
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
       eventBox.innerHTML = `<p class="event-msg" style="font-size:1.5rem; color:#666; font-weight:bold; animation: pulse 1s infinite;">🌀 運命の判定中... ルーレットを注視せよ！ 🌀</p>`;
@@ -328,7 +331,7 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 1. 【遅延ゼロ：0秒目】ルーレットが回り始めた瞬間のテキスト表示
+  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、ルーレットが回り始めた瞬間のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
@@ -344,8 +347,7 @@ function executeSyncedRoulette(resultNum) {
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 🎯 修正：回転させるホイール（要素）の特定ロジックを強化！
-  // ID名「pc-event-modal」と、古い「pc-couple-event-modal」の両方を安全に探します
+  // 回転させるホイール（要素）の特定
   let wheel;
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
     wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
@@ -364,8 +366,7 @@ function executeSyncedRoulette(resultNum) {
     console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // 3. 🎯 修正：すごろくの移動計算、プレイヤー位置更新、ボード描画、イベント発動を「遅延ゼロ（0秒目）」で即座に普通に実行する！
-  // これにより、右上のルーレットの遅延が完全に消滅し、スマホと完璧に同時に回り始めます。
+  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、プレイヤーマスの計算、ボード描写などの処理は即時に普通に実行
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -403,8 +404,7 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  // 🎯 修正：マスのイベントモーダル（カップルマス等）は、3秒待たずに「遅延ゼロ」で即座に起動させる！
-  // これにより、カップル1回目のルーレット盤が0秒目に一瞬で大画面に表示され、スマホと同時に回り始めます。
+  // イベント画面の立ち上げ（1回目のモーダル展開）は、3秒待たずに「遅延ゼロ」で即座に起動させる
   if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
     if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
       handleForceStopSquare(p, targetSquare);
@@ -414,7 +414,7 @@ function executeSyncedRoulette(resultNum) {
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
-    // イベントモード中の場合は、すごろくの通常移動のテキスト描画やイベントの多重発動をスキップ
+    // イベントモード中の場合は、すごろくの通常移動のテキスト描画やイベントの多重発動をスクリプト側でスキップ
     if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
       console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
       return; 
@@ -493,7 +493,7 @@ const GAME_EVENTS = {
   ランクアップ: {
     class: "theme-rankup",
     title: "🔥 ランクアップチャンス 🔥",
-    desc: (name) => `${name} さんの実力試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
+    desc: (name) => `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
   },
   引退: {
     class: "theme-retirement",
@@ -501,32 +501,6 @@ const GAME_EVENTS = {
     desc: (name) => `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
   },
 };
-
-function generateCoupleTargetTable(activePlayerId) {
-  const otherPlayers = players.filter(
-    (p) => String(p.id) !== String(activePlayerId),
-  );
-
-  let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
-
-  for (let i = 1; i <= 10; i++) {
-    let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
-
-    if (i % 2 === 1 && otherPlayers.length > 0) {
-      const idx = Math.floor((i - 1) / 2) % otherPlayers.length;
-      targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
-    }
-
-    html += `
-      <li class="event-table-item">
-        <div class="event-table-num-badge">${i}</div>
-        <div>${targetText}</div>
-      </li>
-    `;
-  }
-  html += `</ul>`;
-  return html;
-}
 
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
