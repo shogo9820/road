@@ -8,8 +8,7 @@ window.boardManager = {
   gridSize: 100, // マス目の描画サイズ
   cols: 10,      // 横のマス数
 
-  // 🎯 マスのタイプ（特性）に応じた正しいカラーパレットの定義
-  // 前のデザインと1ミリも変えずに完全に色分けを復元します
+  // マスのタイプ（特性）に応じた正しいカラーパレットの定義
   squareColors: {
     start: "#4caf50",            /* スタート: 緑 */
     goal: "#f44336",             /* ゴール: 赤 */
@@ -21,7 +20,7 @@ window.boardManager = {
     heal: "#8bc34a"              /* 回復マス: 明るい緑 */
   },
 
-  // プレイヤーの駒（ピン）のカラーパレット（最大8人分、プレイヤーカードのグラデーションと同期）
+  // 🎯 修正：文字化けしていた7番目のピンクのカラーコード「#e91e63」へ完全に修正しました
   playerColors: [
     "#f44336", // 1: 赤
     "#2196f3", // 2: 青
@@ -29,7 +28,7 @@ window.boardManager = {
     "#ff9800", // 4: オレンジ
     "#9c27b0", // 5: 紫
     "#00bcd4", // 6: シアン
-    "#e91e6 pink", // 7: ピンク
+    "#e91e63", // 7: ピンク
     "#795548"  // 8: 茶色
   ],
 
@@ -64,7 +63,6 @@ window.boardManager = {
       y: row * this.gridSize + this.gridSize / 2
     };
   },
-
   // 盤面全体のレンダリング（データ同期が走るたびにPC側から呼び出される）
   draw(playersList, activeIdx) {
     if (!this.ctx || !this.canvas) this.init(100);
@@ -78,29 +76,25 @@ window.boardManager = {
       console.error("⚠️ エラー: MAP_SQUARES のマスターデータが読み込まれていません。");
       return;
     }
+
     // 3. マス目同士を繋ぐルート線の描画
     this.ctx.beginPath();
     this.ctx.strokeStyle = "#b0bec5";
     this.ctx.lineWidth = 6;
-    this.ctx.setLineDash([5, 5]); // 点線にする
+    this.ctx.moveTo(this.getCoordinates(0).x, this.getCoordinates(0).y);
     
-    for (let i = 0; i < MAP_SQUARES.length; i++) {
+    for (let i = 1; i < MAP_SQUARES.length; i++) {
       const pos = this.getCoordinates(i);
-      if (i === 0) {
-        this.ctx.moveTo(pos.x, pos.y);
-      } else {
-        this.ctx.lineTo(pos.x, pos.y);
-      }
+      this.ctx.lineTo(pos.x, pos.y);
     }
     this.ctx.stroke();
-    this.ctx.setLineDash([]); // 点線を戻す
 
     // 4. マス目本体の描画（特性に応じた色分けを適用）
     MAP_SQUARES.forEach((sq, idx) => {
       const pos = this.getCoordinates(idx);
       const radius = this.gridSize * 0.35; // マスの半径
 
-      // 🎯 マスのタイプ（特性）に合わせて、上で定義した正しいカラーを適用する
+      // 🎯 マスのタイプ（特性）に合わせて、正しいカラーを適用する
       let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
       
       // 特殊なテキスト（【役職マス】など）が含まれている場合のフォールバック補正
@@ -140,7 +134,6 @@ window.boardManager = {
         this.ctx.fillText(sq.id.toString(), pos.x, pos.y);
       }
     });
-
     // 5. プレイヤーの駒（ピン）の描画
     if (playersList && Array.isArray(playersList)) {
       // 同じマスに複数のプレイヤーがいる場合に位置をずらすためのカウンタ
