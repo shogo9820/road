@@ -353,14 +353,14 @@ function executeSyncedRoulette(resultNum) {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
-  // 2. 【遅延ゼロ：0秒目】ホイールをスマホと「遅延ゼロ」で即座に回転開始
+  // 2. 【遅延ゼロ：0秒目】ホイールを即座に回転開始
   if (wheel) {
     console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスのデータ処理、ボード描写は即時実行（ピンは先に動く）
+  // 3. 【遅延ゼロ：0秒目】すごろくの移動計算（強制ストップマスの検知）
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -380,6 +380,7 @@ function executeSyncedRoulette(resultNum) {
   let squareLocation = "";
   let targetSquare = null;
   if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
+    // 🎯 最新の止まったマス目のデータを特定
     targetSquare = MAP_SQUARES[p.position];
     squareLocation = targetSquare.location || "";
     applySquareEffects(p, targetSquare);
@@ -396,30 +397,26 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  // ❌ 修正：ここに残っていた「 0秒目で即座にモーダルを開く handleForceStopSquare 」の記述を完全に削除しました！
-
-  // 🎯 パーツ7の遅延表示関数を呼び出すために、出目と止まったマスを安全に中継
-  triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox);
+  // 🎯 修正：3秒後の遅延関数へ、特定した最新の「 targetSquare 」データを一分の隙もなく100%確実に引き渡します
+  triggerDelayedDisplay(resultNum, targetSquare);
 }
 
 function applySquareEffects(player, square) {
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
-
   if (drinkAmount > 0) {
     if (!player.drinkCount) player.drinkCount = 0;
     player.drinkCount += drinkAmount;
-
     if (player.currentHp !== undefined) {
       player.currentHp = Math.max(0, player.currentHp - drinkAmount * 10);
     }
   }
 }
 
-// ─── pc.js : 3秒後の表示制御＆イベントモーダル定義 ───
+// ─── pc.js : 【パーツ7：修正版】3秒停止した瞬間に最新マスからカップルモーダルを起動する処理 ───
 
-function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
+function triggerDelayedDisplay(resultNum, targetSquare) {
   setTimeout(() => {
-    // 🎯 修正：スコープエラーを完全に直すため、タイマー内で再度DOM要素を安全に再取得して上書きします
+    // 🎯 修正：スコープエラーを完全に防ぐため、タイマー内でDOM要素とプレイヤーデータを安全に再取得
     const innerResEl = document.getElementById("roulette-result-display");
     const innerEventBox = document.getElementById("event-text");
     const tileDescEl = document.getElementById("current-tile-desc");
@@ -432,23 +429,31 @@ function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
       return; 
     }
 
+    // 🎯 引数から渡ってきた移動後の最新マスデータ（targetSquare）を元に、3秒後のタイミングで確実に処理を実行
     if (targetSquare && p) {
+      // 【3秒の遅延満了：止まった瞬間】中央の説明テキストを表示！
       if (innerEventBox) {
         innerEventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
       }
 
+      // 【3秒の遅延満了：止まった瞬間】右下のマスの内容説明欄へテキストを流し込む！
       if (tileDescEl) {
         let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
         let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
         tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
       }
 
+      // 🎯 修正：ルーレットが3秒間回りきってピタッと止まったこの瞬間に、引き渡されたマスデータ（targetSquare）を使ってhandleForceStopSquareを確実に呼び出します！
+      if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+        console.log(`[PC] 3秒遅延満了。強制ストップイベント（ID: ${targetSquare.id}）を起動します。`);
+        handleForceStopSquare(p, targetSquare);
+      }
+
+      // 役職マスのダイアログ処理も同様に止まった瞬間に中継
       const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
       if (isJobSquare && !p.hasJob) {
         const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
         const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-
-        console.log("役職マスに到達しました。スマホへダイアログ表示を要求します:", { jobId, jobName });
         socket.emit("triggerJobChoice", {
           roomCode: roomCode,
           playerId: p.id,
@@ -458,6 +463,7 @@ function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
       }
     }
 
+    // 止まった瞬間の最新ステータスを全員へ同期
     socket.emit("updateGameState", {
       roomCode: roomCode,
       activePlayerIndex: activePlayerIndex,
@@ -474,7 +480,7 @@ function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
         job: pl.job || "モブ"
       }))
     });
-  }, 3000);
+  }, 3000); // ルーレットが回りきる3秒（3000ms）をきっちり待つ
 }
 
 const GAME_EVENTS = {
