@@ -6,7 +6,9 @@ let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
 let isPCEventMode = false;
 
+// 🎯 画面崩れによるボタン不動を防ぐため、DOMContentLoadedのタイミングで確実に要素を特定する
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("[PC] 画面初期化開始...");
   initEventListeners();
   initSocketListeners();
 });
@@ -14,8 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function initEventListeners() {
   const btnCreate = document.getElementById("btn-create-room");
   if (btnCreate) {
+    console.log("[PC] ルーム作成ボタンを発見、イベントを登録します。");
     btnCreate.removeEventListener("click", handleCreateRoom);
     btnCreate.addEventListener("click", handleCreateRoom);
+  } else {
+    console.error("⚠️ エラー: HTML内に 'btn-create-room' というIDのボタンが見つかりません。");
   }
 
   const btnNext = document.getElementById("btn-next-turn");
@@ -27,6 +32,7 @@ function initEventListeners() {
 
 function handleCreateRoom(e) {
   if (e) e.preventDefault();
+  console.log("[PC] ルーム作成ボタンがクリックされました。サーバーへ送信します。");
   const hostNameInput = document.getElementById("pc-host-name");
   const hostName =
     hostNameInput && hostNameInput.value ? hostNameInput.value : "やじま";
@@ -45,6 +51,7 @@ function initSocketListeners() {
   });
 
   socket.on("roomCreated", (data) => {
+    console.log("[PC] ルーム作成成功を受信:", data.roomCode);
     roomCode = data.roomCode;
     if (data.players) players = data.players;
 
@@ -97,15 +104,12 @@ function initSocketListeners() {
     renderLocationPlayersList();
   });
 
-  // 🎯【サーバー主導】出目が確定して一斉指示が飛んできた瞬間の処理
   socket.on("spinRoulette", (data) => {
     if (data) {
       if (data.activePlayerIndex !== undefined) {
         activePlayerIndex = data.activePlayerIndex;
       }
       const resultNum = data.result !== undefined ? data.result : 1;
-      
-      // 遅延ゼロ（0秒目）で、PC右上ルーレット、またはイベント専用盤をスマホと完璧に同時に回し始めます
       executeSyncedRoulette(resultNum);
     }
   });
@@ -130,7 +134,6 @@ function initSocketListeners() {
     }
   });
 
-  // 🎯【サーバー主導】偶数達成時、サーバーで生成された綺麗なランダム対応表をそのまま受け取って描写するだけ
   socket.on("startCoupleSecondRoulette", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -166,17 +169,14 @@ function initSocketListeners() {
     }
   });
 
-  // カップルイベントが完全に終わった時
   socket.on("coupleEventFinished", (data) => {
-    // 1. 【遅延ゼロ：0秒目】結果が届いた瞬間（ルーレットが回り始めた瞬間）は、画面中央を判定中にしてネタバレ防止
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
       eventBox.innerHTML = `<p class="event-msg" style="font-size:1.5rem; color:#666; font-weight:bold; animation: pulse 1s infinite;">🌀 運命の判定中... ルーレットを注視せよ！ 🌀</p>`;
     }
 
-    isPCEventMode = false; // フラグは即座に通常モードに戻しておく
+    isPCEventMode = false;
 
-    // 2. 🎯【3秒の遅延】ルーレットが止まるタイミング（3秒後）に合わせて結果を表示し、モーダルを閉じる
     setTimeout(() => {
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
@@ -196,7 +196,7 @@ function initSocketListeners() {
         </div>`;
         }
       }
-    }, 3000); // 3秒の回転時間待ち
+    }, 3000);
   });
 }
 
@@ -366,7 +366,7 @@ function executeSyncedRoulette(resultNum) {
     console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、プレイヤーマスの計算、ボード描写などの処理は即時に普通に実行
+  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスの計算、ボード描写などのデータ処理は即時実行
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -380,7 +380,7 @@ function executeSyncedRoulette(resultNum) {
     }
   }
 
-  // イベントモード中でない（通常移動）場合のみ、コマを即座に進める
+  // 通常移動の場合のみコマを進める
   if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
     p.position = targetPosition;
   }
@@ -404,29 +404,28 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  // イベント画面の立ち上げ（1回目のモーダル展開）は、3秒待たずに「遅延ゼロ」で即座に起動させる
+  // イベント画面の立ち上げ（1回目のモーダル展開）は、3秒待たずに「遅延ゼロ」で即座に起動
   if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
     if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
       handleForceStopSquare(p, targetSquare);
     }
   }
-  // ─── ★4. 🎯【3秒の遅延】ここから下は、ルーレットの回転がピタッと「停止した瞬間」に初めて画面に表示させる ───
+  // ─── ★4. 🎯【3秒の遅延】ここから下は、ルーレットがピタッと「停止した瞬間」に初めて画面に表示させる ───
   setTimeout(() => {
     if (resEl) resEl.textContent = `🎯 出目: ${resultNum}`;
 
-    // イベントモード中の場合は、すごろくの通常移動のテキスト描画やイベントの多重発動をスクリプト側でスキップ
     if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
       console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
       return; 
     }
 
     if (targetSquare) {
-      // 🎯【3秒後】ルーレットが止まった瞬間に、右下のマスの説明テキストを画面中央（event-text）へ普通に表示！
+      // 🎯【3秒後】ルーレットが止まった瞬間に、右下のマスの説明テキストを画面中央（event-text）へ表示！
       if (eventBox) {
         eventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
       }
 
-      // 🎯【3秒後】ルーレットが止まった瞬間に、初めてスマホ側へ役職選択ダイアログの表示指示を送信（ネタバレ防止）
+      // 🎯【3秒後】ルーレットが止まった瞬間に、初めてスマホ側へ役職選択ダイアログの表示指示を送信
       const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
       if (isJobSquare && !p.hasJob) {
         const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
@@ -459,7 +458,7 @@ function executeSyncedRoulette(resultNum) {
         job: pl.job || "モブ"
       }))
     });
-  }, 3000); // ルーレット回転時間と同じ3秒の遅延
+  }, 3000);
 }
 
 function applySquareEffects(player, square) {
@@ -501,6 +500,32 @@ const GAME_EVENTS = {
     desc: (name) => `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
   },
 };
+
+function generateCoupleTargetTable(activePlayerId) {
+  const otherPlayers = players.filter(
+    (p) => String(p.id) !== String(activePlayerId),
+  );
+
+  let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
+
+  for (let i = 1; i <= 10; i++) {
+    let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
+
+    if (i % 2 === 1 && otherPlayers.length > 0) {
+      const idx = Math.floor((i - 1) / 2) % otherPlayers.length;
+      targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
+    }
+
+    html += `
+      <li class="event-table-item">
+        <div class="event-table-num-badge">${i}</div>
+        <div>${targetText}</div>
+      </li>
+    `;
+  }
+  html += `</ul>`;
+  return html;
+}
 
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
