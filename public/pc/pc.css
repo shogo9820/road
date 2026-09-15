@@ -172,6 +172,25 @@ body:has(.pc-screen) .app-container {
 .map-card {
   text-align: center;
   padding: 16px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  
+  /* 🎯 追記：中央カラムの横幅いっぱいにコンテナを広げる */
+  width: 100%;
+  overflow: hidden;
+}
+
+/* 🎯 追記：1000pxの巨大なCanvas要素を、3カラム中央の横幅に合わせて自動で縮小・ジャストフィットさせる設定 */
+#board-canvas {
+  width: 100% !important;   /* コンテナの横幅に合わせて自動で100%縮小 */
+  height: auto !important;  /* 縦横比（1:1の正方形）を崩さずに綺麗に維持 */
+  max-width: 1000px;        /* 画面がどれだけ大きくなっても最大1000pxまでに制限 */
+  display: block;
+  margin: 0 auto;
+  border-radius: 12px;      /* 角を丸くして背景に馴染ませる */
 }
 
 .map-header {
@@ -180,7 +199,6 @@ body:has(.pc-screen) .app-container {
   align-items: center;
   margin-bottom: 12px;
 }
-
 .mode-badge {
   background: var(--primary-color);
   color: #fff;
