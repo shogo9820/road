@@ -1,10 +1,23 @@
 /* ==========================================
-   1. PC用レイアウト (index.html)
+   1. PC用レイアウト (index.html) と画面表示制御
    ========================================== */
 body:has(.pc-screen) .app-container {
   width: 100%;
   max-width: 1200px; /* 横長大画面を最大限活かす */
   margin: 0 auto;
+}
+
+/* 🎯 修正：PC側の各画面が最初から全部露出しないように、非表示制御を確実に復活 */
+#screen-setup,
+#screen-waiting,
+#screen-game {
+  display: none;
+}
+
+#screen-setup.active,
+#screen-waiting.active,
+#screen-game.active {
+  display: block;
 }
 
 .card {
@@ -181,7 +194,7 @@ body:has(.pc-screen) .app-container {
   min-height: 40px;
 }
 
-/* --- PC右上：通常盤ルーレット内の数字配置（直径200pxサイズ用の位置を上書き指定） --- */
+/* --- PC右上：通常盤ルーレット内の数字配置設定 --- */
 body:not(:has(.phone-screen)) .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
 body:not(:has(.phone-screen)) .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
 body:not(:has(.phone-screen)) .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
@@ -202,7 +215,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75);
-  display: flex;
+  display: none; /* 🎯 修正：通常時は絶対に非表示にする（これが漏れて露出していました） */
   justify-content: center;
   align-items: center;
   z-index: 9999;
@@ -211,7 +224,9 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   transition: opacity 0.3s ease;
 }
 
+/* 🎯 修正：.active が付与されたイベント中のみ flex で画面最前面に出現させる */
 .event-modal-overlay.active {
+  display: flex !important;
   opacity: 1;
   pointer-events: auto;
 }
@@ -391,7 +406,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   z-index: 4;
 }
 
-/* 💻 PC側専用モーダル（直径300pxサイズ）用に配置位置を拡大調整 */
+/* PC側専用モーダル（直径300pxサイズ）用に配置位置を拡大調整 */
 .event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
 .event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
 .event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
