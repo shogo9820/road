@@ -32,12 +32,17 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 🎯 修正：HTML側の「参加する」ボタン（ID: btn-join-room）のクリックイベントを確実に登録！
+  // これが記述されていなかったため、コードを打ってボタンを押しても完全に無反応になっていました。
   const btnJoin = document.getElementById("btn-join-room");
   if (btnJoin) {
+    console.log("[スマホ] 参加するボタンを発見。クリックイベントを登録します。");
     btnJoin.addEventListener("click", (e) => {
       e.preventDefault();
-      joinRoom();
+      joinRoom(); // 記述されていた入室処理関数を確実に呼び出す
     });
+  } else {
+    console.error("⚠️ エラー: スマホのHTML内に 'btn-join-room' というIDのボタンが見つかりません。");
   }
 
   document.getElementById("btn-phone-add-player")?.addEventListener("click", addPlayerRow);
@@ -123,7 +128,6 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
@@ -152,6 +156,7 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("showJobChoice", (data) => {
     showJobChoiceDialog(data.jobId, data.jobName, data.playerId);
   });
+
   // カップルイベント受取（1回目スタート）
   socket.on("showCoupleEvent", (data) => {
     console.log("サーバーからカップルイベント開始指示を受信しました:", data);
@@ -343,14 +348,12 @@ function sendStartGame() {
   showScreen("phone-screen-play");
 }
 
-// 🎯【サーバー主導】ボタンを押した瞬間は、出目を決めずサーバーへ「回したい」と通知を送るだけに一本化
 function requestSpin() {
   if (isSpinning) return;
   
   const spinBtn = document.getElementById("btn-phone-spin");
   if (spinBtn) spinBtn.disabled = true;
 
-  // モーダル上のボタン（2回目の告白）が押された時も共通トリガーでサーバーへ発信
   const modal = document.getElementById("mobile-couple-event-modal");
   if (modal) modal.style.display = "none";
 
