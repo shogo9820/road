@@ -211,12 +211,15 @@
     </div>
   </div>
 </div>
-    <!-- ライブラリ＆スクリプト -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../../server.js"></script>
-    <script src="../../master/gameMaster.js"></script>
-    <script src="board.js"></script>
-    <script src="pc.js"></script>
-  </body>
+<!-- 1. 外部ライブラリ -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cloudflare.com..."></script>
+
+<!-- 2. 自作の共通処理・関数定義ファイル（pc.jsより「上」に書く） -->
+<script src="../../master/gameMaster.js"></script>
+<script src="board.js"></script>
+
+<!-- 3. メインの実行ファイル（一番「下」に書く） -->
+<script src="pc.js"></script>
+</body>
 </html>
