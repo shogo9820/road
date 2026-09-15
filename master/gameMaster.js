@@ -124,5 +124,12 @@ const MAP_SQUARES = [
   { id: 99, type: "goal", text: "【ゴール】", isGoal: true, mode: "all", nextId: [] }
 ];
 
-// Node.js (CommonJS) 環境へ確実にマスターデータを公開・引き渡す
-module.exports = { JOBS, MAP_SQUARES };
+// ─── gameMaster.js : module is not defined を根本から消し去り、データを安全に引き渡す修正 ───
+
+// 🎯 修正：サーバー環境（typeof moduleが存在する時）のみ module.exports を実行し、ブラウザ環境なら安全にスルーして window グローバルに直結させます
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { JOBS, MAP_SQUARES };
+} else {
+  window.JOBS = JOBS;
+  window.MAP_SQUARES = MAP_SQUARES;
+}
