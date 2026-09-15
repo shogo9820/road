@@ -6,7 +6,6 @@ let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
 let isPCEventMode = false;
 
-// 🎯 画面崩れによるボタン不動を防ぐため、DOMContentLoadedのタイミングで確実に要素を特定する
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[PC] 画面初期化開始...");
   initEventListeners();
@@ -16,11 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
 function initEventListeners() {
   const btnCreate = document.getElementById("btn-create-room");
   if (btnCreate) {
-    console.log("[PC] ルーム作成ボタンを発見、イベントを登録します。");
     btnCreate.removeEventListener("click", handleCreateRoom);
     btnCreate.addEventListener("click", handleCreateRoom);
-  } else {
-    console.error("⚠️ エラー: HTML内に 'btn-create-room' というIDのボタンが見つかりません。");
   }
 
   const btnNext = document.getElementById("btn-next-turn");
@@ -32,7 +28,6 @@ function initEventListeners() {
 
 function handleCreateRoom(e) {
   if (e) e.preventDefault();
-  console.log("[PC] ルーム作成ボタンがクリックされました。サーバーへ送信します。");
   const hostNameInput = document.getElementById("pc-host-name");
   const hostName =
     hostNameInput && hostNameInput.value ? hostNameInput.value : "やじま";
@@ -44,14 +39,12 @@ function handleNextTurnClick(e) {
   if (players.length === 0) return;
   socket.emit("playerAction", { roomCode, action: "nextTurn" });
 }
-
 function initSocketListeners() {
   socket.on("connect", () => {
     console.log("Socket.io 接続成功:", socket.id);
   });
 
   socket.on("roomCreated", (data) => {
-    console.log("[PC] ルーム作成成功を受信:", data.roomCode);
     roomCode = data.roomCode;
     if (data.players) players = data.players;
 
@@ -113,6 +106,7 @@ function initSocketListeners() {
       executeSyncedRoulette(resultNum);
     }
   });
+
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined)
@@ -142,16 +136,13 @@ function initSocketListeners() {
     </p>`;
     }
 
-    const dynamicTableZone = document.getElementById(
-      "pc-event-table-dynamic-zone",
-    );
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
 
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
-        let targetText =
-          '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
+        let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
 
         if (target) {
           targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (カップル成立)</span>`;
@@ -199,7 +190,6 @@ function initSocketListeners() {
     }, 3000);
   });
 }
-
 function switchScreen(targetId) {
   const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
   screenIds.forEach((id) => {
@@ -319,7 +309,7 @@ function updateCurrentPlayerDisplay() {
 
   renderLocationPlayersList();
 }
-// ─── pc.js : executeSyncedRoulette ───
+
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -331,7 +321,6 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、ルーレットが回り始めた瞬間のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
@@ -340,14 +329,12 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 角度計算用の設定
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
 
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 回転させるホイール（要素）の特定
   let wheel;
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
     wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
@@ -357,16 +344,11 @@ function executeSyncedRoulette(resultNum) {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
-  // 2. 【遅延ゼロ：0秒目】PC右上の通常ルーレット、またはイベント専用盤をスマホと「遅延ゼロ」で即座に回転開始
   if (wheel) {
-    console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
-  } else {
-    console.error("⚠️ エラー: 回転させるルーレットのHTML要素が見つかりません。");
   }
 
-  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスの計算、ボード描写などのデータ処理は即時実行
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -374,13 +356,11 @@ function executeSyncedRoulette(resultNum) {
       const sq = MAP_SQUARES[pos];
       if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
         targetPosition = pos;
-        console.log(`強制ストップマス（ID: ${sq.id}, ${sq.text}）でピタッと停止します。`);
         break;
       }
     }
   }
 
-  // 通常移動の場合のみコマを進める
   if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
     p.position = targetPosition;
   }
@@ -404,7 +384,6 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  // イベント画面の立ち上げ（1回目のモーダル展開）は、3秒待たずに「遅延ゼロ」で即座に起動
   if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
     if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
       handleForceStopSquare(p, targetSquare);
@@ -420,9 +399,18 @@ function executeSyncedRoulette(resultNum) {
     }
 
     if (targetSquare) {
-      // 🎯【3秒後】ルーレットが止まった瞬間に、右下のマスの説明テキストを画面中央（event-text）へ表示！
+      // 🎯【3秒後】ルーレットが止まった瞬間に、右側中央の「event-text」へマスの説明を表示！
       if (eventBox) {
         eventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
+      }
+
+      // 🎯 修正：「右下の現在のマスの内容説明欄（ID: current-tile-desc）」へ、止まったマスの飲酒量や内容を確実に反映！
+      // これまで要素を取得して中身を上書きする処理が完全に抜けていたため、何も表示されなくなっていました。
+      const tileDescEl = document.getElementById("current-tile-desc");
+      if (tileDescEl) {
+        let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
+        let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
+        tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
       }
 
       // 🎯【3秒後】ルーレットが止まった瞬間に、初めてスマホ側へ役職選択ダイアログの表示指示を送信

@@ -207,3 +207,33 @@ label:has(input[name="phone-mode"]:checked),
   z-index: 10;
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
 }
+
+/* ─── common.css : ルーレット内の数字が止まった時に一番見やすくなるように角度を最適化 ─── */
+.roulette-num {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  top: 50%;
+  left: 50%;
+  margin-top: -15px;
+  margin-left: -15px;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+  text-align: center;
+  line-height: 30px;
+  z-index: 4;
+}
+
+/* 🎯 各数字の回転（rotate）の値を調整し、止まった出目が最上部に来た時にプレイヤーから正立して読めるように修正 */
+.num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
+.num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
+.num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
+.num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
+.num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
+.num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
+.num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
+.num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
+.num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
+.num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }

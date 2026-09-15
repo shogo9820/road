@@ -390,6 +390,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
 .theme-rankup .event-table-title { color: #b78103; border-color: #f5a623; }
 .theme-rankup .event-table-num-badge { background: #f5a623; }
 
+/* ─── pc.css : PC側専用モーダルの巨大ルーレット（直径300pxサイズ）用の位置と角度の最適化 ─── */
 .event-roulette-wheel .roulette-num {
   position: absolute;
   width: 30px;
@@ -407,7 +408,7 @@ body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -
   z-index: 4;
 }
 
-/* PC側専用モーダル（直径300pxサイズ）用に配置位置を拡大調整 */
+/* 🎯 モーダル内でも最上部で止まった数字がプレイヤーから一番見やすくなるように補正 */
 .event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
 .event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
 .event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }

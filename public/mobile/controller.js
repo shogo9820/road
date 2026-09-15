@@ -460,3 +460,59 @@ function sendNextTurn() {
     nextBtn.style.display = "none";
   }
 }
+
+
+
+
+// ─── controller.js : 開発デバッグ用メニューのワープボタンを機能させる修正 ───
+
+// HTML側にある「35マス目（カップル）にワープ」ボタンのID名に完全に紐付けます
+const btnWarp35 = document.getElementById("btn-warp-35") || document.querySelector('button[onclick*="35"]') || document.evaluate("//button[contains(text(), '35マス目')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+if (btnWarp35) {
+  console.log("[デバッグ] 35マス目ワープボタンを検知。通信リスナーを直結します。");
+  
+  // 既存の古いインラインonclick属性があれば干渉防止のためクリア
+  btnWarp35.removeAttribute("onclick");
+  
+  btnWarp35.addEventListener("click", (e) => {
+    e.preventDefault();
+    
+    // 現在のターンプレイヤーを強制特定
+    const p = players[activePlayerIndex];
+    if (!p) {
+      alert("プレイヤーデータが同期されていません");
+      return;
+    }
+
+    console.log(`[デバッグ発動] ${p.name} を35マス目（カップルマス）へ強制ワープさせます。`);
+    
+    // 1. 位置データを強制的に「35」へ書き換える
+    p.position = 35;
+    p.location = "宅飲み"; // マスのロケーション属性と同期
+
+    // 2. サーバー主導型の構造に合わせ、最新のワープ状態をサーバーへ強制同期（即座にPC大画面へ反映）
+    socket.emit("updateGameState", {
+      roomCode: currentRoomCode,
+      activePlayerIndex: activePlayerIndex,
+      players: players.map(pl => ({
+        id: pl.id,
+        position: pl.position,
+        location: pl.location,
+        currentHp: pl.currentHp,
+        drinkCount: pl.drinkCount,
+        isLover: pl.isLover,
+        skipTurn: pl.skipTurn,
+        hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
+        jobId: pl.jobId || null,
+        job: pl.job || "モブ"
+      }))
+    });
+
+    // 3. 🎯 サーバー主導型すごろくのルールに基づき、PC大画面側（pc.js）に対して35マス目の「強制ストップ処理」を0秒目で即時実行させる電波を飛ばす
+    socket.emit("requestSpinRoulette", { 
+      roomCode: currentRoomCode,
+      forcedResult: 0 // 位置同期をキープしたままイベントだけを叩き起こすトリガー
+    });
+  });
+}
