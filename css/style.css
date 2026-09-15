@@ -123,7 +123,6 @@ body:has(.phone-screen) .app-container {
   font-size: 4.5rem;
   margin: 20px 0;
 }
-
 /* ==========================================
    3. 共通コンポーネント (ボタン・フォーム等)
    ========================================== */
@@ -243,7 +242,7 @@ label:has(input[name="phone-mode"]:checked),
   gap: 20px;
 }
 
-/* --- 左カラム: プレイヤー情報（美しくリファイン） --- */
+/* --- 左カラム: プレイヤー情報 --- */
 .current-player-card {
   background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
   color: #fff;
@@ -367,9 +366,8 @@ label:has(input[name="phone-mode"]:checked),
   color: var(--primary-color);
   min-height: 40px;
 }
-
 /* ==========================================
-   人生ゲーム風ルーレット盤（1〜10対応版）
+   人生ゲーム風ルーレット盤（1〜10対応通常・イベント共通）
 ========================================== */
 .roulette-container {
   position: relative;
@@ -378,7 +376,9 @@ label:has(input[name="phone-mode"]:checked),
   margin: 15px auto;
 }
 
-.roulette-wheel {
+.roulette-wheel,
+#controller-roulette-wheel,
+.event-roulette-wheel {
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -400,7 +400,9 @@ label:has(input[name="phone-mode"]:checked),
   transition: transform 3s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
 
-.roulette-wheel::after {
+.roulette-wheel::after,
+#controller-roulette-wheel::after,
+.event-roulette-wheel::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -412,6 +414,7 @@ label:has(input[name="phone-mode"]:checked),
   border: 3px solid #333;
   border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 5;
 }
 
 .roulette-num {
@@ -428,18 +431,32 @@ label:has(input[name="phone-mode"]:checked),
   text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
   text-align: center;
   line-height: 30px;
+  z-index: 4;
 }
 
-.num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
-.num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
-.num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
-.num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
-.num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
-.num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
-.num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
-.num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
-.num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
-.num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+/* 📱 スマホ画面（直径200pxサイズ）は数字を中心側（-65px）へ寄せる */
+body:has(.phone-screen) .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
+body:has(.phone-screen) .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
+body:has(.phone-screen) .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
+body:has(.phone-screen) .num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
+body:has(.phone-screen) .num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
+body:has(.phone-screen) .num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
+body:has(.phone-screen) .num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
+body:has(.phone-screen) .num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
+body:has(.phone-screen) .num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
+body:has(.phone-screen) .num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+
+/* 💻 PC画面（直径200pxサイズ右上通常盤）の基本位置設定 */
+body:not(:has(.phone-screen)) .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
+body:not(:has(.phone-screen)) .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
+body:not(:has(.phone-screen)) .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
+body:not(:has(.phone-screen)) .num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
+body:not(:has(.phone-screen)) .num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
+body:not(:has(.phone-screen)) .num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
+body:not(:has(.phone-screen)) .num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
+body:not(:has(.phone-screen)) .num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
+body:not(:has(.phone-screen)) .num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
+body:not(:has(.phone-screen)) .num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
 
 .roulette-pointer {
   position: absolute;
@@ -454,11 +471,9 @@ label:has(input[name="phone-mode"]:checked),
   z-index: 10;
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
 }
-
 /* ==========================================
-   特殊イベントテーマ：カップル（ピンク系）
+   特殊イベントテーマ：カップル（ピンク系着せ替え）
 ========================================== */
-/* コントローラーのカード枠や背景の変更 */
 .theme-couple {
   background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
   border: 4px solid #ff69b4;
@@ -470,24 +485,21 @@ label:has(input[name="phone-mode"]:checked),
   color: #d81b60;
 }
 
-/* カップル用ルーレットの配色 (conic-gradientをピンク/赤系で統一) */
-.theme-couple .roulette-wheel {
+/* クラス「theme-couple」が付与された時のみ、円盤をピンク・赤系10分割に上書き */
+.theme-couple .roulette-wheel,
+.theme-couple #controller-roulette-wheel,
+.theme-couple .event-roulette-wheel,
+.theme-couple .couple-wheel {
   border-color: #d81b60;
   background: conic-gradient(
-    #ff4d4d 0deg 36deg,    /* 赤 */
-    #ff6b8b 36deg 72deg,   /* ピンク */
-    #ff4d4d 72deg 108deg, 
-    #ff6b8b 108deg 144deg, 
-    #ff4d4d 144deg 180deg, 
-    #ff6b8b 180deg 216deg, 
-    #ff4d4d 216deg 252deg, 
-    #ff6b8b 252deg 288deg, 
-    #ff4d4d 288deg 324deg, 
-    #ff6b8b 324deg 360deg 
+    #ff4d4d 0deg 36deg,     #ff6b8b 36deg 72deg,
+    #ff4d4d 72deg 108deg,   #ff6b8b 108deg 144deg,
+    #ff4d4d 144deg 180deg,  #ff6b8b 180deg 216deg,
+    #ff4d4d 216deg 252deg,  #ff6b8b 252deg 288deg,
+    #ff4d4d 288deg 324deg,  #ff6b8b 324deg 360deg
   );
 }
 
-/* ボタンをピンクに変更 */
 .theme-couple .btn-spin {
   background-color: #ff4081;
   box-shadow: 0 4px 6px rgba(255, 64, 129, 0.3);
@@ -504,18 +516,16 @@ label:has(input[name="phone-mode"]:checked),
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
-  display: none; /* デフォルトは非表示 */
+  display: none;
   justify-content: center;
   align-items: center;
   z-index: 9999;
 }
 
-/* モーダルが開いている状態 */
 .modal-overlay.active {
-  display: flex; /* アクティブなときだけ flex で中央配置 */
+  display: flex;
 }
 
-/* カップルイベント専用のカードデザイン */
 .couple-event-card, .mobile-couple-card {
   background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
   border: 4px solid #ff69b4;
@@ -541,7 +551,6 @@ label:has(input[name="phone-mode"]:checked),
   margin-bottom: 20px;
 }
 
-/* スマホ側の大きなピンクボタン */
 .btn-pink {
   background-color: #ff4081;
   color: white;
@@ -560,7 +569,6 @@ label:has(input[name="phone-mode"]:checked),
   transform: scale(0.95);
 }
 
-/* PC側の特殊ルーレット枠のレイアウト */
 .special-roulette-container {
   position: relative;
   width: 250px;
@@ -568,17 +576,14 @@ label:has(input[name="phone-mode"]:checked),
   margin: 0 auto 20px;
 }
 
-/* ルーレット本体（既存のルーレット画像を流用するか、ピンク系にする用） */
 .couple-wheel {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: #f8bbd0; /* 一旦の仮色 */
+  background-color: #f8bbd0;
   border: 5px solid #d81b60;
-  /* 必要に応じて背景画像にルーレットの画像を指定 */
 }
 
-/* 状態表示テキスト */
 .event-highlight-text {
   font-size: 1.2rem;
   font-weight: bold;
@@ -595,8 +600,6 @@ label:has(input[name="phone-mode"]:checked),
 /* ==========================================
    A. 共通イベントモーダル（親の土台）
    ========================================== */
-
-/* 全画面を覆う半透明の背景（親） */
 .event-modal-overlay {
   position: fixed;
   top: 0;
@@ -613,13 +616,11 @@ label:has(input[name="phone-mode"]:checked),
   transition: opacity 0.3s ease;
 }
 
-/* モーダル表示時用のクラス */
 .event-modal-overlay.active {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* イベントカードのベース（中身の箱） */
 .event-card-container {
   background: #ffffff;
   border-radius: 20px;
@@ -628,11 +629,10 @@ label:has(input[name="phone-mode"]:checked),
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
   max-width: 500px;
   width: 90%;
-  border: 4px solid #cccccc; /* デフォルトの枠線 */
+  border: 4px solid #cccccc;
   transition: all 0.3s ease;
 }
 
-/* タイトルと説明文 */
 .event-card-container .event-title {
   font-size: 1.8rem;
   font-weight: 900;
@@ -647,7 +647,6 @@ label:has(input[name="phone-mode"]:checked),
   margin-bottom: 20px;
 }
 
-
 /* ==========================================
    B. イベント用共通ルーレットの土台
    ========================================== */
@@ -658,7 +657,6 @@ label:has(input[name="phone-mode"]:checked),
   margin: 0 auto 20px;
 }
 
-/* ルーレット本体 */
 .event-roulette-wheel {
   width: 100%;
   height: 100%;
@@ -666,11 +664,10 @@ label:has(input[name="phone-mode"]:checked),
   border: 6px solid #333333;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
   position: relative;
-  background: #eceff1; /* デフォルトの仮色 */
+  background: #eceff1;
   transition: transform 3s cubic-bezier(0.15, 0.9, 0.2, 1);
 }
 
-/* 真ん中のピン */
 .event-roulette-wheel::after {
   content: "";
   position: absolute;
@@ -685,7 +682,6 @@ label:has(input[name="phone-mode"]:checked),
   z-index: 5;
 }
 
-/* 上部の矢印ポインター */
 .event-roulette-pointer {
   position: absolute;
   top: -12px;
@@ -700,55 +696,29 @@ label:has(input[name="phone-mode"]:checked),
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
 }
 
-
 /* ==========================================
-   C. 【バージョン別】着せ替え定義（ここが重要！）
+   C. 【バージョン別】着せ替え定義
    ========================================== */
-
-/* ------------------------------------------
-   1. カップル VER (.theme-couple)
-   ------------------------------------------ */
-/* カードの背景と枠線変更 */
 .theme-couple .event-card-container {
   background: linear-gradient(135deg, #fff0f5 0%, #ffe4e1 100%);
   border-color: #ff69b4;
   box-shadow: 0 12px 35px rgba(255, 105, 180, 0.4);
 }
-/* 文字色 */
+
 .theme-couple .event-title {
   color: #d81b60;
 }
-/* ルーレットの配色（ピンク＆赤系に変化） */
-.theme-couple .event-roulette-wheel {
-  border-color: #d81b60;
-  background: conic-gradient(
-    #ff4d4d 0deg 36deg,     #ff6b8b 36deg 72deg,
-    #ff4d4d 72deg 108deg,   #ff6b8b 108deg 144deg,
-    #ff4d4d 144deg 180deg,  #ff6b8b 180deg 216deg,
-    #ff4d4d 216deg 252deg,  #ff6b8b 252deg 288deg,
-    #ff4d4d 288deg 324deg,  #ff6b8b 324deg 360deg
-  );
-}
-/* 子機のボタンもピンクに */
-.theme-couple .btn-event-spin {
-  background: #ff4081;
-}
-.theme-couple .btn-event-spin:active {
-  background: #d81b60;
-}
 
-/* ------------------------------------------
-   2. ランクアップ VER (.theme-rankup)
-   ------------------------------------------ */
 .theme-rankup .event-card-container {
   background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%);
   border-color: #f5a623;
   box-shadow: 0 12px 35px rgba(245, 166, 35, 0.4);
 }
+
 .theme-rankup .event-title {
   color: #b78103;
 }
-/* ルーレットの配色（ゴールド＆イエロー系に変化） */
+
 .theme-rankup .event-roulette-wheel {
   border-color: #d98e19;
   background: conic-gradient(
@@ -759,25 +729,25 @@ label:has(input[name="phone-mode"]:checked),
     #ffca28 288deg 324deg,  #ffe082 324deg 360deg
   );
 }
+
 .theme-rankup .btn-event-spin {
   background: #f5a623;
 }
+
 .theme-rankup .btn-event-spin:active {
   background: #d98e19;
 }
 
-/* ------------------------------------------
-   3. 就職チャレンジ VER (.theme-job)
-   ------------------------------------------ */
 .theme-job .event-card-container {
   background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
   border-color: #9c27b0;
   box-shadow: 0 12px 35px rgba(156, 39, 176, 0.4);
 }
+
 .theme-job .event-title {
   color: #4a148c;
 }
-/* ルーレットの配色（パープル＆マゼンタ系に変化） */
+
 .theme-job .event-roulette-wheel {
   border-color: #6a1b9a;
   background: conic-gradient(
@@ -788,26 +758,25 @@ label:has(input[name="phone-mode"]:checked),
     #ab47bc 288deg 324deg,  #e1bee7 324deg 360deg
   );
 }
+
 .theme-job .btn-event-spin {
   background: #9c27b0;
 }
+
 .theme-job .btn-event-spin:active {
   background: #6a1b9a;
 }
 
 /* ==========================================
-   D. 【追加】PC側 イベント専用モーダルの特大レイアウト
+   D. PC側 イベント専用モーダルの特大レイアウト
    ========================================== */
-
-/* モーダルの中身の箱を画面いっぱいに大きく広げる */
 .theme-couple .event-card-container,
 .theme-rankup .event-card-container {
-  max-width: 1000px; /* 横幅を大幅に拡大 */
+  max-width: 1000px;
   width: 95%;
   padding: 40px;
 }
 
-/* ルーレットと対応表を左右に並べるコンテナ */
 .event-main-flex {
   display: flex;
   justify-content: space-around;
@@ -816,20 +785,19 @@ label:has(input[name="phone-mode"]:checked),
   margin-top: 25px;
 }
 
-/* 左側：ルーレットエリア（少し大きくする） */
 .event-roulette-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .theme-couple .event-roulette-container,
 .theme-rankup .event-roulette-container {
   width: 300px;
   height: 300px;
 }
 
-/* 右側：特大のイベント対応表エリア */
 .event-table-area {
   flex: 1.2;
   background: rgba(255, 255, 255, 0.85);
@@ -840,7 +808,6 @@ label:has(input[name="phone-mode"]:checked),
   border: 2px solid rgba(0, 0, 0, 0.05);
 }
 
-/* 対応表のタイトル */
 .event-table-title {
   font-size: 1.4rem;
   font-weight: bold;
@@ -852,7 +819,6 @@ label:has(input[name="phone-mode"]:checked),
   gap: 8px;
 }
 
-/* 対応表のリスク・報酬リスト */
 .event-table-list {
   list-style: none;
   display: flex;
@@ -871,7 +837,6 @@ label:has(input[name="phone-mode"]:checked),
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* 出目（数字）のバッジ */
 .event-table-num-badge {
   background: #333333;
   color: #ffffff;
@@ -886,15 +851,11 @@ label:has(input[name="phone-mode"]:checked),
   font-weight: 900;
 }
 
-/* 各イベントごとの色調整 */
 .theme-couple .event-table-title { color: #d81b60; border-color: #ff69b4; }
 .theme-couple .event-table-num-badge { background: #ff4081; }
-
 .theme-rankup .event-table-title { color: #b78103; border-color: #f5a623; }
 .theme-rankup .event-table-num-badge { background: #f5a623; }
 
-
-/* --- 専用モーダルのルーレットに数字を配置する設定 --- */
 .event-roulette-wheel .roulette-num {
   position: absolute;
   width: 30px;
@@ -904,7 +865,7 @@ label:has(input[name="phone-mode"]:checked),
   margin-top: -15px;
   margin-left: -15px;
   font-weight: 900;
-  font-size: 1.3rem; /* 文字を少し大きく */
+  font-size: 1.3rem;
   color: #fff;
   text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
   text-align: center;
@@ -912,14 +873,14 @@ label:has(input[name="phone-mode"]:checked),
   z-index: 4;
 }
 
-/* 300pxサイズ用に文字の位置（translate）を調整 */
-.theme-couple .num-1, .theme-rankup .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
-.theme-couple .num-2, .theme-rankup .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
-.theme-couple .num-3, .theme-rankup .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
-.theme-couple .num-4, .theme-rankup .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
-.theme-couple .num-5, .theme-rankup .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
-.theme-couple .num-6, .theme-rankup .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
-.theme-couple .num-7, .theme-rankup .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
-.theme-couple .num-8, .theme-rankup .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
-.theme-couple .num-9, .theme-rankup .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
-.theme-couple .num-10, .theme-rankup .num-10 { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }
+/* PC側専用モーダル（直径300pxサイズ）用に配置位置を拡大調整 */
+.event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
+.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
+.event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
+.event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
+.event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
+.event-roulette-wheel .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
+.event-roulette-wheel .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
+.event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
+.event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
+.event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }

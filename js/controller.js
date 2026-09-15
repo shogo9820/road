@@ -295,6 +295,19 @@ window.addEventListener("DOMContentLoaded", () => {
         alert("34マス目にワープしました！次スピンで確定でカップルマスです。");
       }
     });
+
+    // ─── controller.js : DOMContentLoaded の中の一番最後に追加 ───
+
+  // 通常時のスマホルーレット（#controller-roulette-wheel）の中に 1〜10 の数字HTMLを強制挿入
+  const normalPhoneWheel = document.getElementById("controller-roulette-wheel");
+  if (normalPhoneWheel && !normalPhoneWheel.querySelector(".roulette-num")) {
+    let numsHTML = "";
+    for (let i = 1; i <= 10; i++) {
+      numsHTML += `<div class="roulette-num num-${i}">${i}</div>`;
+    }
+    normalPhoneWheel.insertAdjacentHTML('beforeend', numsHTML);
+  }
+
 });
 
 // --- イベントに応じたルーレット画面のテーマ切り替え関数 ---
