@@ -449,9 +449,10 @@ const GAME_EVENTS = {
   }
 };
 
-// 🎯 追加：共通モーダルを綺麗に開くためのヘルパー関数
+// ─── pc.js : openPCEventModal を動的・大画面対応に完全書き換え ───
+
 function openPCEventModal(eventType, playerName) {
-  isPCEventMode = true; // 👈 前のステップで追加した「PCがイベント中か」のフラグをON
+  isPCEventMode = true; // PCをイベントモードに固定
   
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
@@ -459,17 +460,98 @@ function openPCEventModal(eventType, playerName) {
   const config = GAME_EVENTS[eventType];
   if (!config) return;
 
-  // 1. 一旦ついている可能性のある過去の着せ替えクラスをすべて綺麗に掃除する
+  // 1. 過去のクラスをリセットして今回のイベントクラスを付与
   pcModal.className = "event-modal-overlay"; 
-
-  // 2. 表示用のクラス（active）と、今回のイベント用の着せ替えクラス（theme-〇〇）を付与
   pcModal.classList.add("active", config.class);
 
-  // 3. テキストを動的に書き換える
-  const titleEl = pcModal.querySelector(".event-title");
-  const descEl = pcModal.querySelector(".event-desc");
-  if (titleEl) titleEl.textContent = config.title;
-  if (descEl) descEl.textContent = config.desc(playerName);
+  // 2. 対応表のデータ（テキストやプレイヤーの割り当て）を動的に作成
+  let tableHTML = "";
+
+  if (eventType === "カップル") {
+    // 💡 カップルマスの1回目判定用の対応表（偶数・奇数）
+    tableHTML = `
+      <div class="event-table-title">🎯 運命の判定条件</div>
+      <ul class="event-table-list">
+        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5;"><div class="event-table-num-badge">偶</div> <strong>💕 告白チャンス突入！ (2回目のスピンへ)</strong></li>
+        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">奇</div> <strong>💦 告白失敗... フラれて終了</strong></li>
+      </ul>
+    `;
+  } 
+  else if (eventType === "ランクアップ") {
+    // 💡 ランクアップ用の対応表（4以上で成功）
+    tableHTML = `
+      <div class="event-table-title">🎯 ランクアップ条件</div>
+      <ul class="event-table-list">
+        <li class="event-table-item" style="border-left: 6px solid #ffca28; background: #fffde7;"><div class="event-table-num-badge">4〜10</div> <strong>🔥 ランクアップ成功！ 上位役職へ昇格！</strong></li>
+        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">1〜3</div> <strong>💦 ランクアップ失敗... 現状維持</strong></li>
+      </ul>
+    `;
+  }
+  else {
+    // 💡 その他のマス（入学式や引退など）では、1〜10に出席プレイヤーを自動で割り振る対応表を作成！
+    tableHTML = `<div class="event-table-title">👥 出目ごとのターゲットプレイヤー</div><ul class="event-table-list">`;
+    
+    // 現在ルームにいる全プレイヤーの名前リスト（いなければ仮のモブ）
+    const playerNames = players.length > 0 ? players.map(p => p.name) : ["プレイヤー1"];
+    
+    for (let i = 1; i <= 10; i++) {
+      // 1:P1, 2:無し, 3:P2, 4:無し... のように1マス飛ばし、または人数に応じて循環配置
+      let targetText = '<span style="color:#aaa;">（何もなし）</span>';
+      
+      if (i % 2 === 1) {
+        // 奇数の時だけプレイヤーを順番に割り当てる例
+        const playerIndex = Math.floor((i - 1) / 2) % playerNames.length;
+        targetText = `<span style="color:#2196f3; font-weight:bold;">👤 ${playerNames[playerIndex]}</span>`;
+      }
+
+      tableHTML += `
+        <li class="event-table-item">
+          <div class="event-table-num-badge">${i}</div>
+          <div>${targetText}</div>
+        </li>
+      `;
+    }
+    tableHTML += `</ul>`;
+  }
+
+  // 3. モーダルの中身のHTMLを「数字入りルーレット」と「対応表」の構造へダイナミックに書き換える
+  pcModal.innerHTML = `
+    <div class="event-card-container">
+      <div class="event-title">${config.title}</div>
+      <div class="event-desc">${config.desc(playerName)}</div>
+      
+      <!-- 左右分割の特大メインエリア -->
+      <div class="event-main-flex">
+        
+        <!-- 左側：数字付きルーレット -->
+        <div class="event-roulette-area">
+          <div class="event-roulette-container">
+            <div class="event-roulette-pointer"></div>
+            <div class="event-roulette-wheel">
+              <!-- ルーレット盤の表面に浮かび上がる1〜10の数字 -->
+              <div class="roulette-num num-1">1</div>
+              <div class="roulette-num num-2">2</div>
+              <div class="roulette-num num-3">3</div>
+              <div class="roulette-num num-4">4</div>
+              <div class="roulette-num num-5">5</div>
+              <div class="roulette-num num-6">6</div>
+              <div class="roulette-num num-7">7</div>
+              <div class="roulette-num num-8">8</div>
+              <div class="roulette-num num-9">9</div>
+              <div class="roulette-num num-10">10</div>
+            </div>
+          </div>
+          <div class="event-highlight-text" style="margin-top:10px;">スマホからルーレットを回してね！</div>
+        </div>
+        
+        <!-- 右側：動的対応表 -->
+        <div class="event-table-area">
+          ${tableHTML}
+        </div>
+        
+      </div>
+    </div>
+  `;
 }
 
 // ─── 修正する handleForceStopSquare はここから ───

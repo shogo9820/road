@@ -794,3 +794,132 @@ label:has(input[name="phone-mode"]:checked),
 .theme-job .btn-event-spin:active {
   background: #6a1b9a;
 }
+
+/* ==========================================
+   D. 【追加】PC側 イベント専用モーダルの特大レイアウト
+   ========================================== */
+
+/* モーダルの中身の箱を画面いっぱいに大きく広げる */
+.theme-couple .event-card-container,
+.theme-rankup .event-card-container {
+  max-width: 1000px; /* 横幅を大幅に拡大 */
+  width: 95%;
+  padding: 40px;
+}
+
+/* ルーレットと対応表を左右に並べるコンテナ */
+.event-main-flex {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 40px;
+  margin-top: 25px;
+}
+
+/* 左側：ルーレットエリア（少し大きくする） */
+.event-roulette-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.theme-couple .event-roulette-container,
+.theme-rankup .event-roulette-container {
+  width: 300px;
+  height: 300px;
+}
+
+/* 右側：特大のイベント対応表エリア */
+.event-table-area {
+  flex: 1.2;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+  text-align: left;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+/* 対応表のタイトル */
+.event-table-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 3px solid currentColor;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 対応表のリスク・報酬リスト */
+.event-table-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-table-item {
+  display: flex;
+  align-items: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* 出目（数字）のバッジ */
+.event-table-num-badge {
+  background: #333333;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+/* 各イベントごとの色調整 */
+.theme-couple .event-table-title { color: #d81b60; border-color: #ff69b4; }
+.theme-couple .event-table-num-badge { background: #ff4081; }
+
+.theme-rankup .event-table-title { color: #b78103; border-color: #f5a623; }
+.theme-rankup .event-table-num-badge { background: #f5a623; }
+
+
+/* --- 専用モーダルのルーレットに数字を配置する設定 --- */
+.event-roulette-wheel .roulette-num {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  top: 50%;
+  left: 50%;
+  margin-top: -15px;
+  margin-left: -15px;
+  font-weight: 900;
+  font-size: 1.3rem; /* 文字を少し大きく */
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
+  text-align: center;
+  line-height: 30px;
+  z-index: 4;
+}
+
+/* 300pxサイズ用に文字の位置（translate）を調整 */
+.theme-couple .num-1, .theme-rankup .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
+.theme-couple .num-2, .theme-rankup .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
+.theme-couple .num-3, .theme-rankup .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
+.theme-couple .num-4, .theme-rankup .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
+.theme-couple .num-5, .theme-rankup .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
+.theme-couple .num-6, .theme-rankup .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
+.theme-couple .num-7, .theme-rankup .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
+.theme-couple .num-8, .theme-rankup .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
+.theme-couple .num-9, .theme-rankup .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
+.theme-couple .num-10, .theme-rankup .num-10 { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }
