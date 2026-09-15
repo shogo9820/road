@@ -569,6 +569,7 @@ function prepareCoupleRouletteTheme() {
 }
 
 // ステップ2: 色が変わった後に、通常の「ルーレットを回す」ボタンが押されたときの処理
+// ─── controller.js : カップルイベントの結果送信をルーレット停止後（3秒後）に遅延 ───
 function sendSpin() {
   if (isSpinning) return;
   isSpinning = true;
@@ -580,56 +581,50 @@ function sendSpin() {
   const currentMod = currentRotation % 360;
   currentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 1. まずは自分のスマホ画面のルーレットをアニメーション回転させる
-  playMobileRouletteAnimation(steps, currentRotation, (finalSteps) => {
-    isSpinning = false;
-    handleRouletteStop(finalSteps);
-  });
-
-  // 2. ★超重要：ここで「同じ出目（steps）」をサーバー経由で即座にPCへ送る！
-  // イベント中であっても、PC側に「ルーレットが回ったぞ、出目はこれだぞ」と伝えることで同時発動させます
-  if (coupleEventState.active) {
-    const p = players[activePlayerIndex];
-    if (p) {
-      // PC側の通常ルーレットではなく、イベント処理を動かすために数値を先に同期
-      socket.emit("spinRoulette", {
-        roomCode: currentRoomCode,
-        result: steps,
-      });
-
-      if (coupleEventState.step === 1) {
-        socket.emit("coupleRouletteResult", {
-          roomCode: currentRoomCode,
-          playerId: p.id,
-          result: steps,
-        });
-      } else if (coupleEventState.step === 2) {
-        const p = players[activePlayerIndex];
-
-        // 1. 通常通りPC大画面と出目を同期して回転させる
-        socket.emit("spinRoulette", {
-          roomCode: currentRoomCode,
-          result: steps, // 実際の出目（1〜10）
-        });
-
-        // 2. サーバーへ実際の出目をストレートに送信（判定はサーバーに一任）
-        socket.emit("coupleSecondRouletteResult", {
-          roomCode: currentRoomCode,
-          playerId: p.id,
-          result: steps, // ★細工をせず、出た数字をそのまま送る！
-        });
-
-        coupleEventState.active = false;
-        applyRouletteTheme("");
-      }
-    }
-  } else {
-    // 通常時のスピン
+  // カップルイベント中（step2）の場合でも、PC大画面側へ出目を先に送り、ルーレットを同時に回し始める
+  if (coupleEventState.active && coupleEventState.step === 2) {
     socket.emit("spinRoulette", {
       roomCode: currentRoomCode,
-      result: steps,
+      result: steps
     });
   }
+
+  // スマホ側のルーレットアニメーション開始（3秒間まわる）
+  playMobileRouletteAnimation(steps, currentRotation, (finalSteps) => {
+    isSpinning = false;
+    
+    // 🎯 ルーレットが完全に停止した（3秒経った）ここからイベント処理を実行する
+
+    if (coupleEventState.active) {
+      const p = players[activePlayerIndex];
+      if (p) {
+        if (coupleEventState.step === 1) {
+          // 1回目の結果（偶数・奇数判定）をサーバーへ送信
+          socket.emit("coupleRouletteResult", {
+            roomCode: currentRoomCode,
+            playerId: p.id,
+            result: finalSteps
+          });
+        } else if (coupleEventState.step === 2) {
+          // 2回目の結果（実際の出目1〜10）をサーバーへ送信
+          socket.emit("coupleSecondRouletteResult", {
+            roomCode: currentRoomCode,
+            playerId: p.id,
+            result: finalSteps
+          });
+          coupleEventState.active = false;
+          applyRouletteTheme('');
+        }
+      }
+    } else {
+      // 通常時の通常マス移動
+      handleRouletteStop(finalSteps);
+      socket.emit("spinRoulette", {
+        roomCode: currentRoomCode,
+        result: finalSteps
+      });
+    }
+  });
 }
 
 function sendNextTurn() {
