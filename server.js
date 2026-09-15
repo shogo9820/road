@@ -15,6 +15,14 @@ const rooms = {};
 // 静的ファイルの公開範囲を「public」フォルダに指定
 app.use(express.static(path.join(__dirname, "public")));
 
+// ─── server.js : publicの外にあるマスターデータをブラウザへ安全に公開するルーティングを追加 ───
+
+// 🎯 追記：ブラウザからのアクセスに対して、masterフォルダ内の gameMaster.js を正確に配信します
+app.get("/master/gameMaster.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "master", "gameMaster.js"));
+});
+
+
 io.on("connection", (socket) => {
   console.log("クライアント接続成功:", socket.id);
 
