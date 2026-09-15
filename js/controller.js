@@ -343,7 +343,12 @@ function sendStartGame() {
 }
 
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
-  const wheel = document.getElementById("controller-roulette-wheel");
+  // ★修正：イベント中（theme-couple等のクラスがある時）はモーダル内のホイール、通常時は通常のホイールを狙う
+  let wheel = document.getElementById("controller-roulette-wheel");
+  if (document.body.classList.contains("theme-couple") || document.querySelector('.phone-screen .card')?.classList.contains("theme-couple")) {
+    wheel = document.querySelector("#mobile-couple-event-modal .couple-wheel") || document.getElementById("controller-roulette-wheel");
+  }
+
   const spinBtn = document.getElementById("btn-phone-spin");
   const resultDisplay = document.getElementById("roulette-result-display");
   const nextBtn = document.getElementById("btn-phone-next");
@@ -356,6 +361,7 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
 
   if (wheel) {
+    console.log("[スマホルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${targetRotation}deg)`;
   }
@@ -466,30 +472,36 @@ function sendSpin() {
   const currentMod = currentRotation % 360;
   currentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // スマホ側のルーレットアニメーション開始
+  // 1. まずは自分のスマホ画面のルーレットをアニメーション回転させる
   playMobileRouletteAnimation(steps, currentRotation, (finalSteps) => {
     isSpinning = false;
     handleRouletteStop(finalSteps);
   });
 
-  // カップルイベント中であれば、サーバーへカップル用の結果を送信（これによりPC側も連動する）
+  // 2. ★超重要：ここで「同じ出目（steps）」をサーバー経由で即座にPCへ送る！
+  // イベント中であっても、PC側に「ルーレットが回ったぞ、出目はこれだぞ」と伝えることで同時発動させます
   if (coupleEventState.active) {
     const p = players[activePlayerIndex];
     if (p) {
+      // PC側の通常ルーレットではなく、イベント処理を動かすために数値を先に同期
+      socket.emit("spinRoulette", {
+        roomCode: currentRoomCode,
+        result: steps
+      });
+
       if (coupleEventState.step === 1) {
         socket.emit("coupleRouletteResult", {
           roomCode: currentRoomCode,
           playerId: p.id,
-          result: steps // ★修正：finalSteps ではなく正しく steps を渡す
+          result: steps
         });
       } else if (coupleEventState.step === 2) {
         socket.emit("coupleSecondRouletteResult", {
           roomCode: currentRoomCode,
           playerId: p.id,
           targetPlayerId: coupleEventState.targetPlayerId,
-          result: steps // ★修正：finalSteps ではなく正しく steps を渡す
+          result: steps
         });
-        // イベント終了後にテーマを通常に戻す
         coupleEventState.active = false;
         applyRouletteTheme('');
       }
