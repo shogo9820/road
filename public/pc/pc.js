@@ -158,6 +158,7 @@ function appendSocketListeners() {
     }
   });
 
+// ─── pc.js : 【パーツ3】内ソケット受信：どんなイベント終了時でも確実にモーダルを消し去る修正 ───
   socket.on("coupleEventFinished", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -167,9 +168,12 @@ function appendSocketListeners() {
     isPCEventMode = false;
 
     setTimeout(() => {
-      const pcModal = document.getElementById("pc-event-modal");
-      if (pcModal) {
-        pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
+      // 🎯 修正：ID名（ 'pc-event-modal' ）でドキュメントから要素を安全に再取得し、
+      // どのテーマ（ theme-couple / theme-entrance 等）であっても例外なく active クラスごと全消去して完全に画面から消し去ります
+      const targetModalEl = document.getElementById("pc-event-modal");
+      if (targetModalEl) {
+        targetModalEl.className = "event-modal-overlay"; // クラスを初期状態（非表示）に完全リセット
+        targetModalEl.style.display = "none";            // display属性も強制的に非表示に固定
       }
 
       if (eventBox) {
@@ -185,7 +189,7 @@ function appendSocketListeners() {
         </div>`;
         }
       }
-    }, 3000);
+    }, 3000); // 3秒の回転時間待ち
   });
 }
 
@@ -311,6 +315,7 @@ function updateCurrentPlayerDisplay() {
 
   renderLocationPlayersList();
 }
+// ─── pc.js : 【パーツ6】0秒目のモーダル自動起動を完全に消去し、3秒遅延へ一本化する修正 ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -355,7 +360,7 @@ function executeSyncedRoulette(resultNum) {
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスのデータ処理、ボード描写は即時実行
+  // 3. 【遅延ゼロ：0秒目】内部のすごろく移動、マスのデータ処理、ボード描写は即時実行（ピンは先に動く）
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -391,11 +396,7 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
-      handleForceStopSquare(p, targetSquare);
-    }
-  }
+  // ❌ 修正：ここに残っていた「 0秒目で即座にモーダルを開く handleForceStopSquare 」の記述を完全に削除しました！
 
   // 🎯 パーツ7の遅延表示関数を呼び出すために、出目と止まったマスを安全に中継
   triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox);
@@ -413,6 +414,7 @@ function applySquareEffects(player, square) {
     }
   }
 }
+
 // ─── pc.js : 3秒後の表示制御＆イベントモーダル定義 ───
 
 function triggerDelayedDisplay(resultNum, targetSquare, resEl, eventBox) {
