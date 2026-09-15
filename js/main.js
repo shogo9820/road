@@ -164,12 +164,14 @@ socket.on("startCoupleSecondRoulette", (data) => {
 
   // カップルイベントが完全に終わった時
   socket.on("coupleEventFinished", (data) => {
-    // PC側のカップルモーダルを閉じる
-    const pcModal = document.getElementById("pc-couple-event-modal");
+    // 🎯 修正：正しい共通モーダルのID名「pc-event-modal」を指定して閉じます
+    const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.classList.remove("active", "theme-couple");
     }
-  isPCEventMode = false; // 通常モードに戻す
+
+    isPCEventMode = false; // 通常モードに戻す
+
     // 結果をPC画面中央のイベントテキストにデカデカと表示
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
