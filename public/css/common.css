@@ -1,6 +1,6 @@
-/* ==========================================
-   宅飲み人生ゲーム : 3画面共通グローバルCSS（共通パーツ定義）
-   ========================================== */
+/* ==========================================================================
+   宅飲み人生ゲーム : 3画面共通グローバルCSS（ルーレット・パーツ定義）
+   ========================================================================== */
 @import url('https://googleapis.com');
 
 :root {
@@ -10,14 +10,13 @@
   --warning-color: #ff9800;
   --danger-color: #f44336;
   --pink-color: #ff4081;
-  
   --bg-color: #f5f5f5;
   --card-bg: #ffffff;
   --text-color: #333333;
   --border-color: #e0e0e0;
 }
 
-/* 🎯 3つのルーレットで100%使い回す【共通パーツ】の見た目定義 */
+/* 🎯 3つのルーレット共通コンテナ */
 .roulette-section-container {
   display: flex;
   flex-direction: column;
@@ -32,10 +31,10 @@
   box-sizing: border-box;
 }
 
-/* 通常時の通常ルーレット盤（10色等分カラーグラデーション） */
+/* 🔄 ルーレットホイール本体（10色グラデーション） */
 .roulette-wheel-board,
 .event-roulette-wheel {
-  position: relative;
+  position: relative; /* 🎯 最重要：中の数字（.roulette-num）を綺麗に円状配置するための配置基準点 */
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -48,8 +47,7 @@
   );
 }
 
-/* 🎯 修正：カップルイベント発動（ .theme-couple ）時、3つのどのルーレットであっても
-   このクラスが親に付与されれば、ホイール自体が連動して自動で美しいピンクグラデーションへ100%同期変化するスタイル */
+/* 💕 カップルイベント発動時のピンクグラデーション変身定義 */
 .theme-couple .roulette-wheel-board,
 .theme-couple .event-roulette-wheel {
   background: conic-gradient(
@@ -59,7 +57,7 @@
   border-color: #ff4081 !important;
 }
 
-/* 共通の赤い矢印（針） */
+/* 赤い針（矢印） */
 .event-roulette-pointer {
   position: absolute;
   top: -12px;
@@ -73,12 +71,11 @@
   z-index: 10;
 }
 
-/* イベント時は矢印もピンクに同期 */
 .theme-couple .event-roulette-pointer {
   border-top-color: #ff4081 !important;
 }
 
-/* 共通の出目テキスト領域 */
+/* 出目テキスト領域 */
 .result-display-zone {
   font-size: 1.4rem;
   font-weight: 900;
@@ -88,9 +85,8 @@
 .theme-couple .result-display-zone {
   color: #d81b60 !important;
 }
-/* ==========================================
-   C. ルーレット内数字の配置と正立角度の共通補正
-   ========================================== */
+
+/* 🎯 ルーレット内数字（1〜10）の正立正円配置 */
 .roulette-num {
   position: absolute;
   width: 30px;
@@ -108,7 +104,7 @@
   z-index: 4;
 }
 
-/* 🎯 3つのルーレットに共通：最上部（矢印の位置）で止まった数字が、逆さにならずプレイヤーから常に一番読みやすくなる配置設定 */
+/* 最上部（矢印の位置）で止まった数字が、逆さにならずプレイヤーから常に一番読みやすくなる配置 */
 .num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
 .num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
 .num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
@@ -126,7 +122,7 @@
   text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
 }
 .event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
-.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-54deg); }
+.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-110deg); }
 .event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
 .event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
 .event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }

@@ -1,29 +1,22 @@
-/* ==========================================
-   1. スマホ制御画面 (controller.css) 専用スタイル
-   ========================================== */
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #f5f5f5;
-  font-family: 'M PLUS Rounded 1c', sans-serif;
-  color: #333333;
-  transition: background-color 0.3s ease;
-}
+/* ==========================================================================
+   宅飲み人生ゲーム : スマホ制御画面 (controller.css) 専用スタイル（余白ゼロ）
+   ========================================================================== */
 
-/* 🎯 制御画面全体がピンク色ベースに着せ替わる時のベース背景（これだけ残します） */
+/* カップル着せ替え時に背景をうっすらピンク化 */
 body.theme-couple {
   background-color: #fff5f7 !important;
 }
 
+/* スマホ用全画面ベース：余白を詰める */
 .phone-screen {
   box-sizing: border-box;
   width: 100%;
-  max-width: 480px; /* スマートフォン縦画面サイズ */
+  max-width: 440px; /* 横幅を設計図比率にカチッと合わせる */
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px; /* 縦の並び順に沿って要素間に綺麗な一律のスキマを確保 */
+  gap: 12px; /* 縦並びの要素同士をピタッと綺麗な等間隔で密着させる */
   align-items: center;
 }
 
@@ -31,83 +24,75 @@ body.theme-couple {
 .player-banner-zone {
   width: 100%;
   background: #ffffff;
-  padding: 14px;
+  padding: 12px;
   border-radius: 12px;
   text-align: center;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 900;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
   box-sizing: border-box;
 }
 
-/* 2. 【共通パーツ】ルーレットコンテナのサイズ補正のみ（見た目の色やグラデーション、数字、出目はcommon.cssへ完全移譲したため記述しません） */
+/* 2. ルーレットサークルのサイズのみ規定（色や数字配置は共通CSSを100%再利用） */
 .controller-roulette-container {
   position: relative;
   width: 200px;
   height: 200px;
+  margin: 0 auto;
 }
-/* 3. 現在のマスもしくはイベント内容のテキストボックス */
+
+/* 4. 現在のマスもしくはイベント内容のテキストボックス */
 .current-tile-or-event-status-box {
   width: 100%;
   background: #ffffff;
-  padding: 16px;
+  padding: 12px;
   border-radius: 12px;
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
-  min-height: 54px;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
 }
 
-/* 4 & 5. 各種操作用ボタン共通設定（はみ出しや重なりを完全に防ぐブロック配置） */
+/* 5 & 6. ボタン共通設定（はみ出しを完全ガードするブロック100%配置） */
 button {
   width: 100%;
   max-width: 340px;
-  padding: 14px;
-  font-size: 1.2rem;
+  padding: 12px;
+  font-size: 1.15rem;
   font-weight: 900;
   border: none;
   border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   display: block;
-  position: relative;
+  box-sizing: border-box;
 }
-
-button:active {
-  transform: scale(0.98);
-}
+button:active { transform: scale(0.97); }
 
 .btn-orange { background-color: #ff9800; color: #ffffff; }
 .btn-blue   { background-color: #2196f3; color: #ffffff; }
 .btn-pink   { background-color: #ff4081; color: #ffffff; }
-
 .hidden { display: none !important; }
 
-/* 6. 開発用デバッグメニュー（最下部） */
+/* 🛠 開発用デバッグメニュー */
 .developer-debug-zone-panel {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
   box-sizing: border-box;
 }
-
 .btn-dark-debug {
-  background-color: #333333;
-  color: #ffffff;
-  font-size: 1rem;
-  padding: 12px;
-  box-shadow: none;
-}
-
-.btn-dark-debug:hover {
   background-color: #444444;
+  color: #ffffff;
+  font-size: 0.9rem;
+  padding: 10px;
+  box-shadow: none;
 }

@@ -1,274 +1,180 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>宅飲み人生ゲーム 🍺 [親機]</title>
-    <!-- <link rel="manifest" href="manifest.json" /> -->
-    <link rel="stylesheet" href="pc.css" />
-    <link rel="stylesheet" href="../css/common.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div class="app-container">
+<head>
+  <meta charset="UTF-8">
+  <title>宅飲み人生ゲーム 🍺 [親機]</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="pc.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- 外部マスターデータと管理用JS -->
+  <script src="master/gameMaster.js"></script>
+  <script src="board.js"></script>
+  <script src="pc.js"></script>
+  <!-- QRコード生成ライブラリ -->
+  <script src="https://cloudflare.com"></script>
+</head>
+<body class="pc-screen">
+  <div class="app-container">
 
-      <!-- ========================================== -->
-      <!-- 1. PC: ログイン・部屋作成画面  -->
-      <!-- ========================================== -->
-      <section id="screen-setup" class="screen active pc-screen">
-        <div class="card pc-card">
-          <div class="logo-container">
-            <span class="badge">親機（PC）ディスプレイ</span>
-            <h1 class="main-title">🍻 宅飲み人生ゲーム 🍺</h1>
-            <p class="subtitle">〜 サークル生活の思い出とアルコール 〜</p>
-          </div>
-          <div class="form-group">
-            <label for="pc-host-name">ホストプレイヤー名</label>
-            <input type="text" id="pc-host-name" value="やじま" placeholder="名前を入力" />
-          </div>
-          <button type="button" id="btn-create-room" class="btn btn-primary btn-large">
-            <span class="btn-icon">🚀</span> ルームを作成する
-          </button>
+    <!-- 【1】ルーム作成（初期画面） -->
+    <div id="screen-setup" class="active">
+      <div class="pc-card">
+        <h1>🍻 宅飲み人生ゲーム 🍺</h1>
+        <p>〜 サークル生活の思い出とアルコール 〜</p>
+        <div style="margin: 20px 0;">
+          <label>ホストプレイヤー名: 
+            <input type="text" id="pc-host-name" value="やじま" style="padding:8px; font-size:1.1rem; border-radius:6px; border:1px solid #ccc; text-align:center;">
+          </label>
         </div>
-      </section>
+        <button id="btn-create-room" class="btn-orange" style="margin:0 auto; max-width:300px;">🚀 ルームを作成する</button>
+      </div>
+    </div>
 
-      <!-- ========================================== -->
-      <!-- 2. PC: 待機室画面（QRコード表示＆モード設定）-->
-      <!-- ========================================== -->
-      <section id="screen-waiting" class="screen pc-screen" style="display: none;">
+    <!-- 【2】参加待機室画面 -->
+    <div id="screen-waiting" style="display: none;">
+      <div class="card" style="max-width: 800px; margin: 40px auto;">
+        <div class="room-info-header">
+          <h2>ROOM CODE</h2>
+          <div class="room-code-display" id="display-room-code">----</div>
+        </div>
         <div class="waiting-grid">
-          <!-- 左カラム: ルーム情報 & 参加メンバー -->
-          <div class="card">
-            <div class="room-info-header">
-              <div>
-                <span style="font-size:0.8rem; color:#666;">ROOM CODE</span>
-                <div class="room-code-display" id="display-room-code">----</div>
+          <div class="qr-panel">
+            <div id="qrcode"></div>
+            <p style="font-weight: bold; margin: 5px 0 0 0;">スマホでQRコードを読み取って参加！</p>
+          </div>
+          <div>
+            <h3>👥 参加メンバー</h3>
+            <ul id="player-list" style="font-size:1.3rem; font-weight:bold; line-height:2;"></ul>
+            <p style="color:#e67e22; font-weight:bold; margin-top:15px; animation: pulse 1s infinite;">※ ゲームスタートはスマホ（コントローラー）から操作してください</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【3】🎯 設計図通り：ゲームプレイ本番画面（盤面最大化） -->
+    <div id="screen-game" style="display: none;">
+      <div class="game-layout">
+        
+        <!-- 👈 【左カラム】300px固定：操作プレイヤーのステータス -->
+        <div class="layout-left">
+          <div class="current-player-card">
+            <div class="player-header">
+              <div class="player-avatar">👤</div>
+              <div class="player-meta">
+                <h2 id="current-player-name">プレイヤー1</h2>
+                <div class="job-badge" id="current-player-job">モブ</div>
+                <span id="current-player-lover-icon" style="display:none;">💕</span>
               </div>
             </div>
+            <div class="player-stats">
+              <div class="stat-item">
+                <span>肝臓HP:</span>
+                <span id="current-player-hp">80 / 80</span>
+              </div>
+              <div style="background:rgba(0,0,0,0.4); border-radius:6px; height:12px; width:100%; margin-bottom:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.2);">
+                <div id="current-player-drunk" style="width:100%; height:100%; background:#4caf50; transition: width 0.3s;"></div>
+              </div>
+              <div class="stat-item">
+                <span>酔い度:</span>
+                <span id="current-player-drunk-percent">0%</span>
+              </div>
+              <div class="stat-item">
+                <span>飲んだ杯数:</span>
+                <strong id="current-player-drinks" style="color:#ffeb3b; font-size:1.3rem;">0 杯</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 誰がどこの場所に止まっているかリスト -->
+          <div class="card tile-event-card">
+            <div class="card-title">📍 場所ごとのメンバー</div>
+            <div id="location-players-list">スタート前：プレイヤー1</div>
+          </div>
+        </div>
+
+        <!-- 🗺️ 🚀 【中央カラム】残りの画面幅（1fr）を限界まで使い切ってすごろくを最大化 -->
+        <div class="layout-center">
+          <div class="map-card-maximized">
+            <div class="map-header">
+              <span class="map-title-text">🗺️ すごろくマップ</span>
+              <span class="mode-badge" id="pc-game-mode-badge">通常モード</span>
+            </div>
+            <canvas id="board-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- 👉 【右カラム】300px固定：スマホと完全シンクロするルーレット ＆ マス内容 -->
+        <div class="layout-right">
+          <div class="card roulette-card">
+            <div class="roulette-result-display" id="roulette-result-display">🎯 タップして回そう！</div>
             
-            <div class="qr-panel">
-              <div id="qrcode" style="display: flex; justify-content: center; margin: 15px 0;"></div>
-              <p style="font-size:0.85rem; color:#666; text-align:center;">
-                スマホでQRコードを読み取って参加！
-              </p>
-            </div>
-
-            <div style="margin-top: 20px;">
-              <h3><span id="player-count-badge">参加メンバー</span></h3>
-              <ul id="player-list" style="list-style: none; padding: 0; margin-top: 10px; font-size: 1.1rem; line-height: 1.8;"></ul>
-              <div id="player-input-list"></div>
-            </div>
-          </div>
-
-          <!-- 右カラム: ゲーム設定 & スタート -->
-          <div class="card">
-            <h2>ゲーム設定</h2>
-            <div class="form-group" style="margin-top: 20px;">
-              <label>プレイモード</label>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <label class="mode-card">
-                  <input type="radio" id="mode-normal" name="game-mode" value="normal" checked />
-                  <strong>通常バージョン</strong>（全100マス）
-                </label>
-                <label class="mode-card">
-                  <input type="radio" id="mode-short" name="game-mode" value="short" />
-                  <strong>ショートバージョン</strong>（35マス）
-                </label>
+            <!-- 🔄 スマホのルーレット盤とHTML構造を100%完全同一化 -->
+            <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
+              <div class="event-roulette-pointer"></div>
+              <div class="roulette-wheel-board" id="pc-roulette-wheel">
+                <div class="roulette-num num-1">1</div>
+                <div class="roulette-num num-2">2</div>
+                <div class="roulette-num num-3">3</div>
+                <div class="roulette-num num-4">4</div>
+                <div class="roulette-num num-5">5</div>
+                <div class="roulette-num num-6">6</div>
+                <div class="roulette-num num-7">7</div>
+                <div class="roulette-num num-8">8</div>
+                <div class="roulette-num num-9">9</div>
+                <div class="roulette-num num-10">10</div>
               </div>
             </div>
-
-            <p style="margin-top: 40px; color: #666; font-size: 0.9rem; text-align: center;">
-              ※ ゲームスタートはスマホ（コントローラー）から操作してください
-            </p>
+            <div id="current-player-location" style="font-weight:bold; margin-top:8px; color:#555; font-size:1.1rem;">スタート前</div>
           </div>
-        </div>
-      </section>
 
-      <!-- ========================================== -->
-      <!-- 3. PC: メインゲーム画面（3カラムダッシュボード） -->
-      <!-- ========================================== -->
-      <section id="screen-game" class="screen pc-screen" style="display: none;">
-        <div class="game-layout">
+          <!-- 止まったマスの内容テキストエリア -->
+          <div class="card tile-event-card" style="flex: 1; min-height: 150px;">
+            <div class="card-title" style="border-bottom:2px solid #e0e0e0; padding-bottom:4px; margin-bottom:8px;">📢 現在のマスの内容</div>
+            <div id="current-tile-desc" style="font-size:1.1rem; line-height:1.6; font-weight:bold; color:#2c3e50;">
+              スマホからルーレットを回してください！
+            </div>
+          </div>
+
+          <!-- PC側手動進行ボタン -->
+          <button id="btn-next-turn" class="btn-blue" style="width:100%; margin:0;">➡ 次のプレイヤーへ</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 🎯 PC側特大イベントモーダル（中央に重なって出現する特大コンポーネント） -->
+    <div id="pc-event-modal" class="event-modal-overlay">
+      <div class="event-card-container">
+        <h1 class="event-title" id="modal-event-title">💕 イベントタイトル 💕</h1>
+        <p class="event-desc" id="modal-event-desc">イベントの説明文がここに表示されます。</p>
+        
+        <div class="event-main-flex">
+          <!-- 左：爆速同期回転する特大イベントホイール -->
+          <div class="event-roulette-area">
+            <div class="event-roulette-container">
+              <div class="event-roulette-pointer"></div>
+              <div class="event-roulette-wheel">
+                <div class="roulette-num num-1">1</div>
+                <div class="roulette-num num-2">2</div>
+                <div class="roulette-num num-3">3</div>
+                <div class="roulette-num num-4">4</div>
+                <div class="roulette-num num-5">5</div>
+                <div class="roulette-num num-6">6</div>
+                <div class="roulette-num num-7">7</div>
+                <div class="roulette-num num-8">8</div>
+                <div class="roulette-num num-9">9</div>
+                <div class="roulette-num num-10">10</div>
+              </div>
+            </div>
+            <div class="result-display-zone" id="modal-roulette-result-display">🎯 スマホから回してね！</div>
+          </div>
           
-          <!-- 【左カラム】プレイヤー情報 & 場所ごとのプレイヤー一覧 -->
-          <div class="layout-left">
-            <!-- 上: 現在の操作プレイヤー & ステータス -->
-            <div class="card current-player-card">
-              <div class="player-header">
-                <div class="player-avatar">👤</div>
-                <div class="player-meta">
-                  <h2 id="current-player-name">プレイヤー1</h2>
-                  <!-- 役職とリア充アイコンを並べるコンテナ -->
-                  <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
-                    <span class="job-badge" id="current-player-job">モブ</span>
-                    <span id="current-player-lover-icon" style="font-size: 1.1rem; display: none;" title="リア充">❤️</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="player-stats" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-                <!-- 肝臓HP & 酔い度 -->
-                <div class="stat-item" style="display: flex; flex-direction: column; gap: 4px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #fff;">
-                    <span>肝臓HP</span>
-                    <span id="current-player-hp">100 / 100</span>
-                  </div>
-                  <div class="gauge-bar" style="background: rgba(0,0,0,0.2); border-radius: 6px; height: 10px; overflow: hidden; width: 100%;">
-                    <div class="gauge-fill" id="current-player-drunk" style="background: #4caf50; height: 100%; width: 100%; transition: width 0.3s ease;"></div>
-                  </div>
-                  <div style="text-align: right; font-size: 0.8rem; color: #ffeb3b; font-weight: bold;">
-                    酔い度: <strong id="current-player-drunk-percent">0%</strong>
-                  </div>
-                </div>
-
-                <!-- 飲んだ杯数・場所（2カラムですっきりと） -->
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; text-align: center;">
-                  <div>
-                    <div style="font-size: 0.75rem; color: #d0d0d0; font-weight: bold;">飲んだ杯数</div>
-                    <div id="current-player-drinks" style="font-size: 1rem; font-weight: bold; color: #fff;">0 杯</div>
-                  </div>
-                  <div>
-                    <div style="font-size: 0.75rem; color: #d0d0d0; font-weight: bold;">現在の場所</div>
-                    <div id="current-player-location" style="font-size: 0.9rem; font-weight: bold; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 下: 場所ごとのプレイヤー一覧（どこに誰がいるか） -->
-            <div class="card location-players-card">
-              <div class="card-title">📍 場所ごとのメンバー</div>
-              <div id="location-players-list" style="margin-top: 10px; font-size: 0.9rem; line-height: 1.6;">
-                <p style="color: #666; font-size: 0.85rem;">プレイヤーの移動を待っています...</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 【中央カラム】盤面マップ -->
-          <div class="layout-center">
-            <div class="card map-card">
-              <div class="map-header">
-                <h3>🗺️ すごろくマップ</h3>
-                <span class="mode-badge" id="current-game-mode-display">通常モード</span>
-              </div>
-              <div class="board-container">
-                <canvas id="board-canvas" width="600" height="600"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- 【右カラム】ルーレット & 現在のマスの内容 -->
-          <div class="layout-right">
-<!-- 🎯 3画面で100%共通化するルーレットセクション -->
-<div class="roulette-section-container">
-  
-  <!-- ターンやイベントのヘッダーを表示する場所 -->
-  <div class="result-display-zone" id="roulette-result-display">🎯 タップして回そう！</div>
-
-  <!-- ルーレットの外枠と針のコンテナ -->
-  <!-- ※スマホ側のみ、CSSの指定に合わせるため
-         class="controller-roulette-container" を追加するか、外側を囲んでください -->
-  <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
-    
-    <!-- 赤い矢印（針） -->
-    <div class="event-roulette-pointer"></div>
-
-    <!-- 実際にJavaScriptで回転させるホイール本体 -->
-    <!-- ※ID名は、PC右上用には "pc-roulette-wheel"、PCモーダル用には "pc-event-modal-wheel"、
-         スマホ用には "controller-roulette-wheel" とそれぞれ固有のものを付与してください -->
-    <div class="roulette-wheel-board" id="YOUR_SPECIFIC_WHEEL_ID">
-      <!-- 共通の数字パーツ（1〜10） -->
-      <div class="roulette-num num-1">1</div>
-      <div class="roulette-num num-2">2</div>
-      <div class="roulette-num num-3">3</div>
-      <div class="roulette-num num-4">4</div>
-      <div class="roulette-num num-5">5</div>
-      <div class="roulette-num num-6">6</div>
-      <div class="roulette-num num-7">7</div>
-      <div class="roulette-num num-8">8</div>
-      <div class="roulette-num num-9">9</div>
-      <div class="roulette-num num-10">10</div>
-    </div>
-
-  </div>
-
-</div>
-
-            <!-- 下: 現在止まっているマスの内容 -->
-            <div class="card tile-event-card">
-              <div class="card-title">📍 現在のマスの内容</div>
-              <div class="event-display" id="event-text">
-                <p class="event-msg">スマホからルーレットを回してください！</p>
-              </div>
-            </div>
-          </div>
-
+          <!-- 右：リアルタイム条件テーブル -->
+          <div class="event-table-area" id="pc-event-table-dynamic-zone"></div>
         </div>
-      </section>
-
-    </div>
-<!-- 🎯 修正：中央の特大イベントモーダル内部も、スマホ・PC右上と全く同じ共通パーツ構造を100%使い回す構造へリファクタリング -->
-<div id="pc-event-modal" class="event-modal-overlay">
-  <div class="event-card-container">
-    <div id="modal-event-title" class="event-title">💕 イベントタイトル 💕</div>
-    <div id="modal-event-desc" class="event-desc">イベントの説明文がここに表示されます。</div>
-    
-    <div class="event-main-flex">
-      <!-- 🎯 左側：他画面と見た目が100%完全に一致する【共通ルーレット＆出目】エリア -->
-<!-- 🎯 3画面で100%共通化するルーレットセクション -->
-<div class="roulette-section-container">
-  
-  <!-- ターンやイベントのヘッダーを表示する場所 -->
-  <div class="result-display-zone" id="roulette-result-display">🎯 タップして回そう！</div>
-
-  <!-- ルーレットの外枠と針のコンテナ -->
-  <!-- ※スマホ側のみ、CSSの指定に合わせるため
-         class="controller-roulette-container" を追加するか、外側を囲んでください -->
-  <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
-    
-    <!-- 赤い矢印（針） -->
-    <div class="event-roulette-pointer"></div>
-
-    <!-- 実際にJavaScriptで回転させるホイール本体 -->
-    <!-- ※ID名は、PC右上用には "pc-roulette-wheel"、PCモーダル用には "pc-event-modal-wheel"、
-         スマホ用には "controller-roulette-wheel" とそれぞれ固有のものを付与してください -->
-    <div class="roulette-wheel-board" id="YOUR_SPECIFIC_WHEEL_ID">
-      <!-- 共通の数字パーツ（1〜10） -->
-      <div class="roulette-num num-1">1</div>
-      <div class="roulette-num num-2">2</div>
-      <div class="roulette-num num-3">3</div>
-      <div class="roulette-num num-4">4</div>
-      <div class="roulette-num num-5">5</div>
-      <div class="roulette-num num-6">6</div>
-      <div class="roulette-num num-7">7</div>
-      <div class="roulette-num num-8">8</div>
-      <div class="roulette-num num-9">9</div>
-      <div class="roulette-num num-10">10</div>
+      </div>
     </div>
 
   </div>
-
-</div>
-      </div>
-      
-      <!-- 🎯 右側：俺が指定した「出目ごとの判定内容・ターゲット」を表す特大対応表エリア（1回目スピン待ちの段階から完全露出） -->
-      <div class="event-table-area" id="pc-event-table-dynamic-zone">
-        <!-- 🎯 ここにJavaScript（pc.js）から、1回目の判定用対応表（偶数ならチャンス突入など）が最初からドカンと流し込まれます -->
-      </div>
-    </div>
-  </div>
-</div>
-<!-- 1. 外部ライブラリ -->
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cloudflare.com..."></script>
-
-<!-- 2. 自作の共通処理・関数定義ファイル（pc.jsより「上」に書く） -->
-<script src="../../master/gameMaster.js"></script>
-<script src="board.js"></script>
-
-<!-- 3. メインの実行ファイル（一番「下」に書く） -->
-<script src="pc.js"></script>
 </body>
 </html>
