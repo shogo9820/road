@@ -161,33 +161,39 @@
 
           <!-- 【右カラム】ルーレット & 現在のマスの内容 -->
           <div class="layout-right">
-<!-- 🎯 修正：PC右上の通常ルーレットエリアを、スマホ制御側と全く同じ共通パーツ構造に完全統一 -->
-<div class="card roulette-card">
-  <div class="card-title">🎲 ルーレット</div>
+<!-- 🎯 3画面で100%共通化するルーレットセクション -->
+<div class="roulette-section-container">
   
-  <!-- 【共通コンポーネント構造】スマホ側と寸分違わぬ見た目・クラス名にリファクタリング -->
-  <div class="roulette-section-container">
-    <div class="controller-roulette-container">
-      <div class="event-roulette-pointer"></div>
-      <div id="pc-roulette-wheel" class="roulette-wheel-board">
-        <div class="roulette-num num-1">1</div>
-        <div class="roulette-num num-2">2</div>
-        <div class="roulette-num num-3">3</div>
-        <div class="roulette-num num-4">4</div>
-        <div class="roulette-num num-5">5</div>
-        <div class="roulette-num num-6">6</div>
-        <div class="roulette-num num-7">7</div>
-        <div class="roulette-num num-8">8</div>
-        <div class="roulette-num num-9">9</div>
-        <div class="roulette-num num-10">10</div>
-      </div>
-    </div>
+  <!-- ターンやイベントのヘッダーを表示する場所 -->
+  <div class="result-display-zone" id="roulette-result-display">🎯 タップして回そう！</div>
+
+  <!-- ルーレットの外枠と針のコンテナ -->
+  <!-- ※スマホ側のみ、CSSの指定に合わせるため
+         class="controller-roulette-container" を追加するか、外側を囲んでください -->
+  <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
     
-    <!-- 出目表示（通常時はここに結果がシンクロして表示されます） -->
-    <div class="result-display-zone">
-      <span id="roulette-result-display">🎯 待機中...</span>
+    <!-- 赤い矢印（針） -->
+    <div class="event-roulette-pointer"></div>
+
+    <!-- 実際にJavaScriptで回転させるホイール本体 -->
+    <!-- ※ID名は、PC右上用には "pc-roulette-wheel"、PCモーダル用には "pc-event-modal-wheel"、
+         スマホ用には "controller-roulette-wheel" とそれぞれ固有のものを付与してください -->
+    <div class="roulette-wheel-board" id="YOUR_SPECIFIC_WHEEL_ID">
+      <!-- 共通の数字パーツ（1〜10） -->
+      <div class="roulette-num num-1">1</div>
+      <div class="roulette-num num-2">2</div>
+      <div class="roulette-num num-3">3</div>
+      <div class="roulette-num num-4">4</div>
+      <div class="roulette-num num-5">5</div>
+      <div class="roulette-num num-6">6</div>
+      <div class="roulette-num num-7">7</div>
+      <div class="roulette-num num-8">8</div>
+      <div class="roulette-num num-9">9</div>
+      <div class="roulette-num num-10">10</div>
     </div>
+
   </div>
+
 </div>
 
             <!-- 下: 現在止まっているマスの内容 -->
@@ -211,30 +217,40 @@
     
     <div class="event-main-flex">
       <!-- 🎯 左側：他画面と見た目が100%完全に一致する【共通ルーレット＆出目】エリア -->
-      <div class="event-roulette-area">
-        <div class="roulette-section-container">
-          <div class="controller-roulette-container" style="width: 260px; height: 200px;">
-            <div class="event-roulette-pointer"></div>
-            <!-- アニメーション回転のターゲットとなるホイール（クラス名とIDを通常盤と完全統一） -->
-            <div id="pc-modal-roulette-wheel" class="event-roulette-wheel roulette-wheel-board">
-              <div class="roulette-num num-1">1</div>
-              <div class="roulette-num num-2">2</div>
-              <div class="roulette-num num-3">3</div>
-              <div class="roulette-num num-4">4</div>
-              <div class="roulette-num num-5">5</div>
-              <div class="roulette-num num-6">6</div>
-              <div class="roulette-num num-7">7</div>
-              <div class="roulette-num num-8">8</div>
-              <div class="roulette-num num-9">9</div>
-              <div class="roulette-num num-10">10</div>
-            </div>
-          </div>
-          
-          <!-- 出目表示領域（モーダル内でもデザインが全くブレない共通仕様） -->
-          <div class="result-display-zone">
-            <span id="modal-roulette-result-display">🎯 スマホから回してね！</span>
-          </div>
-        </div>
+<!-- 🎯 3画面で100%共通化するルーレットセクション -->
+<div class="roulette-section-container">
+  
+  <!-- ターンやイベントのヘッダーを表示する場所 -->
+  <div class="result-display-zone" id="roulette-result-display">🎯 タップして回そう！</div>
+
+  <!-- ルーレットの外枠と針のコンテナ -->
+  <!-- ※スマホ側のみ、CSSの指定に合わせるため
+         class="controller-roulette-container" を追加するか、外側を囲んでください -->
+  <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
+    
+    <!-- 赤い矢印（針） -->
+    <div class="event-roulette-pointer"></div>
+
+    <!-- 実際にJavaScriptで回転させるホイール本体 -->
+    <!-- ※ID名は、PC右上用には "pc-roulette-wheel"、PCモーダル用には "pc-event-modal-wheel"、
+         スマホ用には "controller-roulette-wheel" とそれぞれ固有のものを付与してください -->
+    <div class="roulette-wheel-board" id="YOUR_SPECIFIC_WHEEL_ID">
+      <!-- 共通の数字パーツ（1〜10） -->
+      <div class="roulette-num num-1">1</div>
+      <div class="roulette-num num-2">2</div>
+      <div class="roulette-num num-3">3</div>
+      <div class="roulette-num num-4">4</div>
+      <div class="roulette-num num-5">5</div>
+      <div class="roulette-num num-6">6</div>
+      <div class="roulette-num num-7">7</div>
+      <div class="roulette-num num-8">8</div>
+      <div class="roulette-num num-9">9</div>
+      <div class="roulette-num num-10">10</div>
+    </div>
+
+  </div>
+
+</div>
       </div>
       
       <!-- 🎯 右側：俺が指定した「出目ごとの判定内容・ターゲット」を表す特大対応表エリア（1回目スピン待ちの段階から完全露出） -->

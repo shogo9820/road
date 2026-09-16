@@ -35,7 +35,7 @@
 /* 通常時の通常ルーレット盤（10色等分カラーグラデーション） */
 .roulette-wheel-board,
 .event-roulette-wheel {
-  position: absolute;
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 50%;

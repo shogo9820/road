@@ -76,29 +76,40 @@
     TURN: ----
   </div>
 
-  <!-- 2. 【共通パーツ】ルーレットと出目がセットになったエリア（他画面と100%使い回す構造） -->
-  <div class="roulette-section-container">
-    <div class="controller-roulette-container">
-      <div class="event-roulette-pointer"></div>
-      <div id="controller-roulette-wheel" class="roulette-wheel-board">
-        <div class="roulette-num num-1">1</div>
-        <div class="roulette-num num-2">2</div>
-        <div class="roulette-num num-3">3</div>
-        <div class="roulette-num num-4">4</div>
-        <div class="roulette-num num-5">5</div>
-        <div class="roulette-num num-6">6</div>
-        <div class="roulette-num num-7">7</div>
-        <div class="roulette-num num-8">8</div>
-        <div class="roulette-num num-9">9</div>
-        <div class="roulette-num num-10">10</div>
-      </div>
-    </div>
+<!-- 🎯 3画面で100%共通化するルーレットセクション -->
+<div class="roulette-section-container">
+  
+  <!-- ターンやイベントのヘッダーを表示する場所 -->
+  <div class="result-display-zone" id="roulette-result-display">🎯 タップして回そう！</div>
+
+  <!-- ルーレットの外枠と針のコンテナ -->
+  <!-- ※スマホ側のみ、CSSの指定に合わせるため
+         class="controller-roulette-container" を追加するか、外側を囲んでください -->
+  <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
     
-    <!-- 出目表示（ルーレットのすぐ下に直結配置） -->
-    <div class="result-display-zone">
-      <span id="roulette-result-display">🎯 タップして回そう！</span>
+    <!-- 赤い矢印（針） -->
+    <div class="event-roulette-pointer"></div>
+
+    <!-- 実際にJavaScriptで回転させるホイール本体 -->
+    <!-- ※ID名は、PC右上用には "pc-roulette-wheel"、PCモーダル用には "pc-event-modal-wheel"、
+         スマホ用には "controller-roulette-wheel" とそれぞれ固有のものを付与してください -->
+    <div class="roulette-wheel-board" id="YOUR_SPECIFIC_WHEEL_ID">
+      <!-- 共通の数字パーツ（1〜10） -->
+      <div class="roulette-num num-1">1</div>
+      <div class="roulette-num num-2">2</div>
+      <div class="roulette-num num-3">3</div>
+      <div class="roulette-num num-4">4</div>
+      <div class="roulette-num num-5">5</div>
+      <div class="roulette-num num-6">6</div>
+      <div class="roulette-num num-7">7</div>
+      <div class="roulette-num num-8">8</div>
+      <div class="roulette-num num-9">9</div>
+      <div class="roulette-num num-10">10</div>
     </div>
+
   </div>
+
+</div>
 
   <!-- 3. 現在のマスもしくはイベント内容のテキストボックス -->
   <div class="current-tile-or-event-status-box">
