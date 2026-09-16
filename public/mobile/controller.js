@@ -311,22 +311,12 @@ function renderPlayerInputs() {
   });
 }
 
+// 🎯 修正：スマホ側は「IDと名前」のみを身軽に管理（ステータスはサーバーのcreatePlayerに一任）
 function addPlayerRow() {
   const newId = "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   players.push({
     id: newId,
-    name: `プレイヤー${players.length + 1}`,
-    jobId: "mob",
-    job: "モブ",
-    baseCap: 80,
-    bonusCap: 0,
-    currentHp: 80,
-    drinkCount: 0,
-    position: 0,
-    location: "スタート前",
-    isLover: false,
-    skipTurn: false,
-    hasJob: false
+    name: `プレイヤー${players.length + 1}`
   });
   renderPlayerInputs();
   syncSettingsToServer();

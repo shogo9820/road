@@ -124,12 +124,31 @@ const MAP_SQUARES = [
   { id: 99, type: "goal", text: "【ゴール】", isGoal: true, mode: "all", nextId: [] }
 ];
 
-// ─── gameMaster.js : module is not defined を根本から消し去り、データを安全に引き渡す修正 ───
+// 🎯 プレイヤーオブジェクトの雛形（唯一の定義元）
+function createPlayer(id, name) {
+  return {
+    id: id || "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    name: name || "プレイヤー",
+    jobId: "mob",
+    job: "モブ",
+    baseCap: 80,
+    bonusCap: 0,
+    currentHp: 80,
+    drinkCount: 0,
+    happiness: 100, // 👈 幸福度の初期値をここで一元管理
+    position: 0,
+    location: "スタート前",
+    isLover: false,
+    skipTurn: false,
+    hasJob: false
+  };
+}
 
-// 🎯 修正：サーバー環境（typeof moduleが存在する時）のみ module.exports を実行し、ブラウザ環境なら安全にスルーして window グローバルに直結させます
+// ─── サーバー（Node.js）環境とブラウザ（window）環境へのエクスポート ───
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { JOBS, MAP_SQUARES };
+  module.exports = { JOBS, MAP_SQUARES, createPlayer };
 } else {
   window.JOBS = JOBS;
   window.MAP_SQUARES = MAP_SQUARES;
+  window.createPlayer = createPlayer;
 }

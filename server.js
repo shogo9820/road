@@ -4,8 +4,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// 外部のマスターデータ（gameMaster.js）からJOBSとMAP_SQUARESを読み込む
-const { JOBS, MAP_SQUARES } = require("./master/gameMaster");
+// 🎯 修正：createPlayer を追加で読み込む
+const { JOBS, MAP_SQUARES, createPlayer } = require("/master/gameMaster");
 
 const app = express();
 const server = http.createServer(app);
@@ -112,19 +112,25 @@ io.on("connection", (socket) => {
   // 【ゲーム開始】
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    if (roomCode && rooms[roomCode]) {
-      rooms[roomCode].gamePlayers = JSON.parse(JSON.stringify(rooms[roomCode].players)).map(p => ({
-        ...p,
-        hasJob: p.hasJob !== undefined ? p.hasJob : false
-      }));
-      rooms[roomCode].activePlayerIndex = 0;
+    const room = rooms[roomCode];
+    if (room) {
+      // 🎯 修正：スマホから届いたプレイヤーリスト（ID・名前）をもとに、雛形から正式なステータスを一括生成
+      room.gamePlayers = (room.players || []).map((p, idx) => {
+        const base = createPlayer(p.id, p.name);
+        return {
+          ...base,
+          name: p.name || `プレイヤー${idx + 1}`
+        };
+      });
+      room.activePlayerIndex = 0;
 
       io.to(roomCode).emit("gameStarted", {
         roomCode,
-        players: rooms[roomCode].gamePlayers,
-        mode: rooms[roomCode].mode,
-        activePlayerIndex: rooms[roomCode].activePlayerIndex
+        players: room.gamePlayers,
+        mode: room.mode,
+        activePlayerIndex: room.activePlayerIndex
       });
+      console.log(`[ゲーム開始] ルーム ${roomCode}: プレイヤー ${room.gamePlayers.length} 名のステータスを一括生成しました`);
     }
   });
 
@@ -299,6 +305,7 @@ io.on("connection", (socket) => {
             target.location = updatedP.location !== undefined ? updatedP.location : target.location;
             target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
             target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
+            target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;
             target.isLover = updatedP.isLover !== undefined ? updatedP.isLover : target.isLover;
             target.skipTurn = updatedP.skipTurn !== undefined ? updatedP.skipTurn : target.skipTurn;
             target.hasJob = updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
