@@ -166,68 +166,66 @@ function appendSocketListeners() {
     }
   });
 
+  // 🎯 1回目偶数達成時：新設ボックスに成功を表示し、右側を表（告白相手）へ切り替え
   socket.on("startCoupleSecondRoulette", (data) => {
-    const eventBox = document.getElementById("event-text");
-    if (eventBox) {
-      eventBox.innerHTML = `<p class="event-highlight-text" style="color: #d81b60; font-size: 1.5rem;">
-      🔥 偶数達成！運命の告白チャンス突入！ 🔥<br>スマホから2回目のスピンを回してね！
-    </p>`;
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (modalResultBox) {
+      modalResultBox.className = "event-result-box success";
+      modalResultBox.innerHTML = "🔥 偶数達成！<br>運命の告白チャンス突入！";
+      modalResultBox.style.display = "block";
     }
 
     const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
-      let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
 
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
         let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
 
         if (target) {
-          targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (カップル成立)</span>`;
+          targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (成立)</span>`;
         }
 
-        html += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
+        html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
       dynamicTableZone.innerHTML = html;
     }
   });
 
+  // 🎯 2回目決着時：新設ボックスに最終結果を表示し、余韻を持たせてからモーダルを閉じる
   socket.on("coupleEventFinished", (data) => {
-    const eventBox = document.getElementById("event-text");
-    if (eventBox) {
-      eventBox.innerHTML = `<p class="event-msg" style="font-size:1.5rem; color:#666; font-weight:bold; animation: pulse 1s infinite;">🌀 運命の判定中... ルーレットを注視せよ！ 🌀</p>`;
-    }
-
     isPCEventMode = false;
 
+    // 3秒のルーレット回転完了を待ってから結果テキストをモーダル内に表示
     setTimeout(() => {
-      const targetModalEl = document.getElementById("pc-event-modal");
-      if (targetModalEl) {
-        targetModalEl.className = "event-modal-overlay";
-        targetModalEl.style.display = "none";
-      }
-
-       // 🎯 修正：イベントが完全決着した後に「次のプレイヤーへ」ボタンを安全に復活
-      const btnNext = document.getElementById("btn-next-turn");
-      if (btnNext) {
-        btnNext.disabled = false;
-        btnNext.style.display = "block";
-      }
-
-      if (eventBox) {
+      const modalResultBox = document.getElementById("modal-event-result-box");
+      if (modalResultBox) {
+        modalResultBox.style.display = "block";
         if (data.success) {
-          eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#ffe4e1; border:3px solid #ff69b4; border-radius:12px;">
-          <h2 style="color:#d81b60; font-size:2rem; margin-bottom:5px;">💕 カップル成立！！ 💕</h2>
-          <p style="font-weight:bold; font-size:1.2rem;">${data.message}</p>
-        </div>`;
+          modalResultBox.className = "event-result-box success";
+          modalResultBox.innerHTML = `💕 カップル成立！！ 💕<br><span style="font-size:0.95rem;">${data.message || ""}</span>`;
         } else {
-          eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#eceff1; border:3px solid #b0bec5; border-radius:12px;">
-          <h2 style="color:#37474f; font-size:1.8rem; margin-bottom:5px;">💦 告白失敗... 💦</h2>
-          <p style="font-weight:bold;">運命の人は別にいるさ！ドンマイ！</p>
-        </div>`;
+          modalResultBox.className = "event-result-box failure";
+          modalResultBox.innerHTML = '💦 告白失敗... 💦<br><span style="font-size:0.95rem;">運命の人は別にいるさ！ドンマイ！</span>';
         }
       }
+
+      // 結果をしっかり確認できるよう、さらに3秒間余韻を持たせてからモーダルを自動クローズ
+      setTimeout(() => {
+        const targetModalEl = document.getElementById("pc-event-modal");
+        if (targetModalEl) {
+          targetModalEl.className = "event-modal-overlay";
+          targetModalEl.style.display = "none";
+        }
+
+        const btnNext = document.getElementById("btn-next-turn");
+        if (btnNext) {
+          btnNext.disabled = false;
+          btnNext.style.display = "block";
+        }
+      }, 3000);
     }, 3000);
   });
 }
@@ -574,24 +572,38 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (titleEl) titleEl.textContent = config.title;
   if (descEl) descEl.textContent = config.desc(playerName);
 
+  // 🎯 新設した結果テキストボックスを初期化（非表示・空）
+  const resultBox = document.getElementById("modal-event-result-box");
+  if (resultBox) {
+    resultBox.style.display = "none";
+    resultBox.className = "event-result-box";
+    resultBox.textContent = "";
+  }
+
   let tableHTML = "";
 
   if (eventType === "カップル") {
     tableHTML = `
-      <div class="event-table-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:12px; font-weight:bold; border-bottom:3px solid #ff69b4; padding-bottom:6px;">
-        🎯 1回目スピン：運命 of 判定条件
+      <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">
+        🎯 1回目スピン：運命の判定条件表
       </div>
-      <ul class="event-table-list" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
-        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5; padding:12px; border-radius:8px; display:flex; align-items:center; font-size:1.2rem; font-weight:bold;">
-          <div class="event-table-num-badge" style="background:#ff4081; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px; font-weight:900;">偶</div>
-          <div>💕 偶数：告白チャンス突入！ (運命の2回目スピンへ)</div>
-        </li>
-        <li class="event-table-item" style="border-left: 6px solid #555555; background: #f5f5f5; padding:12px; border-radius:8px; display:flex; align-items:center; font-size:1.2rem; font-weight:bold;">
-          <div class="event-table-num-badge" style="background:#555555; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px; font-weight:900;">奇</div>
-          <div>💦 奇数：失敗... フラれてターン強制終了</div>
-        </li>
-      </ul>
-    `;
+      <ul class="event-table-list">`;
+
+    // 🎯 出目1〜10の全10行にそれぞれ偶数・奇数の判定を固定配置
+    for (let i = 1; i <= 10; i++) {
+      const isEven = (i % 2 === 0);
+      const badgeBg = isEven ? "#ff4081" : "#78909c";
+      const text = isEven 
+        ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス突入！</span>' 
+        : '<span style="color:#546e7a;">💦 奇数：フラれて終了...</span>';
+
+      tableHTML += `
+        <li class="event-table-item">
+          <div class="event-table-num-badge" style="background:${badgeBg};">${i}</div>
+          <div>${text}</div>
+        </li>`;
+    }
+    tableHTML += `</ul>`;
   } else {
     tableHTML = `<div class="event-table-title">👥 判定条件</div><p>イベントの準備中...</p>`;
   }

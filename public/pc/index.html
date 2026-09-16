@@ -158,6 +158,7 @@
         <p class="event-desc" id="modal-event-desc">イベントの説明文がここに表示されます。</p>
         
         <div class="event-main-flex">
+          <!-- 左カラム：ルーレット ＋ 下部に結果テキストボックスを縦並び配置 -->
           <div class="event-roulette-area">
             <div class="event-roulette-container">
               <div class="event-roulette-pointer"></div>
@@ -175,6 +176,9 @@
               </div>
             </div>
             <div class="result-display-zone" id="modal-roulette-result-display">🎯 スマホから回してね！</div>
+            
+            <!-- 🎯 新設：1回目・2回目の成否を大きく伝える専用結果テキストボックス -->
+            <div id="modal-event-result-box" class="event-result-box" style="display: none;"></div>
           </div>
           
           <div class="event-table-area" id="pc-event-table-dynamic-zone"></div>

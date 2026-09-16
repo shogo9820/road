@@ -276,12 +276,49 @@ button:active { transform: scale(0.98); }
   align-items: center;
   gap: 20px;
 }
+/* 🎯 左カラム：ルーレットとテキストボックスを綺麗に縦並びにする */
 .event-roulette-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
 }
+
+/* 🎯 新設：モーダル内専用の結果テキストボックス */
+.event-result-box {
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+  box-sizing: border-box;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 成功時（偶数達成・カップル成立）のスタイル */
+.event-result-box.success {
+  background: #ffe4e1;
+  border: 2px solid #ff4081;
+  color: #d81b60;
+}
+
+/* 失敗時（奇数・告白失敗）のスタイル */
+.event-result-box.failure {
+  background: #eceff1;
+  border: 2px solid #90a4ae;
+  color: #455a64;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .event-roulette-container {
   position: relative;
   width: 250px;
