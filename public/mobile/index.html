@@ -110,8 +110,11 @@
       </div>
 
       <!-- 🛠️ 開発デバッグ専用隠しメニューパネル -->
-      <div class="developer-debug-zone-panel" style="margin-top: 20px; padding-top: 12px; border-top: 2px dashed #ccc;">
-        <button type="button" id="btn-warp-34" class="btn-dark-debug" style="max-width: 260px;">34マス目（カップル）にワープ</button>
+      <div class="developer-debug-zone-panel" style="margin-top: 20px; padding-top: 12px; border-top: 2px dashed #ccc; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="display: flex; gap: 8px; width: 100%; max-width: 280px;">
+          <input type="number" id="input-debug-square" placeholder="マス番号 (0〜99)" min="0" max="99" style="flex: 1; padding: 8px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; text-align: center;">
+          <button type="button" id="btn-debug-warp" class="btn-dark-debug" style="width: auto; padding: 8px 16px; margin: 0; font-size: 0.95rem;">ワープ</button>
+        </div>
       </div>
 
     </div>

@@ -128,6 +128,24 @@ io.on("connection", (socket) => {
     }
   });
 
+    // 🛠️【デバッグ専用】指定マスへの強制ワープ処理（通常プレイのコードには一切影響を与えません）
+  socket.on("debugWarp", (data) => {
+    const { roomCode, targetSquareId } = data;
+    const room = rooms[roomCode];
+    if (room && room.gamePlayers && room.gamePlayers[room.activePlayerIndex]) {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      p.position = Number(targetSquareId);
+
+      // ルーム内の全員（PC・スマホ）へワープ実行を即時通知
+      io.to(roomCode).emit("executeDebugWarp", {
+        activePlayerIndex: room.activePlayerIndex,
+        targetSquareId: p.position,
+        players: room.gamePlayers
+      });
+      console.log(`[デバッグ] ${p.name} が ${p.position} 番マスへワープしました`);
+    }
+  });
+
   // 🎯【通常スピンの主導権】スマホから「トリガー」だけを受け取り、サーバーが出目を決定して一斉送信する
   socket.on("requestSpinRoulette", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;

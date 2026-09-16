@@ -126,6 +126,46 @@ function appendSocketListeners() {
     }
   });
 
+    // 🛠️【デバッグ専用】ワープ受信：指定マスに着地させて即座にイベントを起動
+  socket.on("executeDebugWarp", (data) => {
+    if (data.players) players = data.players;
+    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+
+    const p = players[activePlayerIndex];
+    if (!p) return;
+
+    // 盤面描画とステータス表示を更新
+    if (window.boardManager) {
+      window.boardManager.draw(players, activePlayerIndex);
+    }
+    updateCurrentPlayerDisplay();
+
+    // ワープ先マスのデータを取得
+    const targetSquare = (typeof MAP_SQUARES !== 'undefined') ? MAP_SQUARES[data.targetSquareId] : null;
+    if (!targetSquare) return;
+
+    p.location = targetSquare.location || "";
+    applySquareEffects(p, targetSquare);
+    updateCurrentPlayerDisplay();
+
+    // マス説明文の更新
+    const tileDescEl = document.getElementById("current-tile-desc");
+    if (tileDescEl) {
+      let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
+      let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
+      tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
+    }
+
+    // マス特性に応じたイベントの直接起動
+    if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+      handleForceStopSquare(p, targetSquare);
+    } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
+      const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+      const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+      socket.emit("triggerJobChoice", { roomCode, playerId: p.id, jobId, jobName });
+    }
+  });
+
   socket.on("startCoupleSecondRoulette", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
