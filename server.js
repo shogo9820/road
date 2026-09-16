@@ -193,36 +193,46 @@ io.on("connection", (socket) => {
         const isEven = (result % 2 === 0);
 
         if (isEven) {
-          // 🎯 偶数の場合：自分以外の残りのプレイヤーを 1〜10 のマスへランダムに1名ずつ配置する（サーバー主導）
+          // 🎯 偶数の場合：自分以外の他プレイヤーを1〜10のマスへ重複なくランダム配置
           const otherPlayers = gamePlayers.filter(p => String(p.id) !== String(playerId));
           
-          // 1〜10のシャッフル用スロットを用意
-          const slots = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-          for (let i = slots.length - 1; i > 0; i--) {
+          // 角度（度数）と出目（1〜10）の対応表を維持
+          const degreeTable = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+          
+          // 1〜10の出目スロットを用意してシャッフル
+          const rollSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+          for (let i = rollSlots.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [slots[i], slots[j]] = [slots[j], slots[i]];
+            [rollSlots[i], rollSlots[j]] = [rollSlots[j], rollSlots[i]];
           }
 
-          // 10個の出目に対して、自分以外のプレイヤーを重複なく順番に割り当てる
+          // 1〜10の出目をキーとして初期化（出目・角度・プレイヤー情報を統合）
           const mapping = {};
-          for (let i = 1; i <= 10; i++) mapping[i] = null;
+          for (let i = 1; i <= 10; i++) {
+            mapping[i] = null;
+          }
           
           otherPlayers.forEach((p, idx) => {
-            if (idx < slots.length) {
-              mapping[slots[idx]] = { id: p.id, name: p.name };
+            if (idx < rollSlots.length) {
+              const assignedRoll = rollSlots[idx];
+              mapping[assignedRoll] = {
+                id: p.id,
+                name: p.name,
+                degree: degreeTable[assignedRoll - 1] // 盤面角度とも1対1で連動保持
+              };
             }
           });
 
-          // サーバー側の部屋データに今回の対応表（mapping）を一時保存
+          // 部屋データに今回の対応表を一時保存
           room.currentCoupleMapping = mapping;
 
           console.log(`[カップルチャンス] 偶数達成！2回目のランダム配置を生成しました。`, mapping);
           
-          // ルーム全体（PCとスマホ両方）に、綺麗に生成された「割り当て対応表（mapping）」を添付して2回目の開始を通知！
+          // 全員（PCとスマホ両方）に割り当て対応表を添付して2回目開始を通知
           io.to(roomCode).emit("startCoupleSecondRoulette", {
             targetPlayerId: targetPlayer.id, 
             targetPlayerName: "運命の相手",
-            mapping: mapping // フロントエンドはこれを受け取って表示するだけ！
+            mapping: mapping
           });
         } else {
           console.log(`[カップル不成立] 奇数だったためイベント終了です。`);
