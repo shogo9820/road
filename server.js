@@ -5,7 +5,7 @@ const { Server } = require("socket.io");
 const path = require("path");
 
 // 🎯 修正：createPlayer を追加で読み込む
-const { JOBS, MAP_SQUARES, createPlayer } = require("/master/gameMaster");
+const { JOBS, MAP_SQUARES, createPlayer } = require("./master/gameMaster");
 
 const app = express();
 const server = http.createServer(app);
