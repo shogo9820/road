@@ -40,6 +40,7 @@ function handleNextTurnClick(e) {
   if (players.length === 0) return;
   socket.emit("playerAction", { roomCode, action: "nextTurn" });
 }
+
 function initSocketListeners() {
   socket.on("connect", () => {
     console.log("Socket.io 接続成功:", socket.id);
@@ -52,16 +53,11 @@ function initSocketListeners() {
     const roomCodeEl = document.getElementById("display-room-code");
     if (roomCodeEl) roomCodeEl.textContent = roomCode;
 
-    const qrContainer = document.getElementById("qrcode");
-    if (qrContainer) {
-      qrContainer.innerHTML = "";
-      if (typeof QRCode !== "undefined") {
-        new QRCode(qrContainer, {
-          text: `${window.location.origin}/mobile/index.html?room=${roomCode}`,
-          width: 128,
-          height: 128,
-        });
-      }
+    // 🎯 修正：外部ライブラリによる生成を廃止し、無料APIのURLを<img>のsrcに直接代入して一発表示
+    const qrImgEl = document.getElementById("qrcode-img");
+    if (qrImgEl) {
+      const joinUrl = `${window.location.origin}/mobile/index.html?room=${roomCode}`;
+      qrImgEl.src = `https://qrserver.com{encodeURIComponent(joinUrl)}`;
     }
 
     switchScreen("screen-waiting");
@@ -158,7 +154,6 @@ function appendSocketListeners() {
     }
   });
 
-// ─── pc.js : 【パーツ3】内ソケット受信：どんなイベント終了時でも確実にモーダルを消し去る修正 ───
   socket.on("coupleEventFinished", (data) => {
     const eventBox = document.getElementById("event-text");
     if (eventBox) {
@@ -168,12 +163,10 @@ function appendSocketListeners() {
     isPCEventMode = false;
 
     setTimeout(() => {
-      // 🎯 修正：ID名（ 'pc-event-modal' ）でドキュメントから要素を安全に再取得し、
-      // どのテーマ（ theme-couple / theme-entrance 等）であっても例外なく active クラスごと全消去して完全に画面から消し去ります
       const targetModalEl = document.getElementById("pc-event-modal");
       if (targetModalEl) {
-        targetModalEl.className = "event-modal-overlay"; // クラスを初期状態（非表示）に完全リセット
-        targetModalEl.style.display = "none";            // display属性も強制的に非表示に固定
+        targetModalEl.className = "event-modal-overlay";
+        targetModalEl.style.display = "none";
       }
 
       if (eventBox) {
@@ -189,14 +182,14 @@ function appendSocketListeners() {
         </div>`;
         }
       }
-    }, 3000); // 3秒の回転時間待ち
+    }, 3000);
   });
 }
 
-// 🎯 初期化のトリガーへ追加したリスナーをフックします
 document.addEventListener("DOMContentLoaded", () => {
   appendSocketListeners();
 });
+
 function switchScreen(targetId) {
   const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
   screenIds.forEach((id) => {
@@ -315,6 +308,7 @@ function updateCurrentPlayerDisplay() {
 
   renderLocationPlayersList();
 }
+
 // ─── pc.js : 【パーツ6】0秒目のモーダル自動起動を完全に消去し、3秒遅延へ一本化する修正 ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
@@ -327,7 +321,6 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 1. 【遅延ゼロ：0秒目】通常盤・イベント盤問わず、回り始めた瞬間のテキスト表示
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
 
@@ -336,14 +329,13 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 角度計算用の設定
+  // 🎯 角度計算用の設定データを完全に修復
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
 
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
-  // 回転させるホイール（要素）の特定
   let wheel;
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
     wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
@@ -353,14 +345,12 @@ function executeSyncedRoulette(resultNum) {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
-  // 2. 【遅延ゼロ：0秒目】ホイールを即座に回転開始
   if (wheel) {
     console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  // 3. 【遅延ゼロ：0秒目】すごろくの移動計算（強制ストップマスの検知）
   let targetPosition = p.position + resultNum;
   
   if (typeof MAP_SQUARES !== 'undefined') {
@@ -380,7 +370,6 @@ function executeSyncedRoulette(resultNum) {
   let squareLocation = "";
   let targetSquare = null;
   if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
-    // 🎯 最新の止まったマス目のデータを特定
     targetSquare = MAP_SQUARES[p.position];
     squareLocation = targetSquare.location || "";
     applySquareEffects(p, targetSquare);
@@ -397,7 +386,6 @@ function executeSyncedRoulette(resultNum) {
   renderLocationPlayersList();
   updateCurrentPlayerDisplay();
 
-  // 🎯 修正：3秒後の遅延関数へ、特定した最新の「 targetSquare 」データを一分の隙もなく100%確実に引き渡します
   triggerDelayedDisplay(resultNum, targetSquare);
 }
 
@@ -411,12 +399,8 @@ function applySquareEffects(player, square) {
     }
   }
 }
-
-// ─── pc.js : 【パーツ7：修正版】3秒停止した瞬間に最新マスからカップルモーダルを起動する処理 ───
-
 function triggerDelayedDisplay(resultNum, targetSquare) {
   setTimeout(() => {
-    // 🎯 修正：スコープエラーを完全に防ぐため、タイマー内でDOM要素とプレイヤーデータを安全に再取得
     const innerResEl = document.getElementById("roulette-result-display");
     const innerEventBox = document.getElementById("event-text");
     const tileDescEl = document.getElementById("current-tile-desc");
@@ -429,27 +413,22 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       return; 
     }
 
-    // 🎯 引数から渡ってきた移動後の最新マスデータ（targetSquare）を元に、3秒後のタイミングで確実に処理を実行
     if (targetSquare && p) {
-      // 【3秒の遅延満了：止まった瞬間】中央の説明テキストを表示！
       if (innerEventBox) {
         innerEventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
       }
 
-      // 【3秒の遅延満了：止まった瞬間】右下のマスの内容説明欄へテキストを流し込む！
       if (tileDescEl) {
         let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
         let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
         tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
       }
 
-      // 🎯 修正：ルーレットが3秒間回りきってピタッと止まったこの瞬間に、引き渡されたマスデータ（targetSquare）を使ってhandleForceStopSquareを確実に呼び出します！
       if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
         console.log(`[PC] 3秒遅延満了。強制ストップイベント（ID: ${targetSquare.id}）を起動します。`);
         handleForceStopSquare(p, targetSquare);
       }
 
-      // 役職マスのダイアログ処理も同様に止まった瞬間に中継
       const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
       if (isJobSquare && !p.hasJob) {
         const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
@@ -463,7 +442,6 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       }
     }
 
-    // 止まった瞬間の最新ステータスを全員へ同期
     socket.emit("updateGameState", {
       roomCode: roomCode,
       activePlayerIndex: activePlayerIndex,
@@ -480,7 +458,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         job: pl.job || "モブ"
       }))
     });
-  }, 3000); // ルーレットが回りきる3秒（3000ms）をきっちり待つ
+  }, 3000);
 }
 
 const GAME_EVENTS = {
@@ -527,8 +505,6 @@ function generateCoupleTargetTable(activePlayerId) {
   return html;
 }
 
-// ─── pc.js : カップルマス到達時（1回目スピン待ち）の初期状態から特大対応表を完全露出させる修正 ───
-
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
@@ -537,25 +513,20 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   const config = GAME_EVENTS[eventType];
   if (!config) return;
 
-  // モーダル全体に active とイベント特性のテーマクラスを付与
   pcModal.className = "event-modal-overlay";
   pcModal.classList.add("active", config.class);
 
-  // タイトルと説明文を流し込み
   const titleEl = document.getElementById("modal-event-title");
   const descEl = document.getElementById("modal-event-desc");
   if (titleEl) titleEl.textContent = config.title;
   if (descEl) descEl.textContent = config.desc(playerName);
 
-  // 🎯 修正：これまでは2回目まで非表示だったり、中身が空っぽだった「判定対応表（右側エリア）」を、
-  // モーダルがガバッと開いた最初の瞬間（1回目スピン待ち）からドカンと画面に生成して露出させます！
   let tableHTML = "";
 
   if (eventType === "カップル") {
-    // 🎯 1回目スピン：偶数か奇数かで運命が決まる最初の判定条件表をドカンと露出！
     tableHTML = `
       <div class="event-table-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:12px; font-weight:bold; border-bottom:3px solid #ff69b4; padding-bottom:6px;">
-        🎯 1回目スピン：運命の判定条件
+        🎯 1回目スピン：運命 of 判定条件
       </div>
       <ul class="event-table-list" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
         <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5; padding:12px; border-radius:8px; display:flex; align-items:center; font-size:1.2rem; font-weight:bold;">
@@ -569,29 +540,21 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
       </ul>
     `;
   } else {
-    // 今後他のイベントが増えた場合の汎用フォールバック
     tableHTML = `<div class="event-table-title">👥 判定条件</div><p>イベントの準備中...</p>`;
   }
 
-  // 特定した対応表エリア（ ID: pc-event-table-dynamic-zone ）へ初期状態の表をガツンと流し込む
   const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
   if (dynamicTableZone) {
     dynamicTableZone.innerHTML = tableHTML;
-  } else {
-    console.error("⚠️ エラー: モーダル内に対応表を描画する 'pc-event-table-dynamic-zone' が見つかりません。");
   }
 
-  // 初期スピン待ちの出目テキストをリセット
   const modalResEl = document.getElementById("modal-roulette-result-display");
   if (modalResEl) modalResEl.textContent = "🎯 スマホからルーレットを回してね！";
 }
 
-// ─── pc.js : 開発効率化のため、仕様未定のマスは即座に自動クローズしてパスする修正 ───
-
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 35:
-      // 🎯 今確認したい「カップル成立マス」だけは、通常通りモーダルを開いてイベントを開始する
       console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
       openPCEventModal("カップル", player.name, player.id);
       socket.emit("triggerCoupleEvent", {
@@ -605,14 +568,11 @@ function handleForceStopSquare(player, square) {
     case 52: // ランクアップ
     case 78: // 引退
     default:
-      // 🎯 修正：カップルマス以外（仕様未定のマス）に止まった時は、画面ロックを防ぐため即座にパスする！
       console.log(`[開発デバッグ] マスID: ${square.id} は仕様未定のため、自動でスキップ処理を行います。`);
       
-      // 1. 一瞬だけ対応するモーダルを開く（または開かずに直接でもOK）
       const eventName = square.id === 15 ? "入学式" : square.id === 52 ? "ランクアップ" : "引退";
       openPCEventModal(eventName, player.name, player.id);
 
-      // 2. わずか 300ミリ秒（0.3秒）後に、サーバーへ「イベント終了」の電波を自動で偽装発信してモーダルを速攻で閉じさせます
       setTimeout(() => {
         console.log(`[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`);
         socket.emit("playerAction", { 
@@ -620,7 +580,6 @@ function handleForceStopSquare(player, square) {
           action: "nextTurn" 
         });
         
-        // 既存の汎用モーダル消去ロジックを直接叩いて画面を綺麗に戻す
         const pcModal = document.getElementById("pc-event-modal");
         if (pcModal) {
           pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");

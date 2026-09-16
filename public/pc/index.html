@@ -10,8 +10,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <!-- 外部マスターデータと管理用JS -->
   <script src="../../master/gameMaster.js"></script>
-  <!-- QRコード生成ライブラリをpc.jsよりも上に移動し、最も安定した最新の配信元（unpkg）に変更 -->
-  <script src="https://unpkg.com"></script>
   <script src="board.js"></script>
   <script src="pc.js"></script>
   <script>
@@ -50,7 +48,8 @@
         </div>
         <div class="waiting-grid">
           <div class="qr-panel">
-            <div id="qrcode"></div>
+            <!-- 🎯 修正：外部ライブラリ用の空divを廃止し、URLベースでQRコード画像を直接流し込める<img>タグに変更 -->
+            <img id="qrcode-img" src="" alt="参加用QRコード" style="width: 150px; height: 150px; display: block; background: #eee;">
             <p style="font-weight: bold; margin: 5px 0 0 0;">スマホでQRコードを読み取って参加！</p>
           </div>
           <div>
@@ -62,11 +61,11 @@
       </div>
     </div>
 
-    <!-- 【3】🎯 設計図通り：ゲームプレイ本番画面（盤面最大化） -->
+    <!-- 【3】ゲームプレイ本番画面（盤面最大化） -->
     <div id="screen-game" style="display: none;">
       <div class="game-layout">
         
-        <!-- 👈 【左カラム】300px固定：操作プレイヤーのステータス -->
+        <!-- 【左カラム】300px固定：操作プレイヤーのステータス -->
         <div class="layout-left">
           <div class="current-player-card">
             <div class="player-header">
@@ -103,7 +102,7 @@
           </div>
         </div>
 
-        <!-- 🗺️ 🚀 【中央カラム】残りの画面幅（1fr）を限界まで使い切ってすごろくを最大化 -->
+        <!-- 【中央カラム】残りの画面幅（1fr）を限界まで使い切ってすごろくを最大化 -->
         <div class="layout-center">
           <div class="map-card-maximized">
             <div class="map-header">
@@ -114,12 +113,11 @@
           </div>
         </div>
 
-        <!-- 👉 【右カラム】300px固定：スマホと完全シンクロするルーレット ＆ マス内容 -->
+        <!-- 【右カラム】300px固定：スマホと完全シンクロするルーレット ＆ マス内容 -->
         <div class="layout-right">
           <div class="card roulette-card">
             <div class="roulette-result-display" id="roulette-result-display">🎯 タップして回そう！</div>
             
-            <!-- 🔄 スマホのルーレット盤とHTML構造を100%完全同一化 -->
             <div style="position: relative; width: 200px; height: 200px; margin: 0 auto;">
               <div class="event-roulette-pointer"></div>
               <div class="roulette-wheel-board" id="pc-roulette-wheel">
@@ -153,14 +151,13 @@
       </div>
     </div>
 
-    <!-- 🎯 PC側特大イベントモーダル（中央に重なって出現する特大コンポーネント） -->
+    <!-- PC側特大イベントモーダル -->
     <div id="pc-event-modal" class="event-modal-overlay">
       <div class="event-card-container">
         <h1 class="event-title" id="modal-event-title">💕 イベントタイトル 💕</h1>
         <p class="event-desc" id="modal-event-desc">イベントの説明文がここに表示されます。</p>
         
         <div class="event-main-flex">
-          <!-- 左：爆速同期回転する特大イベントホイール -->
           <div class="event-roulette-area">
             <div class="event-roulette-container">
               <div class="event-roulette-pointer"></div>
@@ -180,7 +177,6 @@
             <div class="result-display-zone" id="modal-roulette-result-display">🎯 スマホから回してね！</div>
           </div>
           
-          <!-- 右：リアルタイム条件テーブル -->
           <div class="event-table-area" id="pc-event-table-dynamic-zone"></div>
         </div>
       </div>
