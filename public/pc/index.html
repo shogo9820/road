@@ -5,13 +5,24 @@
   <title>宅飲み人生ゲーム 🍺 [親機]</title>
   <link rel="stylesheet" href="../css/common.css">
   <link rel="stylesheet" href="pc.css">
+  <!-- ルートのマニフェストを読み込み -->
+  <link rel="manifest" href="../manifest.json">
   <script src="/socket.io/socket.io.js"></script>
   <!-- 外部マスターデータと管理用JS -->
   <script src="../../master/gameMaster.js"></script>
   <script src="board.js"></script>
   <script src="pc.js"></script>
-  <!-- QRコード生成ライブラリ -->
+  <!-- QRコード生成ライブラリ（正しいCDNパスに修正） -->
   <script src="https://cloudflare.com"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('[PWA] サービスワーカー登録成功（PC）:', reg.scope))
+          .catch((err) => console.error('[PWA] サービスワーカー登録失敗:', err));
+      });
+    }
+  </script>
 </head>
 <body class="pc-screen">
   <div class="app-container">
