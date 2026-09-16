@@ -465,29 +465,34 @@ function sendNextTurn() {
 
 
 // ─── controller.js : 開発デバッグ用メニューの指定マスワープ処理 ───
-const btnDebugWarp = document.getElementById("btn-debug-warp");
-const inputDebugSquare = document.getElementById("input-debug-square");
+window.addEventListener("DOMContentLoaded", () => {
+  const btnDebugWarp = document.getElementById("btn-debug-warp");
+  const inputDebugSquare = document.getElementById("input-debug-square");
 
-if (btnDebugWarp && inputDebugSquare) {
-  btnDebugWarp.addEventListener("click", (e) => {
-    e.preventDefault();
+  if (btnDebugWarp && inputDebugSquare) {
+    btnDebugWarp.addEventListener("click", (e) => {
+      e.preventDefault();
 
-    const targetVal = inputDebugSquare.value.trim();
-    if (targetVal === "") {
-      alert("ワープ先のマス番号（0〜99）を入力してください");
-      return;
-    }
+      const targetVal = inputDebugSquare.value.trim();
+      if (targetVal === "") {
+        alert("ワープ先のマス番号（0〜99）を入力してください");
+        return;
+      }
 
-    const targetSquareId = parseInt(targetVal, 10);
-    if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
-      alert("0〜99の範囲で数値を入力してください");
-      return;
-    }
+      const targetSquareId = parseInt(targetVal, 10);
+      if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
+        alert("0〜99の範囲で数値を入力してください");
+        return;
+      }
 
-    // サーバーへ完全分離のデバッグワープ要求を送信
-    socket.emit("debugWarp", {
-      roomCode: currentRoomCode,
-      targetSquareId: targetSquareId
+      // ルームコードが空の場合はURLパラメータから再取得を試みる
+      const roomCodeToSend = currentRoomCode || new URLSearchParams(window.location.search).get("room") || "";
+
+      console.log(`[デバッグ送信] マス: ${targetSquareId}, ルーム: ${roomCodeToSend}`);
+      socket.emit("debugWarp", {
+        roomCode: roomCodeToSend,
+        targetSquareId: targetSquareId
+      });
     });
-  });
-}
+  }
+});
