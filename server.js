@@ -17,9 +17,21 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ─── server.js : publicの外にあるマスターデータをブラウザへ安全に公開するルーティングを追加 ───
 
-// 🎯 追記：ブラウザからのアクセスに対して、masterフォルダ内の gameMaster.js を正確に配信します
+// ─── server.js : 【完全修正版】マスターデータとCSSをブラウザへ安全かつ正確に公開するルーティング ───
+
+// 静的ファイルの公開範囲を「public」フォルダに指定
+app.use(express.static(path.join(__dirname, "public")));
+
+// 🎯 修正：ブラウザからのアクセスに対して、JavaScriptとして認識されるようMIMEタイプを明示して安全に配信します
 app.get("/master/gameMaster.js", (req, res) => {
+  res.type("application/javascript"); // 👈 必須：これを追加してブラウザのセキュリティブロックを解除します
   res.sendFile(path.join(__dirname, "master", "gameMaster.js"));
+});
+
+// 🎯 追記：もしCSSがブロックされる場合、パスを直接解決する保険のルーティングを追加しておきます
+app.get("/css/common.css", (req, res) => {
+  res.type("text/css");
+  res.sendFile(path.join(__dirname, "public", "css", "common.css"));
 });
 
 
