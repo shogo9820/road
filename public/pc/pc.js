@@ -527,6 +527,8 @@ function generateCoupleTargetTable(activePlayerId) {
   return html;
 }
 
+// ─── pc.js : カップルマス到達時（1回目スピン待ち）の初期状態から特大対応表を完全露出させる修正 ───
+
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
@@ -535,70 +537,53 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   const config = GAME_EVENTS[eventType];
   if (!config) return;
 
+  // モーダル全体に active とイベント特性のテーマクラスを付与
   pcModal.className = "event-modal-overlay";
   pcModal.classList.add("active", config.class);
 
+  // タイトルと説明文を流し込み
+  const titleEl = document.getElementById("modal-event-title");
+  const descEl = document.getElementById("modal-event-desc");
+  if (titleEl) titleEl.textContent = config.title;
+  if (descEl) descEl.textContent = config.desc(playerName);
+
+  // 🎯 修正：これまでは2回目まで非表示だったり、中身が空っぽだった「判定対応表（右側エリア）」を、
+  // モーダルがガバッと開いた最初の瞬間（1回目スピン待ち）からドカンと画面に生成して露出させます！
   let tableHTML = "";
 
   if (eventType === "カップル") {
+    // 🎯 1回目スピン：偶数か奇数かで運命が決まる最初の判定条件表をドカンと露出！
     tableHTML = `
-      <div class="event-table-title">🎯 1回目：運命 of 判定条件</div>
-      <ul class="event-table-list">
-        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5;"><div class="event-table-num-badge">偶</div> <strong>💕 偶数：告白チャンス突入！ (2回目のスピンへ)</strong></li>
-        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">奇</div> <strong>💦 奇数：失敗... フラれて終了</strong></li>
-      </ul>
-    `;
-  } else if (eventType === "ランクアップ") {
-    tableHTML = `
-      <div class="event-table-title">🎯 ランクアップ条件</div>
-      <ul class="event-table-list">
-        <li class="event-table-item" style="border-left: 6px solid #ffca28; background: #fffde7;"><div class="event-table-num-badge">4〜10</div> <strong>🔥 ランクアップ成功！ 上位役職へ昇格！</strong></li>
-        <li class="event-table-item" style="border-left: 6px solid #555555;"><div class="event-table-num-badge">1〜3</div> <strong>💦 ランクアップ失敗... 現状維持</strong></li>
+      <div class="event-table-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:12px; font-weight:bold; border-bottom:3px solid #ff69b4; padding-bottom:6px;">
+        🎯 1回目スピン：運命の判定条件
+      </div>
+      <ul class="event-table-list" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
+        <li class="event-table-item" style="border-left: 6px solid #ff4081; background: #fff0f5; padding:12px; border-radius:8px; display:flex; align-items:center; font-size:1.2rem; font-weight:bold;">
+          <div class="event-table-num-badge" style="background:#ff4081; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px; font-weight:900;">偶</div>
+          <div>💕 偶数：告白チャンス突入！ (運命の2回目スピンへ)</div>
+        </li>
+        <li class="event-table-item" style="border-left: 6px solid #555555; background: #f5f5f5; padding:12px; border-radius:8px; display:flex; align-items:center; font-size:1.2rem; font-weight:bold;">
+          <div class="event-table-num-badge" style="background:#555555; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px; font-weight:900;">奇</div>
+          <div>💦 奇数：失敗... フラれてターン強制終了</div>
+        </li>
       </ul>
     `;
   } else {
-    tableHTML = `<div class="event-table-title">👥 出目ごとのターゲットプレイヤー</div><ul class="event-table-list">`;
-    const playerNames = players.length > 0 ? players.map((p) => p.name) : ["プレイヤー1"];
-    for (let i = 1; i <= 10; i++) {
-      let targetText = '<span style="color:#aaa;">（何もなし）</span>';
-      if (i % 2 === 1) {
-        const playerIndex = Math.floor((i - 1) / 2) % playerNames.length;
-        targetText = `<span style="color:#2196f3; font-weight:bold;">👤 ${playerNames[playerIndex]}</span>`;
-      }
-      tableHTML += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
-    }
-    tableHTML += `</ul>`;
+    // 今後他のイベントが増えた場合の汎用フォールバック
+    tableHTML = `<div class="event-table-title">👥 判定条件</div><p>イベントの準備中...</p>`;
   }
 
-  pcModal.innerHTML = `
-    <div class="event-card-container">
-      <div class="event-title">${config.title}</div>
-      <div class="event-desc">${config.desc(playerName)}</div>
-      <div class="event-main-flex">
-        <div class="event-roulette-area">
-          <div class="event-roulette-container">
-            <div class="event-roulette-pointer"></div>
-            <div class="event-roulette-wheel">
-              <div class="roulette-num num-1">1</div>
-              <div class="roulette-num num-2">2</div>
-              <div class="roulette-num num-3">3</div>
-              <div class="roulette-num num-4">4</div>
-              <div class="roulette-num num-5">5</div>
-              <div class="roulette-num num-6">6</div>
-              <div class="roulette-num num-7">7</div>
-              <div class="roulette-num num-8">8</div>
-              <div class="roulette-num num-9">9</div>
-              <div class="roulette-num num-10">10</div>
-            </div>
-          </div>
-          <div class="event-highlight-text" style="margin-top:10px;">スマホからルーレットを回してね！</div>
-        </div>
-        <div class="event-table-area" id="pc-event-table-dynamic-zone">
-          ${tableHTML}
-        </div>
-      </div>
-    </div>
-  `;
+  // 特定した対応表エリア（ ID: pc-event-table-dynamic-zone ）へ初期状態の表をガツンと流し込む
+  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+  if (dynamicTableZone) {
+    dynamicTableZone.innerHTML = tableHTML;
+  } else {
+    console.error("⚠️ エラー: モーダル内に対応表を描画する 'pc-event-table-dynamic-zone' が見つかりません。");
+  }
+
+  // 初期スピン待ちの出目テキストをリセット
+  const modalResEl = document.getElementById("modal-roulette-result-display");
+  if (modalResEl) modalResEl.textContent = "🎯 スマホからルーレットを回してね！";
 }
 
 // ─── pc.js : 開発効率化のため、仕様未定のマスは即座に自動クローズしてパスする修正 ───
