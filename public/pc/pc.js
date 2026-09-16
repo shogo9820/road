@@ -53,11 +53,11 @@ function initSocketListeners() {
     const roomCodeEl = document.getElementById("display-room-code");
     if (roomCodeEl) roomCodeEl.textContent = roomCode;
 
-    // 🎯 修正：外部ライブラリによる生成を廃止し、無料APIのURLを<img>のsrcに直接代入して一発表示
+    // 🎯 修正：文字列結合を確実に正しく行い、APIのURLを正確に組み立てる
     const qrImgEl = document.getElementById("qrcode-img");
     if (qrImgEl) {
-      const joinUrl = `${window.location.origin}/mobile/index.html?room=${roomCode}`;
-      qrImgEl.src = `https://qrserver.com{encodeURIComponent(joinUrl)}`;
+      const joinUrl = window.location.origin + "/mobile/index.html?room=" + roomCode;
+      qrImgEl.src = "https://qrserver.com" + encodeURIComponent(joinUrl);
     }
 
     switchScreen("screen-waiting");
