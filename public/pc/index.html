@@ -10,10 +10,10 @@
   <script src="/socket.io/socket.io.js"></script>
   <!-- 外部マスターデータと管理用JS -->
   <script src="../../master/gameMaster.js"></script>
+  <!-- QRコード生成ライブラリをpc.jsよりも上に移動し、最も安定した最新の配信元（unpkg）に変更 -->
+  <script src="https://unpkg.com"></script>
   <script src="board.js"></script>
   <script src="pc.js"></script>
-  <!-- QRコード生成ライブラリ（正しいCDNパスに修正） -->
-  <script src="https://cloudflare.com"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
