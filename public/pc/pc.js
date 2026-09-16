@@ -53,11 +53,10 @@ function initSocketListeners() {
     const roomCodeEl = document.getElementById("display-room-code");
     if (roomCodeEl) roomCodeEl.textContent = roomCode;
 
-    // 🎯 修正：文字列結合を確実に正しく行い、APIのURLを正確に組み立てる
+    // 🎯 修正：サーバー側で自前生成された画像データURLをそのまま<img>にセットする
     const qrImgEl = document.getElementById("qrcode-img");
-    if (qrImgEl) {
-      const joinUrl = window.location.origin + "/mobile/index.html?room=" + roomCode;
-      qrImgEl.src = "https://qrserver.com" + encodeURIComponent(joinUrl);
+    if (qrImgEl && data.qrCodeDataUrl) {
+      qrImgEl.src = data.qrCodeDataUrl;
     }
 
     switchScreen("screen-waiting");

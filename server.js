@@ -1,3 +1,4 @@
+const QRCode = require("qrcode");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -39,7 +40,7 @@ io.on("connection", (socket) => {
   console.log("クライアント接続成功:", socket.id);
 
   // 【ルーム作成】
-  socket.on("createRoom", (data) => {
+  socket.on("createRoom", async (data) => {
     const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
     const hostName = (data && data.hostName) ? data.hostName : "やじま";
 
@@ -51,11 +52,26 @@ io.on("connection", (socket) => {
       gamePlayers: [],
       activePlayerIndex: 0,
       mode: "normal",
-      currentCoupleMapping: null // カップルイベント2回目の割り振りを記憶する領域
+      currentCoupleMapping: null
     };
 
+    let qrCodeDataUrl = "";
+    try {
+      const host = socket.handshake.headers.host;
+      const protocol = socket.handshake.headers["x-forwarded-proto"] || "http";
+      const joinUrl = `${protocol}://${host}/mobile/index.html?room=${roomCode}`;
+      qrCodeDataUrl = await QRCode.toDataURL(joinUrl, { width: 150, margin: 1 });
+    } catch (err) {
+      console.error("QRコード生成エラー:", err);
+    }
+
     console.log(`ルーム作成完了 [${roomCode}]`);
-    socket.emit("roomCreated", { roomCode, hostName, players: rooms[roomCode].players });
+    socket.emit("roomCreated", { 
+      roomCode, 
+      hostName, 
+      players: rooms[roomCode].players,
+      qrCodeDataUrl 
+    });
   });
 
   // 【ルーム参加】
