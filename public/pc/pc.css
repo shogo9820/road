@@ -351,3 +351,18 @@ button:active { transform: scale(0.98); }
 .event-table-num-badge { background: #333; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: 900; font-size: 0.85rem; flex-shrink: 0; }
 .theme-couple .event-table-num-badge { background: #ff4081; }
 .theme-rankup .event-table-num-badge { background: #f5a623; }
+
+/* 🎯 幸福度ステータス用の強調スタイル */
+.stat-happiness-box {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.happiness-value {
+  color: #ffeb3b;
+  font-size: 1.3rem;
+  font-weight: 900;
+}

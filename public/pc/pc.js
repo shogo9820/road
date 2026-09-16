@@ -347,6 +347,21 @@ function updateCurrentPlayerDisplay() {
   const drinksEl = document.getElementById("current-player-drinks");
   if (drinksEl) drinksEl.textContent = `${p.drinkCount || 0} 杯`;
 
+    // 🎯 幸福度の画面表示反映
+  const happinessEl = document.getElementById("current-player-happiness");
+  if (happinessEl) {
+    const hpVal = p.happiness !== undefined ? p.happiness : 100;
+    happinessEl.textContent = `${hpVal} pt`;
+    // 幸福度に応じて文字色を分かりやすく変化
+    if (hpVal >= 100) {
+      happinessEl.style.color = "#ffeb3b"; // 黄色（好調・高得点）
+    } else if (hpVal >= 50) {
+      happinessEl.style.color = "#ffffff"; // 白（通常）
+    } else {
+      happinessEl.style.color = "#ff8a80"; // 赤寄り（ピンチ・不調）
+    }
+  }
+
   const locationEl = document.getElementById("current-player-location");
   if (locationEl) locationEl.textContent = p.location ? p.location : "-";
 
@@ -434,6 +449,7 @@ function executeSyncedRoulette(resultNum) {
 }
 
 function applySquareEffects(player, square) {
+  // 1. お酒ペナルティの適用
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
   if (drinkAmount > 0) {
     if (!player.drinkCount) player.drinkCount = 0;
@@ -442,7 +458,29 @@ function applySquareEffects(player, square) {
       player.currentHp = Math.max(0, player.currentHp - drinkAmount * 10);
     }
   }
+
+  // 2. 🎯 マスの幸福度増減を適用（未指定の場合は0）
+  const happinessChange = square.happiness !== undefined ? square.happiness : 0;
+  if (happinessChange !== 0) {
+    if (player.happiness === undefined) player.happiness = 100;
+    player.happiness += happinessChange;
+    console.log(`[幸福度変動] ${player.name}: ${happinessChange > 0 ? "+" : ""}${happinessChange} (現在値: ${player.happiness})`);
+  }
+
+  // 3. 🎯 肝臓HPが0（潰れた）場合のペナルティ・全回復処理
+  if (player.currentHp !== undefined && player.currentHp <= 0) {
+    if (player.happiness === undefined) player.happiness = 100;
+    player.happiness = Math.max(0, player.happiness - 30); // 幸福度 -30
+    player.skipTurn = true; // 次ターン1回休み
+
+    // HP全回復（基礎キャパシティ ＋ ボーナス）
+    const maxHp = (player.baseCap || 80) + (player.bonusCap || 0);
+    player.currentHp = maxHp;
+
+    alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
+  }
 }
+
 function triggerDelayedDisplay(resultNum, targetSquare) {
   setTimeout(() => {
     const innerResEl = document.getElementById("roulette-result-display");
@@ -495,6 +533,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         location: pl.location,
         currentHp: pl.currentHp,
         drinkCount: pl.drinkCount,
+        happiness: pl.happiness !== undefined ? pl.happiness : 100, 
         isLover: pl.isLover,
         skipTurn: pl.skipTurn,
         hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
