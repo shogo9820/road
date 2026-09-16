@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>サークル人生ゲーム - ポータル</title>
+  <link rel="preconnect" href="https://googleapis.com">
+  <link rel="preconnect" href="https://gstatic.com" crossorigin>
+  <link href="https://googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #6a11cb;
+      --secondary-color: #2575fc;
+      --bg-color: #f5f5f5;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --border-color: #e0e0e0;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .portal-container {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 40px 30px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
+      max-width: 480px;
+      width: 90%;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 900;
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: var(--text-color);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #666;
+      margin-bottom: 32px;
+      font-weight: bold;
+    }
+
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .portal-btn {
+      display: block;
+      text-decoration: none;
+      padding: 16px;
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .portal-btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-pc {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    }
+
+    .btn-mobile {
+      background: linear-gradient(135deg, #ff4081 0%, #ff9800 100%);
+    }
+
+    .btn-desc {
+      font-size: 0.85rem;
+      font-weight: bold;
+      display: block;
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="portal-container">
+    <h1>🍻 宅飲み人生ゲーム 🍺</h1>
+    <div class="subtitle">〜 使用する画面を選択してください 〜</div>
+
+    <div class="menu-list">
+      <!-- PC用大画面へのリンク -->
+      <a href="/pc/index.html" class="portal-btn btn-pc">
+        🖥 PC親機 画面を開く
+        <span class="btn-desc">部屋を作成してテレビやモニターに映す用</span>
+      </a>
+
+      <!-- スマホコントローラーへのリンク -->
+      <a href="/mobile/index.html" class="portal-btn btn-mobile">
+        📱 スマホ子機 画面を開く
+        <span class="btn-desc">ルームに参加してルーレットを回す用</span>
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>
