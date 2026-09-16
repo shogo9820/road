@@ -208,6 +208,13 @@ function appendSocketListeners() {
         targetModalEl.style.display = "none";
       }
 
+       // 🎯 修正：イベントが完全決着した後に「次のプレイヤーへ」ボタンを安全に復活
+      const btnNext = document.getElementById("btn-next-turn");
+      if (btnNext) {
+        btnNext.disabled = false;
+        btnNext.style.display = "block";
+      }
+
       if (eventBox) {
         if (data.success) {
           eventBox.innerHTML = `<div style="text-align:center; padding:10px; background:#ffe4e1; border:3px solid #ff69b4; border-radius:12px;">
@@ -548,6 +555,13 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
+
+  // 🎯 修正：イベント中は「次のプレイヤーへ」ボタンを完全にロックして非表示化
+  const btnNext = document.getElementById("btn-next-turn");
+  if (btnNext) {
+    btnNext.disabled = true;
+    btnNext.style.display = "none";
+  }
 
   const config = GAME_EVENTS[eventType];
   if (!config) return;

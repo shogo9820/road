@@ -464,35 +464,35 @@ function sendNextTurn() {
 
 
 
-// ─── controller.js : 開発デバッグ用メニューの指定マスワープ処理 ───
-window.addEventListener("DOMContentLoaded", () => {
-  const btnDebugWarp = document.getElementById("btn-debug-warp");
+// ─── controller.js : 開発デバッグ用メニューの指定マスワープ処理（イベント外れ防止・常時監視版） ───
+document.addEventListener("click", (e) => {
+  // クリックされた要素が「ワープボタン」またはその子要素か判定
+  const btn = e.target.closest("#btn-debug-warp");
+  if (!btn) return;
+
+  e.preventDefault();
+
   const inputDebugSquare = document.getElementById("input-debug-square");
+  if (!inputDebugSquare) return;
 
-  if (btnDebugWarp && inputDebugSquare) {
-    btnDebugWarp.addEventListener("click", (e) => {
-      e.preventDefault();
-
-      const targetVal = inputDebugSquare.value.trim();
-      if (targetVal === "") {
-        alert("ワープ先のマス番号（0〜99）を入力してください");
-        return;
-      }
-
-      const targetSquareId = parseInt(targetVal, 10);
-      if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
-        alert("0〜99の範囲で数値を入力してください");
-        return;
-      }
-
-      // ルームコードが空の場合はURLパラメータから再取得を試みる
-      const roomCodeToSend = currentRoomCode || new URLSearchParams(window.location.search).get("room") || "";
-
-      console.log(`[デバッグ送信] マス: ${targetSquareId}, ルーム: ${roomCodeToSend}`);
-      socket.emit("debugWarp", {
-        roomCode: roomCodeToSend,
-        targetSquareId: targetSquareId
-      });
-    });
+  const targetVal = inputDebugSquare.value.trim();
+  if (targetVal === "") {
+    alert("ワープ先のマス番号（0〜99）を入力してください");
+    return;
   }
+
+  const targetSquareId = parseInt(targetVal, 10);
+  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
+    alert("0〜99の範囲で数値を入力してください");
+    return;
+  }
+
+  // ルームコードを確実に取得（変数またはURLパラメータから取得）
+  const roomCodeToSend = currentRoomCode || new URLSearchParams(window.location.search).get("room") || "";
+
+  console.log(`[デバッグワープ発動] マス: ${targetSquareId}, ルーム: ${roomCodeToSend}`);
+  socket.emit("debugWarp", {
+    roomCode: roomCodeToSend,
+    targetSquareId: targetSquareId
+  });
 });
