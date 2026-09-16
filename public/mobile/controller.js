@@ -395,6 +395,12 @@ function updatePhoneStatusDisplay() {
 
   const hpEl = document.getElementById("phone-current-hp");
   if (hpEl) hpEl.textContent = `${p.currentHp} / ${p.baseCap || 100}`;
+
+  // 🎯 スマホ側の幸福度表示を反映
+  const happinessEl = document.getElementById("phone-current-happiness");
+  if (happinessEl) {
+    happinessEl.textContent = `${p.happiness !== undefined ? p.happiness : 100} pt`;
+  }
 }
 
 function showJobChoiceDialog(jobId, jobName, playerId) {
