@@ -1,130 +1,128 @@
 // =========================================================================
-// board.js : Excelマップレイアウト完全再現版（100%図面通り配置）
+// board.js : Excel仕様完全再現版（セル密着・道型マッピングシステム）
 // =========================================================================
 
 window.boardManager = {
   canvas: null,
   ctx: null,
-  gridSize: 38, // テレビ大画面に全体が綺麗に収まるマスサイズ
-  
+  cellSize: 15, // 1セルのピクセルサイズ（60×15=900px、56×15=840pxでテレビにジャスト配置）
+
   squareColors: {
-    start: "#8bc34a",            /* スタート: 明るい緑 */
-    goal: "#f44336",             /* ゴール: 赤 */
-    force_stop: "#f5a623",       /* 強制ストップ: ゴールド */
-    force_stop_rankup: "#f5a623",/* ランクアップ: ゴールド */
-    jobChallenge: "#7b1fa2",     /* 役職・就職マス: 紫 */
-    location: "#ffffff",         /* 場所マス: 白 */
-    normal: "#ffffff",           /* 通常マス: 白 */
-    heal: "#ffffff",             /* 回復マス: 白 */
-    repeat: "#0d47a1"            /* 留年ルート: 濃い青 */
+    start: "#8bc34a",
+    goal: "#f44336",
+    force_stop: "#f5a623",
+    force_stop_rankup: "#f5a623",
+    jobChallenge: "#7b1fa2",
+    location: "#ffffff",
+    normal: "#ffffff",
+    heal: "#ffffff",
+    repeat: "#0d47a1"
   },
 
   playerColors: [
     "#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"
   ],
 
-  // 🎯 修正：Excelのセル位置を1マスずつ完全にトレースした［列, 行］の正しい座標データ
+  // 🎯 修正：Excelの「横60 × 縦56」のグリッド上における各マスの［左上角のXセル, Yセル, 横幅, 縦幅］
+  // すべて半角の「,」と「{ }」で記述し、マス同士がピタッとくっついて太い道になるようにしています。
   gridMap: {
-    0: { x: 23, y: 18 },  1: { x: 23, y: 16 },  2: { x: 23, y: 14 },  3: { x: 25, y: 14 },
-    4: { x: 25, y: 12 },  5: { x: 25, y: 10 },  6: { x: 25, y: 8 },   7: { x: 25, y: 6 },
-    8: { x: 21, y: 18 },  9: { x: 19, y: 18 }, 10: { x: 19, y: 16 }, 11: { x: 19, y: 14 },
-    12: { x: 19, y: 12 }, 13: { x: 19, y: 10 }, 14: { x: 19, y: 8 },  15: { x: 19, y: 6 },
-    16: { x: 21, y: 5 },  17: { x: 23, y: 6 },  18: { x: 23, y: 4 },  19: { x: 23, y: 2 },
-    20: { x: 23, y: 0 },  21: { x: 21, y: 0 },  22: { x: 19, y: 0 },  23: { x: 19, y: 2 },
-    24: { x: 17, y: 2 },  25: { x: 17, y: 0 },  26: { x: 15, y: 0 },  27: { x: 15, y: 2 },
-    28: { x: 15, y: 4 },  29: { x: 15, y: 6 },  30: { x: 15, y: 8 },  31: { x: 15, y: 10 },
-    32: { x: 15, y: 12 }, 33: { x: 15, y: 14 }, 34: { x: 15, y: 16 }, 35: { x: 15, y: 18 },
-    36: { x: 13, y: 18 }, 37: { x: 11, y: 18 }, 38: { x: 9, y: 18 },  39: { x: 7, y: 18 },
-    40: { x: 5, y: 18 },  41: { x: 3, y: 18 },  42: { x: 1, y: 18 },  43: { x: 1, y: 16 },
-    44: { x: 1, y: 14 },  45: { x: 1, y: 12 },  46: { x: 1, y: 10 },  47: { x: 1, y: 8 },
-    48: { x: 1, y: 6 },   49: { x: 1, y: 4 },   50: { x: 1, y: 2 },   51: { x: 3, y: 2 },
-    52: { x: 5, y: 2 },   53: { x: 5, y: 4 },   54: { x: 5, y: 6 },   55: { x: 5, y: 8 },
-    56: { x: 5, y: 10 },  57: { x: 3, y: 10 },  58: { x: 3, y: 12 },  59: { x: 3, y: 14 },
-    60: { x: 7, y: 2 },   61: { x: 9, y: 2 },   62: { x: 11, y: 2 },  63: { x: 11, y: 4 },
-    64: { x: 9, y: 4 },   65: { x: 7, y: 4 },   66: { x: 7, y: 6 },   67: { x: 9, y: 6 },
-    68: { x: 9, y: 8 },   69: { x: 9, y: 10 },  70: { x: 9, y: 12 },  71: { x: 9, y: 14 },
-    72: { x: 7, y: 14 },  73: { x: 7, y: 12 },  74: { x: 7, y: 10 },  75: { x: 7, y: 8 },
-    76: { x: 5, y: 14 },  77: { x: 5, y: 12 },  78: { x: 5, y: 16 },  79: { x: 7, y: 16 },
-    80: { x: 9, y: 16 },  81: { x: 11, y: 16 },  82: { x: 11, y: 14 }, 83: { x: 11, y: 12 },
-    84: { x: 11, y: 10 }, 85: { x: 11, y: 8 },  86: { x: 11, y: 6 },  87: { x: 2, y: 10 },
-    88: { x: 2, y: 8 },   89: { x: 2, y: 6 },   90: { x: 5, y: 6 },   91: { x: 5, y: 8 },
-    92: { x: 7, y: 8 },   93: { x: 9, y: 8 },   94: { x: 9, y: 6 },   95: { x: 9, y: 4 },
-    96: { x: 7, y: 4 },   97: { x: 5, y: 4 },   98: { x: 3, y: 4 },   99: { x: 2, y: 2 }
+    0: { x: 53, y: 49, w: 7, h: 7 },   1: { x: 50, y: 53, w: 3, h: 3 },   2: { x: 50, y: 50, w: 3, h: 3 },   3: { x: 53, y: 46, w: 3, h: 3 },
+    4: { x: 53, y: 43, w: 3, h: 3 },   5: { x: 53, y: 40, w: 3, h: 3 },   6: { x: 53, y: 37, w: 3, h: 3 },   7: { x: 53, y: 34, w: 3, h: 3 },
+    8: { x: 47, y: 53, w: 3, h: 3 },   9: { x: 44, y: 53, w: 3, h: 3 },  10: { x: 44, y: 50, w: 3, h: 3 },  11: { x: 44, y: 47, w: 3, h: 3 },
+    12: { x: 44, y: 44, w: 3, h: 3 },  13: { x: 44, y: 41, w: 3, h: 3 },  14: { x: 44, y: 38, w: 3, h: 3 },  15: { x: 44, y: 35, w: 3, h: 3 },
+    16: { x: 47, y: 34, w: 3, h: 3 },  17: { x: 50, y: 34, w: 3, h: 3 },  18: { x: 50, y: 29, w: 5, h: 5 },  19: { x: 50, y: 26, w: 3, h: 3 },
+    20: { x: 50, y: 23, w: 3, h: 3 },  21: { x: 47, y: 23, w: 3, h: 3 },  22: { x: 44, y: 23, w: 3, h: 3 },  23: { x: 44, y: 26, w: 3, h: 3 },
+    24: { x: 41, y: 26, w: 3, h: 3 },  25: { x: 41, y: 23, w: 3, h: 3 },  26: { x: 38, y: 23, w: 3, h: 3 },  27: { x: 38, y: 26, w: 3, h: 3 },
+    28: { x: 38, y: 29, w: 3, h: 3 },  29: { x: 38, y: 32, w: 3, h: 3 },  30: { x: 38, y: 35, w: 5, h: 5 },  31: { x: 38, y: 40, w: 3, h: 3 },
+    32: { x: 38, y: 43, w: 3, h: 3 },  33: { x: 38, y: 46, w: 3, h: 3 },  34: { x: 38, y: 49, w: 3, h: 3 },  35: { x: 38, y: 52, w: 3, h: 3 },
+    36: { x: 35, y: 53, w: 3, h: 3 },  37: { x: 32, y: 53, w: 3, h: 3 },  38: { x: 29, y: 53, w: 3, h: 3 },  39: { x: 26, y: 53, w: 3, h: 3 },
+    40: { x: 23, y: 53, w: 3, h: 3 },  41: { x: 18, y: 51, w: 5, h: 5 },  42: { x: 15, y: 53, w: 3, h: 3 },  43: { x: 12, y: 53, w: 3, h: 3 },
+    44: { x: 9, y: 53, w: 3, h: 3 },   45: { x: 6, y: 53, w: 3, h: 3 },   46: { x: 3, y: 53, w: 3, h: 3 },   47: { x: 3, y: 50, w: 3, h: 3 },
+    48: { x: 3, y: 47, w: 3, h: 3 },   49: { x: 1, y: 42, w: 5, h: 5 },   50: { x: 6, y: 44, w: 3, h: 3 },   51: { x: 9, y: 44, w: 3, h: 3 },
+    52: { x: 9, y: 41, w: 3, h: 3 },   53: { x: 9, y: 38, w: 3, h: 3 },   54: { x: 9, y: 35, w: 3, h: 3 },   55: { x: 9, y: 32, w: 3, h: 3 },
+    56: { x: 6, y: 32, w: 3, h: 3 },   57: { x: 3, y: 32, w: 3, h: 3 },   58: { x: 3, y: 35, w: 3, h: 3 },   59: { x: 1, y: 37, w: 3, h: 3 },
+    60: { x: 1, y: 34, w: 3, h: 3 },   61: { x: 1, y: 31, w: 3, h: 3 },   62: { x: 1, y: 28, w: 3, h: 3 },   63: { x: 3, y: 28, w: 3, h: 3 },
+    64: { x: 6, y: 28, w: 3, h: 3 },   65: { x: 6, y: 25, w: 3, h: 3 },   66: { x: 3, y: 25, w: 3, h: 3 },   67: { x: 3, y: 22, w: 3, h: 3 },
+    68: { x: 3, y: 19, w: 3, h: 3 },   69: { x: 3, y: 16, w: 3, h: 3 },   70: { x: 3, y: 13, w: 3, h: 3 },   71: { x: 6, y: 13, w: 3, h: 3 },
+    72: { x: 6, y: 16, w: 3, h: 3 },   73: { x: 6, y: 19, w: 3, h: 3 },   74: { x: 6, y: 22, w: 3, h: 3 },   75: { x: 9, y: 22, w: 3, h: 3 },
+    76: { x: 9, y: 25, w: 3, h: 3 },   77: { x: 9, y: 28, w: 3, h: 3 },   78: { x: 9, y: 19, w: 3, h: 3 },   79: { x: 9, y: 16, w: 3, h: 3 },
+    80: { x: 11, y: 11, w: 5, h: 5 },  81: { x: 16, y: 13, w: 3, h: 3 },  82: { x: 16, y: 16, w: 3, h: 3 },  83: { x: 16, y: 19, w: 3, h: 3 },
+    84: { x: 16, y: 22, w: 3, h: 3 },  85: { x: 16, y: 25, w: 3, h: 3 },  86: { x: 16, y: 28, w: 3, h: 3 },  87: { x: 19, y: 28, w: 3, h: 3 },
+    88: { x: 22, y: 28, w: 3, h: 3 },  89: { x: 25, y: 26, w: 5, h: 5 },  90: { x: 30, y: 28, w: 3, h: 3 },  91: { x: 33, y: 28, w: 3, h: 3 },
+    92: { x: 33, y: 25, w: 3, h: 3 },  93: { x: 33, y: 22, w: 3, h: 3 },  94: { x: 30, y: 22, w: 3, h: 3 },  95: { x: 27, y: 22, w: 3, h: 3 },
+    96: { x: 27, y: 25, w: 3, h: 3 },  97: { x: 27, y: 28, w: 3, h: 3 },  98: { x: 27, y: 31, w: 3, h: 3 },  99: { x: 23, y: 33, w: 7, h: 7 }
   },
 
-  init(gridSize) {
+  init(gSize) {
     this.canvas = document.getElementById("board-canvas");
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext("2d");
-    this.gridSize = gridSize || 38;
-    this.canvas.width = 27 * this.gridSize;
-    this.canvas.height = 20 * this.gridSize;
+    
+    // 🎯 60×56グリッドにセルサイズ（15px）を掛けて、Canvasの解像度を完全に決定
+    this.canvas.width = 60 * this.cellSize;
+    this.canvas.height = 56 * this.cellSize;
   },
 
+  // マスの中心座標（ピンを置く位置）を計算するヘルパー
   getCoordinates(index) {
-    const pt = this.gridMap[index] || { x: 0, y: 0 };
+    const data = this.gridMap[index] || { x: 0, y: 0, w: 3, h: 3 };
     return {
-      x: pt.x * this.gridSize + this.gridSize / 2,
-      y: pt.y * this.gridSize + this.gridSize / 2
+      x: (data.x + data.w / 2) * this.cellSize,
+      y: (data.y + data.h / 2) * this.cellSize
     };
   },
 
   draw(playersList, activeIdx) {
-    if (!this.ctx || !this.canvas) this.init(38);
+    if (!this.ctx || !this.canvas) this.init();
     if (!this.ctx) return;
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES)) return;
 
-    // 1. ルート線の描画
-    this.ctx.strokeStyle = "rgba(100, 110, 120, 0.45)";
-    this.ctx.lineWidth = 4;
-    MAP_SQUARES.forEach((sq, idx) => {
-      const fromPos = this.getCoordinates(idx);
-      if (sq.nextId && Array.isArray(sq.nextId)) {
-        sq.nextId.forEach(nextIdx => {
-          if (this.gridMap[nextIdx]) {
-            const toPos = this.getCoordinates(nextIdx);
-            this.ctx.beginPath();
-            this.ctx.moveTo(fromPos.x, fromPos.y);
-            this.ctx.lineTo(toPos.x, toPos.y);
-            this.ctx.stroke();
-          }
-        });
-      }
-    });
+    // 🎯 修正：マスの中心を結ぶ「細い線」の描画を100%完全撤廃しました。
 
-    // 2. マス目の描画
+    // 🎯 修正：各マスの指定された w, h セルサイズに基づいて、隙間なくピッタリ敷き詰めて描画
     MAP_SQUARES.forEach((sq, idx) => {
-      const pos = this.getCoordinates(idx);
-      const isCustomSize = (sq.type === "start" || sq.type === "goal" || sq.id === 18 || sq.id === 30 || sq.id === 41 || sq.id === 49 || sq.id === 80 || sq.id === 89);
-      const size = isCustomSize ? this.gridSize * 1.3 : this.gridSize * 0.85;
+      const data = this.gridMap[idx];
+      if (!data) return;
+
+      // セル位置から実際のピクセル座標とサイズを算出
+      const px = data.x * this.cellSize;
+      const py = data.y * this.cellSize;
+      const pw = data.w * this.cellSize;
+      const ph = data.h * this.cellSize;
 
       let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
       if (sq.text && sq.text.includes("【役職マス】")) fillColor = this.squareColors.jobChallenge;
 
+      // 四角い道ブロックを描画
       this.ctx.fillStyle = fillColor;
-      this.ctx.strokeStyle = (fillColor === "#ffffff") ? "#333333" : "#ffffff";
-      this.ctx.lineWidth = 2;
+      this.ctx.fillRect(px, py, pw, ph);
 
-      this.ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
-      this.ctx.strokeRect(pos.x - size / 2, pos.y - size / 2, size, size);
+      // マスの外枠線を引いてクッキリさせる（白ベースは黒枠、その他は白枠で図面を再現）
+      this.ctx.strokeStyle = (fillColor === "#ffffff") ? "#444444" : "#ffffff";
+      this.ctx.lineWidth = 1.5;
+      this.ctx.strokeRect(px, py, pw, ph);
 
+      // マス内のテキスト（数字・文字）描画
       this.ctx.fillStyle = (fillColor === "#ffffff") ? "#333333" : "#ffffff";
       this.ctx.font = "bold 11px sans-serif";
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
 
+      const cx = px + pw / 2;
+      const cy = py + ph / 2;
+
       if (sq.type === "start") {
-        this.ctx.fillText("ST", pos.x, pos.y);
+        this.ctx.fillText("ST", cx, cy);
       } else if (sq.type === "goal") {
-        this.ctx.fillText("GOAL", pos.x, pos.y);
+        this.ctx.fillText("GOAL", cx, cy);
       } else {
-        this.ctx.fillText(sq.id.toString(), pos.x, pos.y);
+        this.ctx.fillText(sq.id.toString(), cx, cy);
       }
     });
 
-    // 3. プレイヤーのピン描画
+    // 3. プレイヤーのピンを道の真ん中に描画
     if (playersList && Array.isArray(playersList)) {
       const positionCounts = {};
       playersList.forEach((p, idx) => {
@@ -138,8 +136,8 @@ window.boardManager = {
         let offsetX = 0; let offsetY = 0;
         if (offsetIdx > 0) {
           const angle = (offsetIdx * Math.PI * 2) / 4;
-          offsetX = Math.cos(angle) * 11;
-          offsetY = Math.sin(angle) * 11;
+          offsetX = Math.cos(angle) * 10;
+          offsetY = Math.sin(angle) * 10;
         }
 
         const pinX = coords.x + offsetX;
@@ -147,12 +145,12 @@ window.boardManager = {
         const pinColor = p.color || this.playerColors[idx % this.playerColors.length];
 
         this.ctx.beginPath();
-        this.ctx.arc(pinX, pinY, 9, 0, Math.PI * 2);
+        this.ctx.arc(pinX, pinY, 8, 0, Math.PI * 2);
         this.ctx.fillStyle = "#333333";
         this.ctx.fill();
 
         this.ctx.beginPath();
-        this.ctx.arc(pinX, pinY, 7, 0, Math.PI * 2);
+        this.ctx.arc(pinX, pinY, 6, 0, Math.PI * 2);
         this.ctx.fillStyle = pinColor;
         this.ctx.fill();
 
@@ -160,7 +158,7 @@ window.boardManager = {
           this.ctx.lineWidth = 2;
           this.ctx.strokeStyle = "#ffffff";
           this.ctx.beginPath();
-          this.ctx.arc(pinX, pinY, 10, 0, Math.PI * 2);
+          this.ctx.arc(pinX, pinY, 9, 0, Math.PI * 2);
           this.ctx.stroke();
         }
       });
