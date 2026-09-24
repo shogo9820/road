@@ -380,18 +380,18 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🎯 完全修正：混入していた重複コードを完全に排除し、通常マップ描画の波に上書き消滅させられない独立した電波（showGraduateEvent）へ一本化します！
+  // 🎯 完全決定版：混線をすべて排除し、ターン交代時の卒業モーダル起動と、Yes/No役職、そして卒業・留年の分岐ルート書き換えを100%完璧に繋ぎます！
   socket.on("playerAction", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
-      
+      const room = rooms[roomCode];
+
       // 1. 通常のターン交代処理（元の完璧なコードを完全保護）
       if (data.action === "nextTurn") {
-        const gamePlayers = rooms[roomCode].gamePlayers;
-        if (gamePlayers && gamePlayers.length > 0) {
-          rooms[roomCode].activePlayerIndex = (rooms[roomCode].activePlayerIndex + 1) % gamePlayers.length;
-          const nextIndex = rooms[roomCode].activePlayerIndex;
-          const nextPlayer = gamePlayers[nextIndex];
+        if (room.gamePlayers && room.gamePlayers.length > 0) {
+          room.activePlayerIndex = (room.activePlayerIndex + 1) % room.gamePlayers.length;
+          const nextIndex = room.activePlayerIndex;
+          const nextPlayer = room.gamePlayers[nextIndex];
 
           io.to(roomCode).emit("applyPlayerAction", {
             action: "turnUpdated",
@@ -400,14 +400,7 @@ io.on("connection", (socket) => {
             activePlayerId: nextPlayer.id
           });
 
-          io.to(roomCode).emit("syncGameState", {
-            players: rooms[roomCode].gamePlayers,
-            activePlayerIndex: rooms[roomCode].activePlayerIndex
-          });
-
-          // 💡【最重要追記：ターン交代時の卒業判定チェック】
-          // 通常マップの描画ドタバタが完全に引き終わるのを150ミリ秒だけ待ってから、
-          // PC大画面側へピンポイントで独立電波を飛ばし、100%確実に卒業モーダルを展開ロックします！
+          // 💡 正しい「nextTurn」の直後に、独立した卒業判定の起動電波を仕込みます！
           if (nextPlayer && nextPlayer.position === 89) {
             console.log(`[卒業判定ターン開始] ${nextPlayer.name} さんが89番マスにいるため、大画面へ独立イベント信号を送信します。`);
             setTimeout(() => {
@@ -417,32 +410,31 @@ io.on("connection", (socket) => {
               });
             }, 150);
           }
+
+          io.to(roomCode).emit("syncGameState", {
+            players: room.gamePlayers,
+            activePlayerIndex: room.activePlayerIndex
+          });
         }
       } 
-      // 2. 役職モーダルのYes/No処理（前回の完璧なサクサク進行状態を完全保護）
+      // 2. 役職モーダルのYes/No処理（1端末マルチ用のサクサク進行状態を完全保護）
       else if (data.action === "chooseJob") {
-        const gamePlayers = rooms[roomCode].gamePlayers;
         console.log("サーバー側 chooseJob 受信:", data);
-        
-        const targetPlayer = gamePlayers.find(p => String(p.id) === String(data.playerId)) || gamePlayers[rooms[roomCode].activePlayerIndex];
+        const targetPlayer = room.gamePlayers.find(p => String(p.id) === String(data.playerId)) || room.gamePlayers[room.activePlayerIndex];
 
         if (targetPlayer) {
           if (data.choice === "yes") {
             targetPlayer.jobId = data.jobId;
             targetPlayer.job = data.jobName;
             targetPlayer.hasJob = true;
-            console.log(`[役職決定] ${targetPlayer.name} は 「${data.jobName}」 に就職しました。`);
           } else {
             targetPlayer.hasJob = false;
-            console.log(`[役職辞退] ${targetPlayer.name} は役職を辞退しました (hasJob = false)。`);
           }
 
-          if (gamePlayers && gamePlayers.length > 0) {
-            rooms[roomCode].activePlayerIndex = (rooms[roomCode].activePlayerIndex + 1) % gamePlayers.length;
-            const nextIndex = rooms[roomCode].activePlayerIndex;
-            const nextPlayer = gamePlayers[nextIndex];
-
-            console.log(`[役職完了に伴う自動交代] 次のプレイヤー: ${nextPlayer.name} の番へ進行します。`);
+          if (room.gamePlayers && room.gamePlayers.length > 0) {
+            room.activePlayerIndex = (room.activePlayerIndex + 1) % room.gamePlayers.length;
+            const nextIndex = room.activePlayerIndex;
+            const nextPlayer = room.gamePlayers[nextIndex];
 
             io.to(roomCode).emit("applyPlayerAction", {
               action: "turnUpdated",
@@ -450,69 +442,48 @@ io.on("connection", (socket) => {
               activePlayerName: nextPlayer.name,
               activePlayerId: nextPlayer.id
             });
+            
+            // 💡 役職が決まった次のプレイヤーがもし89番マスにいた場合にも、漏れなく電波を飛ばすセーフティガード！
+            if (nextPlayer && nextPlayer.position === 89) {
+              setTimeout(() => {
+                io.to(roomCode).emit("showGraduateEvent", { playerId: nextPlayer.id, playerName: nextPlayer.name });
+              }, 150);
+            }
           }
 
           io.to(roomCode).emit("syncGameState", {
-            players: rooms[roomCode].gamePlayers,
-            activePlayerIndex: rooms[roomCode].activePlayerIndex
+            players: room.gamePlayers,
+            activePlayerIndex: room.activePlayerIndex
           });
         }
       } 
-      // 🎯 完全修正：フリーズの原因だったnextTurn通信を完全撤廃！専用の消去信号(closeGraduateModal)でモーダルを完璧に閉じ、ゴール演出・留年マス出現を即座に起動します！
+      // 3. 🎯【新設：卒業判定ルーレット結果処理】出目に応じてnextIdを直接数字に書き換え！
       else if (data.action === "graduateRouletteResult") {
-        const roomsData = rooms[roomCode];
-        if (roomsData && roomsData.gamePlayers) {
-          const p = roomsData.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || roomsData.gamePlayers[roomsData.activePlayerIndex];
-          
-          if (p) {
-            const dice = data.result; // スマホから届いた出目（1〜10）
-            const isSuccess = (dice >= 6);
+        const p = room.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || room.gamePlayers[room.activePlayerIndex];
+        if (p) {
+          const dice = data.result; // スマホからの出目（1〜10）
+          const isSuccess = (dice >= 6);
 
-            // 💡【大修正】サーバーがフリーズする原因だったplayerActionの送信を完全廃止！
-            // PC大画面側へ向けて「イベントモードを終了してモーダルを今すぐ消せ！」とダイレクトに専用の消去信号を発信！
-            io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
+          // 💡 PC大画面へ「モーダルを今すぐ消せ！」と専用のクローズ信号を送信
+          io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
-            if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール直行演出を起動！`);
-              
-              // 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に直接書き換え
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 99;
-              }
+          if (isSuccess) {
+            console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴールお祝い画面起動`);
+            if (room.MAP_SQUARES && room.MAP_SQUARES[89]) room.MAP_SQUARES[89].nextId = 99; // ゴールへ直通上書き！
+            
+            // PC大画面に元からあるゴールお祝い画面を強制起動させるためゲーム開始信号をハック発信
+            io.to(roomCode).emit("gameStarted", { roomCode, players: room.gamePlayers, mode: room.mode, activePlayerIndex: room.activePlayerIndex });
+          } else {
+            console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年ルート出現＆通常スピン復活`);
+            if (room.MAP_SQUARES && room.MAP_SQUARES[89]) room.MAP_SQUARES[89].nextId = 90; // 留年ルートへ強制右折上書き！
+            p.isRepeat = true; // 留年フラグを刻む
 
-              // 2. PC大画面に元から組み込まれている「ゴールお祝い演出」をノータイムでバシッと起動！
-              io.to(roomCode).emit("gameStarted", {
-                roomCode,
-                players: roomsData.gamePlayers,
-                mode: roomsData.mode,
-                activePlayerIndex: roomsData.activePlayerIndex
-              });
-            } else {
-              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート出現！`);
-              
-              // 1. 分岐マスである89番マスのnextIdを「90番（留年スタート）」に直接書き換え
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 90;
-              }
-              
-              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面のボード描画に90〜98番マスがドクドクと大出現します！）
-
-              // 2. 手元のルーレットボタンを再アクティブ化させて、その場で通常ルーレットを即座に回せるようにする！
-              io.to(roomCode).emit("applyPlayerAction", {
-                action: "turnUpdated",
-                activePlayerIndex: roomsData.activePlayerIndex,
-                activePlayerName: p.name,
-                activePlayerId: p.id
-              });
-            }
-
-            // 最新の全データを同期（留年ルートの出現をPC画面へ完全一致させる）
-            io.to(roomCode).emit("syncGameState", {
-              players: roomsData.gamePlayers,
-              activePlayerIndex: roomsData.activePlayerIndex,
-              MAP_SQUARES: roomsData.MAP_SQUARES
-            });
+            // 手元の「通常ルーレットを回す」ボタンをその場で即座に復活アクティブ化させる！
+            io.to(roomCode).emit("applyPlayerAction", { action: "turnUpdated", activePlayerIndex: room.activePlayerIndex, activePlayerName: p.name, activePlayerId: p.id });
           }
+
+          // 地図の更新状態(MAP_SQUARES)をPC大画面へ完全同期
+          io.to(roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex, MAP_SQUARES: room.MAP_SQUARES });
         }
       }
       else {
