@@ -62,12 +62,15 @@ window.boardManager = {
     this.canvas.height = 56 * this.cellSize;
   },
 
-  // 各マスの中心座標（プレイヤーのピンを配置する位置）を取得するヘルパー
+  // 🎯 修正：index（位置番号）を文字列に確実に変換し、gridMapから正確な[列, 行]のセルデータを引き出す
   getCoordinates(index) {
-    const data = this.gridMap[index] || { x: 0, y: 0, w: 3, h: 3 };
+    const key = String(index !== undefined ? index : 0);
+    const pt = this.gridMap[key] || { x: 52, y: 48, w: 7, h: 7 }; // 見つからない場合はスタート(0番)を安全な初期値にする
+
+    // マスの左上角から、マスの中心（幅・高さの半分）のピクセル位置を100%正確に計算
     return {
-      x: (data.x + data.w / 2) * this.cellSize,
-      y: (data.y + data.h / 2) * this.cellSize
+      x: (pt.x + (pt.w || 3) / 2) * this.cellSize,
+      y: (pt.y + (pt.h || 3) / 2) * this.cellSize
     };
   },
 
