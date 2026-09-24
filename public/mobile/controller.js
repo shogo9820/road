@@ -557,6 +557,12 @@ function checkBranchSquareOnTurnStart(syncData) {
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
+  // 🎯 追加：すでに進路を選択済みの場合は、無限ループ防止のためポップアップ処理を即座にスルーする！
+  if (p.hasSelectedRoute) {
+    console.log(`[無限ループ防止] ${p.name} 順路は選択済みです。チェックをスルーします。`);
+    return;
+  }
+
   // 💡【最重要修正】位置が undefined だった場合は、スタート地点の「0」として安全に型補正をかける
   const playerPos = (p.position !== undefined && p.position !== null) ? Number(p.position) : 0;
 
@@ -612,18 +618,16 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 🎯 完全修正：送信キー名をPC側と100%一致させ、コマの進路ズレと役職モーダルの消滅を同時撃破します！
+  // 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     
-    // 💡 selectedRouteIndex から、サーバー・PC側が待っている chosenRouteIdx へ名前を完全修正！
-    socket.emit("confirmRouteSelection", { 
-      roomCode: currentRoomCode, 
-      chosenRouteIdx: tempSelectedIdx 
-    });
-    
+    // 🎯 追加：決定したその瞬間に「選択済みフラグ」を立てて、裏での再起動をカチッとブロック！
+    p.hasSelectedRoute = true;
+
+    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove(); // モーダルを閉じてルーレットへ
+    if (modalEl) modalEl.remove(); 
   };
 }
 
