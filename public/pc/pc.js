@@ -721,8 +721,15 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
-// 🎯 完全修正：89番マス着地時の先走り起動を完全削除！着地時は静かに止まり、次の自分のターン開始時にだけイベントが起きるように修復します
+// 🎯 完全修正：GAME_EVENTS追加に伴う仕様未定セーフティの暴走を完全封殺！89番マス着地時は完全にスルーさせて次のターン開始時に一本化します
 function handleForceStopSquare(player, square) {
+  // 💡【大修正】もし着地したマスIDが「89番（卒業判定マス）」だった場合は、
+  // 着地した瞬間はモーダルを一切開かせず、そのまま処理を終了（リターン）して静かにコマを止めます！
+  if (square && square.id === 89) {
+    console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
+    return;
+  }
+
   switch (square.id) {
     case 41:
       console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
@@ -733,9 +740,6 @@ function handleForceStopSquare(player, square) {
         playerName: player.name,
       });
       break;
-
-    // 💡【大修正】ここに書いてあった case 89: のブロックを完全に消去しました！
-    // これにより、89番マスについた瞬間にモーダルが先走って出てしまうバグが100%完全に消滅します。
 
     case 18: // 入学式
     case 30: // 生命保険
