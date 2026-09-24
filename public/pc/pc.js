@@ -416,10 +416,16 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 4. 🎯 修正：3秒の回転終了後、nextId配列から【最初の数値】を正しく抽出して1歩ずつ移動開始
+  // 4. 🎯 修正：3秒の回転終了（止まった瞬間）に、右上の出目表示だけを即座に更新して1歩ずつ移動開始
   setTimeout(() => {
-    let stepsMoved = 0;
     
+    // 🎯 追加：ルーレットが止まったこの瞬間に、右上の出目表示を「回転中」から確定数値へ切り替える
+    const resEl = document.getElementById("roulette-result-display");
+    if (resEl) {
+      resEl.textContent = `出目: ${resultNum}`;
+    }
+
+    let stepsMoved = 0;
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
       
@@ -437,12 +443,10 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 🎯 解決策：配列（例: [1, 8]）の最初の要素 [0] を数値として確実に取り出す
       const nextIdArray = currentSquare.nextId;
       p.position = nextIdArray[0]; 
       stepsMoved++;
 
-      // 1歩進むごとにピン位置をリアルタイムに再描画
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
