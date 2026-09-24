@@ -325,10 +325,12 @@ io.on("connection", (socket) => {
     }
   });
 
-  // プレイヤーアクションの管理
+  // 🎯 完全修正：就職のYes/Noが押された直後に、元からある正しいターン更新処理(turnUpdated)を自動起動してフリーズを完全根絶します！
   socket.on("playerAction", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
+      
+      // 1. 通常のターン交代処理（元の完璧なコードを完全保護）
       if (data.action === "nextTurn") {
         const gamePlayers = rooms[roomCode].gamePlayers;
         if (gamePlayers && gamePlayers.length > 0) {
@@ -349,6 +351,7 @@ io.on("connection", (socket) => {
           });
         }
       } 
+      // 2. 🎯【大修正】役職モーダルのYes/No処理
       else if (data.action === "chooseJob") {
         const gamePlayers = rooms[roomCode].gamePlayers;
         console.log("サーバー側 chooseJob 受信:", data);
@@ -366,6 +369,24 @@ io.on("connection", (socket) => {
             console.log(`[役職辞退] ${targetPlayer.name} は役職を辞退しました (hasJob = false)。`);
           }
 
+          // 💡【フリーズロック完全解除】就職の書き換えが終わったまさにこの瞬間に、上の「nextTurn」と100%同じ自動交代処理を起動させる！
+          if (gamePlayers && gamePlayers.length > 0) {
+            rooms[roomCode].activePlayerIndex = (rooms[roomCode].activePlayerIndex + 1) % gamePlayers.length;
+            const nextIndex = rooms[roomCode].activePlayerIndex;
+            const nextPlayer = gamePlayers[nextIndex];
+
+            console.log(`[役職完了に伴う自動交代] 次のプレイヤー: ${nextPlayer.name} の番へゲームをサクサク進行します。`);
+
+            // 次のプレイヤーのスマホ画面へ「お前の番だ！」とルーレットボタンを再アクティブ化させる合図を送信
+            io.to(roomCode).emit("applyPlayerAction", {
+              action: "turnUpdated",
+              activePlayerIndex: nextIndex,
+              activePlayerName: nextPlayer.name,
+              activePlayerId: nextPlayer.id
+            });
+          }
+
+          // 全画面へ最新のゲームデータを完全同期
           io.to(roomCode).emit("syncGameState", {
             players: rooms[roomCode].gamePlayers,
             activePlayerIndex: rooms[roomCode].activePlayerIndex
