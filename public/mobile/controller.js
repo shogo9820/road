@@ -545,7 +545,7 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：どの条件でモーダルが出ないかを100%あぶり出す徹底デバッグログシステム
+// 🎯 完全修正：positionが undefined (未定義) の場合は、初期位置「0番マス」として100%安全に補正し、1人目の不発を完全根絶します！
 function checkBranchSquareOnTurnStart(syncData) {
   console.log("=========================================");
   console.log("[デバッグログ] checkBranchSquareOnTurnStart が起動しました");
@@ -553,29 +553,22 @@ function checkBranchSquareOnTurnStart(syncData) {
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
   
-  console.log(`[データ確認] 現在のアクティブインデックス: ${currentIdx}`);
-  console.log(`[データ確認] プレイヤー配列の長さ: ${currentPlayers ? currentPlayers.length : 0}`);
-
-  if (!currentPlayers || currentPlayers.length === 0) {
-    console.error("❌ 弾かれました: プレイヤー配列が空っぽ、または存在しません。");
-    return;
-  }
-
+  if (!currentPlayers || currentPlayers.length === 0) return;
   const p = currentPlayers[currentIdx];
-  if (!p) {
-    console.error(`❌ 弾かれました: インデックス ${currentIdx} に対応するプレイヤーデータが存在しません。`);
+  if (!p) return;
+
+  // 💡【最重要修正】位置が undefined だった場合は、スタート地点の「0」として安全に型補正をかける
+  const playerPos = (p.position !== undefined && p.position !== null) ? Number(p.position) : 0;
+
+  console.log(`[プレイヤー確認] 現在手番の人: ${p.name}, 補正後の現在地(position): ${playerPos}`);
+
+  // 💡 補正後の playerPos を使って 0 または 49 の分岐判定を確実に行う
+  if (playerPos !== 0 && playerPos !== 49) {
+    console.warn(`❌ 弾かれました: 現在地が 0 または 49 ではありません（実際の値: ${playerPos}）`);
     return;
   }
 
-  console.log(`[プレイヤー確認] 現在手番の人: ${p.name}, 現在地(position): ${p.position}`);
-
-  // 💡 1人目の0番マスでの不発をあぶり出す最重要チェック
-  if (p.position !== 0 && p.position !== 49) {
-    console.warn(`❌ 弾かれました: 現在地が 0 または 49 ではありません（実際の値: ${p.position}）`);
-    return;
-  }
-
-  console.log(`🎯 条件クリア！モーダル生成を開始します。ターゲット要素: phone-screen-play`);
+  console.log(`🎯 条件クリア！モーダル生成を開始します。`);
 
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
