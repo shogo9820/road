@@ -504,13 +504,13 @@ function applySquareEffects(player, square) {
 }
 
 // 🎯 修正：他の機能を1つも壊さず、コマの着地と同時にノータイムでデータ同期とイベント通知を起動
+// 🎯 完全修正：action名を元の正しい「squareEvent」に100%戻し、余計な3秒の遅延だけを完全消滅させます
 function triggerDelayedDisplay(resultNum, targetSquare) {
-  // 諸悪の根源だった「さらに3秒待つタイマー」を完全撤廃し、中身を即座に実行
   if (!targetSquare) return;
 
+  // 1. コマの着地と同時に、PC画面へマスの説明テキストを即座に表示
   const eventBox = document.getElementById("event-text");
   if (eventBox) {
-    // 💡 着地と同時にPC画面にマスの説明テキストを即座にパッと表示
     eventBox.innerHTML = `
       <p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">
         🎲 ${targetSquare.text || "何もないマスのようです。"}
@@ -518,7 +518,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     `;
   }
 
-  // 💡 着地と同時に、最新のプレイヤー位置(position)をサーバーおよびスマホへ即座に完全同期
+  // 2. コマの着地と同時に、最新のプレイヤー位置をサーバーへ即座に送信（スタートへの巻き戻りを完全防止）
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -537,15 +537,14 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     }))
   });
 
-  // 💡 各種イベントマス（入学式、カップル、ランクアップ等）の起動信号も、ラグなしでスマホへ即座に送信
+  // 3. 【完全復元】元々100%完璧に動いていた正しい信号（squareEvent）をラグなしでスマホへ送信
+  // イベント種別（eventTypeなど）を元の完璧な形式のまま、着地した瞬間に即時実行させます
   if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
-    console.log(`[即時イベント通知] ${targetSquare.text} に着地したため、スマホへノータイムで信号を送ります`);
+    console.log(`[完全復旧・即時通知] ${targetSquare.text} のイベント信号を元のsquareEventで送信します`);
     socket.emit("playerAction", {
       roomCode: roomCode,
-      action: targetSquare.type === "jobChallenge" ? "jobChallengeTrigger" : "forceStopTrigger",
-      eventType: targetSquare.eventType || null,
-      jobId: targetSquare.jobId || null,
-      squareText: targetSquare.text
+      action: "squareEvent", // 👈 元の正しい通信名に完全復帰
+      square: targetSquare
     });
   }
 }
