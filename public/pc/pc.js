@@ -108,10 +108,16 @@ function appendSocketListeners() {
     }
   });
 
+  // 🎯 完全修正：サーバー側で直接書き換えた最新のルート情報（MAP_SQUARES）をPC側へ100%確実に同期させ、進路のズレを完全根絶します！
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
-    if (data.activePlayerIndex !== undefined)
-      activePlayerIndex = data.activePlayerIndex;
+    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    
+    // 💡【大修正】サーバー側で上書きされた「最新のルート配列データ」を、PCのメモリへラグなしで完全に上書き同期する！
+    if (data.MAP_SQUARES && Array.isArray(data.MAP_SQUARES)) {
+      MAP_SQUARES = data.MAP_SQUARES;
+    }
+
     updateCurrentPlayerDisplay();
 
     if (window.boardManager) {
