@@ -534,31 +534,21 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 追加：スマホ側で自分が「何番目のプレイヤーか」を確実に特定するためのグローバル変数を1つ定義します
-let myPlayerIndex = -1;
-
-// 🎯 完全修正：不安定な socket.id の比較を完全廃止し、確定インデックス番号で100%確実に自分の手番を検知します
+// 🎯 完全修正：不安定なID比較を完全撤廃し、ゲームの1端末複数人プレイ設計と同期させた進路選択システム
 function checkBranchSquareOnTurnStart(syncData) {
+  // 💡 サーバーから届いた最新のデータから、現在アクティブなプレイヤーのインデックスと配列を確実に抽出
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
   
-  // 💡 自分の名前に一致するプレイヤー配列のインデックス番号をスマホ側で確実に逆引き特定
-  if (typeof playerName !== "undefined") {
-    myPlayerIndex = currentPlayers.findIndex(pl => pl.name === playerName);
-  }
-
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
-  // 💡【大修正】番号同士でダイレクトに手番を比較。型崩れや未定義によるすり抜けを完璧に根絶します
-  const isMyTurn = (currentIdx === myPlayerIndex || p.id === socket.id);
-  if (!isMyTurn) return;
-
-  // 分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
+  // 💡【設計同期修正】分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
   if (p.position !== 0 && p.position !== 49) return;
 
-  console.log(`[進路選択強制起動] ${p.name} さんの確定手番を検知。分岐マス（${p.position}番）の画面ロックを実行します`);
+  console.log(`[進路選択起動] 分岐マス（${p.position}番）での手番を正確に検知。スマホ画面を強制ロックします`);
 
+  // 役職選択モーダルと100%同じ構造のHTML要素を最前面（z-index: 99999）に動的生成
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:99999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
@@ -575,15 +565,17 @@ function checkBranchSquareOnTurnStart(syncData) {
     </div>
   `;
 
+  // 重複表示を防ぐため、既存の古いモーダルを確実に消去してから画面に注入
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-  let tempSelectedIdx = null;
+  let tempSelectedIdx = null; // 0:A, 1:B
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
   const btnConfirm = document.getElementById("btn-route-confirm");
 
+  // 💡 Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnA.onclick = () => {
     tempSelectedIdx = 0;
     btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
@@ -592,6 +584,7 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
+  // 💡 Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnB.onclick = () => {
     tempSelectedIdx = 1;
     btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
@@ -600,24 +593,56 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
+  // 💡 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove();
+    if (modalEl) modalEl.remove(); // モーダルを閉じて通常のルーレット操作へ復帰
   };
 }
 
-// 🎯【完全同期】サーバーからの状態更新を受け取るたびに、安全に割り込みチェックを起動
+// 🎯【完全復旧】1：データ同期信号の受信時（syncGameState）の末尾に仕込みます
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
   updatePhoneStatusDisplay();
 
-  // 💡 確実にデータがメモリに反映された100ミリ秒後に生のデータを渡して強制割り込み
   setTimeout(() => {
     if (typeof checkBranchSquareOnTurnStart === "function") {
       checkBranchSquareOnTurnStart(data);
     }
   }, 100);
+});
+
+// 🎯【完全復旧】2：ターン交代信号の受信時（applyPlayerAction）の末尾にも確実に仕込みます
+socket.on("applyPlayerAction", (data) => {
+  if (data.action === "turnUpdated") {
+    activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+    const activeName = data.activePlayerName || `プレイヤー`;
+
+    const banner = document.getElementById("current-player-banner");
+    if (banner) banner.textContent = `TURN: ${activeName}`;
+
+    const spinBtn = document.getElementById("btn-phone-spin");
+    if (spinBtn) spinBtn.disabled = false;
+
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.classList.add("hidden");
+      nextBtn.style.display = "none";
+    }
+
+    const resultDisplay = document.getElementById("roulette-result-display");
+    if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
+    isSpinning = false;
+
+    // 💡 ターン更新がスマホに届いたまさにこの瞬間に、分岐マスの自動チェックを強制起動！
+    setTimeout(() => {
+      if (typeof checkBranchSquareOnTurnStart === "function") {
+        checkBranchSquareOnTurnStart(data);
+      }
+    }, 100);
+  }
 });
