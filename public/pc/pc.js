@@ -373,6 +373,7 @@ function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
 
+  // 1. 【保護】1回休み（潰れ・介抱）判定
   if (p.skipTurn) {
     p.skipTurn = false;
     alert(`${p.name} は潰れていたため、このターンは1回休みです。`);
@@ -388,10 +389,9 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 🎯 角度計算用の設定データを完全に修復
+  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション処理
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
-
   const currentMod = pcCurrentRotation % 360;
   pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
 
@@ -410,42 +410,59 @@ function executeSyncedRoulette(resultNum) {
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  let targetPosition = p.position + resultNum;
-  
-  if (typeof MAP_SQUARES !== 'undefined') {
-    for (let pos = p.position + 1; pos <= targetPosition; pos++) {
-      const sq = MAP_SQUARES[pos];
-      if (sq && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
-        targetPosition = pos;
-        break;
+  // 3. 【新設計】2回目イベントモード中（告白ルーレットなど）は移動させずに終了
+  if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
+    triggerDelayedDisplay(resultNum, null);
+    return;
+  }
+
+  // 4. 【新設計】ルーレットの3秒間の回転が「止まった瞬間」から1歩ずつの移動探索を開始
+  setTimeout(() => {
+    let stepsMoved = 0;
+    
+    // 出目の数だけパタパタ進むタイマー（0.25秒刻みで軽快に進みます）
+    const moveTimer = setInterval(() => {
+      const currentSquare = MAP_SQUARES[p.position];
+      
+      // 1歩進む前に、現在地が「強制ストップマス」かつすでに1歩以上進んでいるならそこで強制停止
+      if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
+        clearInterval(moveTimer);
+        finalizeMovement();
+        return;
       }
+
+      // 出目分進みきった、または次のマスがない（ゴール）なら終了
+      if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
+        clearInterval(moveTimer);
+        finalizeMovement();
+        return;
+      }
+
+      // 🎯 探索：分岐（nextIdが複数ある時）は暫定で最初の進路へ進む
+      p.position = currentSquare.nextId;
+      stepsMoved++;
+
+      // 1歩ごとにピンの見た目をリアルタイム再描画
+      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+    }, 250);
+
+    // 最終着地したマスの効果適用と同期処理
+    function finalizeMovement() {
+      const targetSquare = MAP_SQUARES[p.position];
+      if (targetSquare) {
+        p.location = targetSquare.location || p.location;
+        applySquareEffects(p, targetSquare); // お酒・幸福度計算
+      }
+
+      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+      renderLocationPlayersList();
+      updateCurrentPlayerDisplay();
+
+      // 元々連動していた表示遅延処理を安全に起動
+      triggerDelayedDisplay(resultNum, targetSquare);
     }
-  }
 
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    p.position = targetPosition;
-  }
-
-  let squareLocation = "";
-  let targetSquare = null;
-  if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
-    targetSquare = MAP_SQUARES[p.position];
-    squareLocation = targetSquare.location || "";
-    applySquareEffects(p, targetSquare);
-  }
-
-  if (!(typeof isPCEventMode !== 'undefined' && isPCEventMode)) {
-    p.location = squareLocation;
-  }
-
-  if (window.boardManager) {
-    window.boardManager.draw(players, activePlayerIndex);
-  }
-
-  renderLocationPlayersList();
-  updateCurrentPlayerDisplay();
-
-  triggerDelayedDisplay(resultNum, targetSquare);
+  }, 3000); // 3000ms（3秒）のルーレット回転待ち
 }
 
 function applySquareEffects(player, square) {
