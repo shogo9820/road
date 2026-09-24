@@ -458,6 +458,66 @@ io.on("connection", (socket) => {
           });
         }
       } 
+            // 🎯 完全修正：出目に応じて進路を数字に直接書き換え、卒業ならゴール演出、留年ならルート出現させて通常スピンを再起動！
+      else if (data.action === "graduateRouletteResult") {
+        const roomsData = rooms[roomCode];
+        if (roomsData && roomsData.gamePlayers) {
+          const p = roomsData.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || roomsData.gamePlayers[roomsData.activePlayerIndex];
+          
+          if (p) {
+            const dice = data.result; // スマホから届いた出目（1〜10）
+            const isSuccess = (dice >= 6);
+
+            // 💡【大画面のイベントモーダルを即座に自動クローズ】
+            // あなたが見抜いてくださった「元ある雛形セーフティ」と同じ、モーダル消去命令を発信！
+            io.to(roomCode).emit("playerAction", {
+              roomCode: roomCode,
+              action: "nextTurn" // これにより PC側の display='none' が100%確実に発動して大画面の影条件表がパッと消えます
+            });
+
+            if (isSuccess) {
+              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール直行演出を起動！`);
+              
+              // 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に直接書き換え
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 99;
+              }
+
+              // 2. PC大画面に「最初から組み込まれていた完璧なゴールお祝い演出」を強制起動させるため、gameStartedをハック発信！
+              io.to(roomCode).emit("gameStarted", {
+                roomCode,
+                players: roomsData.gamePlayers,
+                mode: roomsData.mode,
+                activePlayerIndex: roomsData.activePlayerIndex
+              });
+            } else {
+              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート出現！`);
+              
+              // 1. 分岐マスである89番マスのnextIdを「90番（留年スタート）」に直接書き換え
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 90;
+              }
+              
+              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面のボード描画に90〜98番マスがドクドクと大出現します！）
+
+              // 2. そのプレイヤーの手元画面に、もう一度進むための通常ルーレットをノータイムで大復活（再アクティブ化）させる！
+              io.to(roomCode).emit("applyPlayerAction", {
+                action: "turnUpdated",
+                activePlayerIndex: roomsData.activePlayerIndex,
+                activePlayerName: p.name,
+                activePlayerId: p.id
+              });
+            }
+
+            // 全員の最新データを完全同期（留年ルートの出現・プレイヤー位置を完全一致させる）
+            io.to(roomCode).emit("syncGameState", {
+              players: roomsData.gamePlayers,
+              activePlayerIndex: roomsData.activePlayerIndex,
+              MAP_SQUARES: roomsData.MAP_SQUARES // 書き換えた地図を渡す
+            });
+          }
+        }
+      }
       else {
         socket.to(roomCode).emit("playerAction", data);
       }

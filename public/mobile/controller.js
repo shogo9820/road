@@ -143,7 +143,21 @@ window.addEventListener("DOMContentLoaded", () => {
             });
           }
         }
-      } else {
+      }       // 🎯【追加：卒業判定スピン停止時の処理】
+      // プレイヤーが89番マス（卒業判定）にいる時のイベントルーレット停止を検知
+      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89) {
+        const p = players[activePlayerIndex];
+        console.log(`[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`);
+        
+        // サーバーへ運命の出目を送信して自動ジャッジを要請！
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "graduateRouletteResult",
+          playerId: p.id,
+          result: finalSteps
+        });
+      }
+      else {
         // 通常時：ルーレットが止まったので、手元のデータを進めて「次へ」ボタンを普通に表示
         handleRouletteStop(finalSteps);
       }
