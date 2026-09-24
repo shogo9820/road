@@ -648,6 +648,10 @@ socket.on("syncGameState", (data) => {
 // 🎯【完全同期】ターン交代イベント
 socket.on("applyPlayerAction", (data) => {
   if (data.action === "turnUpdated") {
+    // 🎯 追加：次のプレイヤーへターンが切り替わったので、全員の進路選択済みフラグを綺麗にリセット！
+    if (players && Array.isArray(players)) {
+      players.forEach(pl => { if (pl.hasSelectedRoute) delete pl.hasSelectedRoute; });
+    }
     activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const activeName = data.activePlayerName || `プレイヤー`;
 
