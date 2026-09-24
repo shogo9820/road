@@ -389,39 +389,18 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🎯 完全修正：ややこしい変数を全て廃止！選んだ瞬間に分岐マスのnextIdを選んだ進路のマスIDへ直接書き換えます！
+  // 🎯 完全修正：余計なマップデータの破壊を全て撤廃し、選択されたインデックス(0か1)をプレイヤーデータに保存して全体同期します
   socket.on("confirmRouteSelection", (data) => {
     const room = rooms[data.roomCode || socket.roomCode];
     if (room && room.gamePlayers) {
       const p = room.gamePlayers[room.activePlayerIndex];
-      if (!p) return;
-
-      console.log(`[進路ルート直接書き換え] ${p.name} さんがルート ${data.chosenRouteIdx === 0 ? 'A' : 'B'} を選択しました。`);
-
-      // 💡 ご指摘の通り、分岐マスの nextId 配列の中身を、選んだ側のマスID（数字）に直接書き換えて1本道化します！
-      if (p.position === 0) {
-        // 0番マスの次の選択肢：Aルートなら 1番マス、Bルートなら 8番マス
-        // 元のデータ形式が nextId: [1, 8] の場合、[chosenRouteIdx] で直接数字に変えます
-        const chosenNextId = (data.chosenRouteIdx === 0) ? 1 : 8;
-        
-        // サーバー側が保持している新マップ定義配列の0番マスのnextIdを直接上書き
-        if (room.MAP_SQUARES && room.MAP_SQUARES[0]) {
-          room.MAP_SQUARES[0].nextId = chosenNextId; 
-        }
-      } 
-      else if (p.position === 49) {
-        // 49番マスの次の選択肢：Aルートなら 50番マス、Bルートなら 59番マス
-        const chosenNextId = (data.chosenRouteIdx === 0) ? 50 : 59;
-        if (room.MAP_SQUARES && room.MAP_SQUARES[49]) {
-          room.MAP_SQUARES[49].nextId = chosenNextId;
-        }
+      if (p) {
+        p.chosenRouteIdx = data.chosenRouteIdx; // 0:Aルート, 1:Bルート
+        console.log(`[進路確定] ${p.name} さんの選択ルートをインデックス ${data.chosenRouteIdx} に確定しました`);
       }
-
-      // 💡 書き換えたマップデータ一式を、既存の「syncGameState」でPC大画面とスマホへ丸ごと送りつけるだけ！
       io.to(data.roomCode).emit("syncGameState", {
         players: room.gamePlayers,
-        activePlayerIndex: room.activePlayerIndex,
-        MAP_SQUARES: room.MAP_SQUARES // マップデータも一緒に最新化して完全同期
+        activePlayerIndex: room.activePlayerIndex
       });
     }
   });

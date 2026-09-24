@@ -411,7 +411,6 @@ function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  // 1. 【保護】1回休み（潰れ・介抱）判定
   if (p.skipTurn) {
     p.skipTurn = false;
     alert(`${p.name} は潰れていたため、このターンは1回休みです。`);
@@ -427,7 +426,6 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション処理
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
   const currentMod = pcCurrentRotation % 360;
@@ -435,10 +433,9 @@ function executeSyncedRoulette(resultNum) {
 
   let wheel;
   if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
-    wheel =
-      document.querySelector("#pc-event-modal .event-roulette-wheel") ||
-      document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
-      document.querySelector("#pc-couple-event-modal .couple-wheel");
+    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
+            document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
+            document.querySelector("#pc-couple-event-modal .couple-wheel");
   } else {
     wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
@@ -453,7 +450,6 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 3. 🎯 修正：ルーレット停止（3秒後）に、スマホで選んだ確定進路を1歩ずつ100%正確に自動判別して進む
   setTimeout(() => {
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
@@ -462,33 +458,28 @@ function executeSyncedRoulette(resultNum) {
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
 
-      // 移動中に次の強制ストップマスを踏んだら、そこで強制停止
       if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 出目分進みきった、または次の進路がない場合は停止
       if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 🎯【進路決定のバグ完全解消】
+      // 🎯【進路決定】ご指示の通りの超シンプル設計！分岐マスの場合は選んだ側のインデックスIDを直接掴み取る
       const nextIdArray = currentSquare.nextId;
       if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
-        // 現在地が分岐マス(0番や49番など)の場合、スマホで選んだインデックス（0または1）を確実に数値として取り出す！
         const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
-        p.position = Number(nextIdArray[routeIdx]);
+        p.position = Number(nextIdArray[routeIdx]); // 選んだマスIDをダイレクト代入
       } else {
-        // 通常の1本道マスの場合は、配列の最初の要素[0]を確実に取り出す
-        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
+        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray : nextIdArray);
       }
       
       stepsMoved++;
-
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
@@ -500,8 +491,7 @@ function executeSyncedRoulette(resultNum) {
         applySquareEffects(p, targetSquare);
       }
 
-      // 次のターンに引き継ぐため、移動完了時にこのターンの進路プレビュー状態を綺麗にリセット
-      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
 
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
       renderLocationPlayersList();
@@ -528,22 +518,13 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
     players: players.map(pl => ({
-      id: pl.id,
-      position: pl.position,
-      location: pl.location,
-      currentHp: pl.currentHp,
-      drinkCount: pl.drinkCount,
-      happiness: pl.happiness !== undefined ? pl.happiness : 100,
-      isLover: pl.isLover,
-      skipTurn: pl.skipTurn,
-      hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
-      jobId: pl.jobId || null,
-      job: pl.job || "モブ"
+      id: pl.id, position: pl.position, location: pl.location, currentHp: pl.currentHp, drinkCount: pl.drinkCount,
+      happiness: pl.happiness !== undefined ? pl.happiness : 100, isLover: pl.isLover, skipTurn: pl.skipTurn,
+      hasJob: pl.hasJob !== undefined ? pl.hasJob : false, jobId: pl.jobId || null, job: pl.job || "モブ"
     }))
   });
 
   if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
-    console.log(`[即時通知] ${targetSquare.text} のイベント信号を元の正解データ形式で送信します`);
     socket.emit("playerAction", {
       roomCode: roomCode,
       action: "squareEvent",
@@ -551,6 +532,14 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     });
   }
 }
+
+// 🎯【修復大復活】大元の完璧だったゲーム状態同期イベントに戻します。MAP_SQUARESの上書きを完全撤廃しました。
+socket.on("syncGameState", (data) => {
+  if (data.players && Array.isArray(data.players)) players = data.players;
+  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+  updateCurrentPlayerDisplay();
+  if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+});
 
 function applySquareEffects(player, square) {
   // 1. お酒ペナルティの適用
