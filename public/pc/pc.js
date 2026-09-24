@@ -503,67 +503,51 @@ function applySquareEffects(player, square) {
   }
 }
 
+// 🎯 修正：他の機能を1つも壊さず、コマの着地と同時にノータイムでデータ同期とイベント通知を起動
 function triggerDelayedDisplay(resultNum, targetSquare) {
-  setTimeout(() => {
-    const innerResEl = document.getElementById("roulette-result-display");
-    const innerEventBox = document.getElementById("event-text");
-    const tileDescEl = document.getElementById("current-tile-desc");
-    const p = players[activePlayerIndex];
+  // 諸悪の根源だった「さらに3秒待つタイマー」を完全撤廃し、中身を即座に実行
+  if (!targetSquare) return;
 
-    if (innerResEl) innerResEl.textContent = `🎯 出目: ${resultNum}`;
+  const eventBox = document.getElementById("event-text");
+  if (eventBox) {
+    // 💡 着地と同時にPC画面にマスの説明テキストを即座にパッと表示
+    eventBox.innerHTML = `
+      <p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">
+        🎲 ${targetSquare.text || "何もないマスのようです。"}
+      </p>
+    `;
+  }
 
-    if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
-      console.log(`[PCイベント中] 出目 ${resultNum} で停止。スマホ側の結果判定を待ちます。`);
-      return; 
-    }
+  // 💡 着地と同時に、最新のプレイヤー位置(position)をサーバーおよびスマホへ即座に完全同期
+  socket.emit("updateGameState", {
+    roomCode: roomCode,
+    activePlayerIndex: activePlayerIndex,
+    players: players.map(pl => ({
+      id: pl.id,
+      position: pl.position,
+      location: pl.location,
+      currentHp: pl.currentHp,
+      drinkCount: pl.drinkCount,
+      happiness: pl.happiness !== undefined ? pl.happiness : 100,
+      isLover: pl.isLover,
+      skipTurn: pl.skipTurn,
+      hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
+      jobId: pl.jobId || null,
+      job: pl.job || "モブ"
+    }))
+  });
 
-    if (targetSquare && p) {
-      if (innerEventBox) {
-        innerEventBox.innerHTML = `<p class="event-msg" style="font-size: 1.4rem; font-weight: bold; color: var(--primary-color);">${targetSquare.text || "何もないマスです。"}</p>`;
-      }
-
-      if (tileDescEl) {
-        let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>` : "";
-        let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
-        tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
-      }
-
-      if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
-        console.log(`[PC] 3秒遅延満了。強制ストップイベント（ID: ${targetSquare.id}）を起動します。`);
-        handleForceStopSquare(p, targetSquare);
-      }
-
-      const isJobSquare = targetSquare.type === "jobChallenge" || targetSquare.jobId || (targetSquare.text && targetSquare.text.includes("【役職マス】"));
-      if (isJobSquare && !p.hasJob) {
-        const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-        socket.emit("triggerJobChoice", {
-          roomCode: roomCode,
-          playerId: p.id,
-          jobId: jobId,
-          jobName: jobName
-        });
-      }
-    }
-
-    socket.emit("updateGameState", {
+  // 💡 各種イベントマス（入学式、カップル、ランクアップ等）の起動信号も、ラグなしでスマホへ即座に送信
+  if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
+    console.log(`[即時イベント通知] ${targetSquare.text} に着地したため、スマホへノータイムで信号を送ります`);
+    socket.emit("playerAction", {
       roomCode: roomCode,
-      activePlayerIndex: activePlayerIndex,
-      players: players.map(pl => ({
-        id: pl.id,
-        position: pl.position,
-        location: pl.location,
-        currentHp: pl.currentHp,
-        drinkCount: pl.drinkCount,
-        happiness: pl.happiness !== undefined ? pl.happiness : 100, 
-        isLover: pl.isLover,
-        skipTurn: pl.skipTurn,
-        hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
-        jobId: pl.jobId || null,
-        job: pl.job || "モブ"
-      }))
+      action: targetSquare.type === "jobChallenge" ? "jobChallengeTrigger" : "forceStopTrigger",
+      eventType: targetSquare.eventType || null,
+      jobId: targetSquare.jobId || null,
+      squareText: targetSquare.text
     });
-  }, 3000);
+  }
 }
 
 const GAME_EVENTS = {
