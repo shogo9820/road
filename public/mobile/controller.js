@@ -545,10 +545,13 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：positionが undefined (未定義) の場合は、初期位置「0番マス」として100%安全に補正し、1人目の不発を完全根絶します！
+// 🎯 完全修正：サーバーからのデータ同期に消されないよう、画面のHTML表示状態を直接見張ることで無限ループを100%物理的に完全シャットアウトします！
 function checkBranchSquareOnTurnStart(syncData) {
-  console.log("=========================================");
-  console.log("[デバッグログ] checkBranchSquareOnTurnStart が起動しました");
+  // 💡【無限ループ防止セーフティ①】現在すでに画面にモーダルが出現している場合は、二重起動を防ぐため即座にスルー
+  if (document.getElementById("route-select-modal")) {
+    console.log("[無限ループ防止] すでに進路選択モーダルが画面に存在するため、重複起動をブロックします。");
+    return;
+  }
 
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
@@ -557,45 +560,36 @@ function checkBranchSquareOnTurnStart(syncData) {
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
-  // 🎯 追加：すでに進路を選択済みの場合は、無限ループ防止のためポップアップ処理を即座にスルーする！
-  if (p.hasSelectedRoute) {
-    console.log(`[無限ループ防止] ${p.name} 順路は選択済みです。チェックをスルーします。`);
+  // 💡【無限ループ防止セーフティ②】スマホ内のグローバル変数として、このターンで既に決定ボタンを押したかどうかをチェック
+  if (window.hasConfirmedThisTurn === true) {
+    console.log(`[無限ループ防止] ${p.name} さんは既に進路選択を確定済みです。チェックを完全スルーします。`);
     return;
   }
 
-  // 💡【最重要修正】位置が undefined だった場合は、スタート地点の「0」として安全に型補正をかける
+  // 位置が undefined の場合は、スタート地点の「0」として安全に型補正
   const playerPos = (p.position !== undefined && p.position !== null) ? Number(p.position) : 0;
+  if (playerPos !== 0 && playerPos !== 49) return;
 
-  console.log(`[プレイヤー確認] 現在手番の人: ${p.name}, 補正後の現在地(position): ${playerPos}`);
-
-  // 💡 補正後の playerPos を使って 0 または 49 の分岐判定を確実に行う
-  if (playerPos !== 0 && playerPos !== 49) {
-    console.warn(`❌ 弾かれました: 現在地が 0 または 49 ではありません（実際の値: ${playerPos}）`);
-    return;
-  }
-
-  console.log(`🎯 条件クリア！モーダル生成を開始します。`);
+  console.log(`[進路選択起動] 分岐マス（${playerPos}番）を検知。スマホ画面のロックを実行します`);
 
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
         <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
         <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
+        
         <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
-          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルート（通常進路）</button>
-          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルート（特殊進路）</button>
+          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Aルート（通常進路）</button>
+          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Bルート（特殊進路）</button>
         </div>
-        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed;">進路を確定してルーレットへ</button>
+        
+        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed; transition:0.2s;">進路を確定してルーレットへ</button>
       </div>
     </div>
   `;
 
   const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
-  const oldModal = document.getElementById("route-select-modal");
-  if (oldModal) oldModal.remove();
-  
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
-  console.log("✅ モーダルのHTMLがスマホ画面(phone-screen-play)に正常に注入されました！");
 
   let tempSelectedIdx = null;
   const btnA = document.getElementById("btn-route-a");
@@ -618,60 +612,38 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 決定ボタンを押した瞬間
+  // 💡 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     
-    // 🎯 追加：決定したその瞬間に「選択済みフラグ」を立てて、裏での再起動をカチッとブロック！
-    p.hasSelectedRoute = true;
+    // 🎯 データ同期に破壊されないよう、ウィンドウ自体の確定フラグをtrueにロック！
+    window.hasConfirmedThisTurn = true;
 
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove(); 
+    if (modalEl) modalEl.remove(); // モーダルを削除してルーレット画面へ
   };
 }
 
-// 🎯【完全同期】データ更新イベント
-socket.on("syncGameState", (data) => {
-  if (data.players && Array.isArray(data.players)) players = data.players;
-  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
-  updatePhoneStatusDisplay();
-
-  setTimeout(() => {
-    console.log("[イベント検知] syncGameState から分岐マスの自動チェックを呼び出します");
-    if (typeof checkBranchSquareOnTurnStart === "function") {
-      checkBranchSquareOnTurnStart(data);
-    }
-  }, 100);
-});
-
-// 🎯【完全同期】ターン交代イベント
+// 🎯 次のプレイヤーへターン交代（applyPlayerAction）が届いた際の処理の末尾を探してください
 socket.on("applyPlayerAction", (data) => {
   if (data.action === "turnUpdated") {
-    // 🎯 追加：次のプレイヤーへターンが切り替わったので、全員の進路選択済みフラグを綺麗にリセット！
-    if (players && Array.isArray(players)) {
-      players.forEach(pl => { if (pl.hasSelectedRoute) delete pl.hasSelectedRoute; });
-    }
+    // 🎯【追加】次のプレイヤーに番が回ったので、確定フラグのロックを綺麗にリセット！
+    window.hasConfirmedThisTurn = false;
+
     activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const activeName = data.activePlayerName || `プレイヤー`;
-
     const banner = document.getElementById("current-player-banner");
     if (banner) banner.textContent = `TURN: ${activeName}`;
-
     const spinBtn = document.getElementById("btn-phone-spin");
     if (spinBtn) spinBtn.disabled = false;
-
     const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) {
-      nextBtn.disabled = true; nextBtn.classList.add("hidden"); nextBtn.style.display = "none";
-    }
-
+    if (nextBtn) { nextBtn.disabled = true; nextBtn.classList.add("hidden"); nextBtn.style.display = "none"; }
     const resultDisplay = document.getElementById("roulette-result-display");
     if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
     isSpinning = false;
 
     setTimeout(() => {
-      console.log("[イベント検知] applyPlayerAction(ターン更新) から分岐マスの自動チェックを呼び出します");
       if (typeof checkBranchSquareOnTurnStart === "function") {
         checkBranchSquareOnTurnStart(data);
       }
