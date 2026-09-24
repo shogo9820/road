@@ -492,3 +492,68 @@ document.addEventListener("click", (e) => {
     targetSquareId: targetSquareId
   });
 });
+
+// 🎯 追加：自分のターン開始時に分岐マス（0, 49）にいたら、ルーレットを止めて進路選択モーダルを出すチェック処理
+function checkBranchSquareOnTurnStart() {
+  const p = players[activePlayerIndex];
+  // 自分が現在アクティブプレイヤー、かつ位置が0番か49番の場合のみ起動
+  if (!p || p.id !== socket.id || (p.position !== 0 && p.position !== 49)) return;
+
+  // 💡 役職選択モーダルと全く同じ構造のHTML要素をスマホ画面上に動的生成
+  let modalHtml = `
+    <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:9999; font-family:sans-serif;">
+      <div style="background:#fff; width:90%; max-width:320px; padding:20px; border-radius:16px; text-align:center; box-sizing:border-box;">
+        <h3 style="margin-top:0; color:#333; font-size:1.2rem;">🧭 運命の進路選択</h3>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">進むルートをタップすると、大画面で進路をリアルタイムに確認できます。</p>
+        
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+          <button id="btn-route-a" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:8px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルートを選択</button>
+          <button id="btn-route-b" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:8px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルートを選択</button>
+        </div>
+        
+        <button id="btn-route-confirm" disabled style="width:100%; padding:12px; font-size:1.05rem; font-weight:bold; border:none; border-radius:8px; background:#ccc; color:#fff; cursor:not-allowed;">進路を確定する</button>
+      </div>
+    </div>
+  `;
+
+  // 既存の古いモーダルがあれば削除して差し替え
+  const oldModal = document.getElementById("route-select-modal");
+  if (oldModal) oldModal.remove();
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  let tempSelectedIdx = null; // 0ならA、1ならB
+  const btnA = document.getElementById("btn-route-a");
+  const btnB = document.getElementById("btn-route-b");
+  const btnConfirm = document.getElementById("btn-route-confirm");
+
+  // 💡 Aルートをタップした瞬間（PCに即時プレビュー信号を送る）
+  btnA.onclick = () => {
+    tempSelectedIdx = 0;
+    btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1";
+    btnB.style.borderColor = "#ccc";    btnB.style.background = "#fff";
+    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode, selectedRouteIndex: 0 });
+  };
+
+  // 💡 Bルートをタップした瞬間（PCに即時プレビュー信号を送る）
+  btnB.onclick = () => {
+    tempSelectedIdx = 1;
+    btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1";
+    btnA.style.borderColor = "#ccc";    btnA.style.background = "#fff";
+    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode, selectedRouteIndex: 1 });
+  };
+
+  // 💡 決定ボタンを押した時
+  btnConfirm.onclick = () => {
+    if (tempSelectedIdx === null) return;
+    socket.emit("confirmRouteSelection", { roomCode, selectedRouteIndex: tempSelectedIdx });
+    document.getElementById("route-select-modal").remove(); // モーダルを閉じる
+  };
+}
+
+// 🎯 同期信号（syncGameState）などを受け取る既存のブロックの末尾で、この関数を呼び出すように仕込みます
+socket.on("syncGameState", (data) => {
+  // 既存のプレイヤー同期処理...
+  setTimeout(checkBranchSquareOnTurnStart, 100); // 描画ラグを考慮して一瞬遅らせて自動チェック
+});

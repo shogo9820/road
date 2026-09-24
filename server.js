@@ -378,6 +378,33 @@ io.on("connection", (socket) => {
     }
   });
 
+    // 🎯 追加：スマホでルートボタンがタップされた瞬間、PCへリアルタイムに影を落とすよう転送
+  socket.on("previewRouteSelection", (data) => {
+    const room = rooms[data.roomCode || socket.roomCode];
+    if (room) {
+      io.to(data.roomCode).emit("applyRoutePreview", {
+        activePlayerIndex: room.activePlayerIndex,
+        selectedRouteIndex: data.selectedRouteIndex // 0ならルートA、1ならルートB
+      });
+    }
+  });
+
+  // 🎯 追加：スマホで決定ボタンが押された瞬間、プレイヤーの進路ルートを確定してゲームを再開
+  socket.on("confirmRouteSelection", (data) => {
+    const room = rooms[data.roomCode || socket.roomCode];
+    if (room && room.gamePlayers) {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      if (p) {
+        // プレイヤーオブジェクトに現在選択中の確定ルートインデックスを保存
+        p.chosenRouteIdx = data.selectedRouteIndex;
+      }
+      io.to(data.roomCode).emit("routeSelectionConfirmed", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex
+      });
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("クライアント切断:", socket.id);
   });

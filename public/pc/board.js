@@ -6,6 +6,7 @@ window.boardManager = {
   canvas: null,
   ctx: null,
   cellSize: 15, // 1セルのピクセルサイズ（60×15=900px、56×15=840pxでテレビ画面にジャスト配置）
+  previewRouteIdx: null,
 
   squareColors: {
     start: "#8bc34a",
@@ -72,6 +73,34 @@ window.boardManager = {
       x: (pt.x + (pt.w || 3) / 2) * this.cellSize,
       y: (pt.y + (pt.h || 3) / 2) * this.cellSize
     };
+  },
+
+  // 🎯 修正：マスの通常描画の直後に、選ばれていない方の全マスに「影（半透明の黒）」を重ねて暗くするロジックを draw() 内の末尾（プレイヤーピンの描画前）に追記します
+  drawShadowEffect(sq, idx, px, py, pw, ph) {
+    const p = players[activePlayerIndex];
+    if (!p) return;
+
+    // 分岐1（0番マスからの分岐）
+    const isRoute1_A = (idx >= 1 && idx <= 7);
+    const isRoute1_B = (idx >= 8 && idx <= 17);
+    // 分岐2（49番マスからの分岐：50〜58が激シャバA、59〜79が一生の思い出B）
+    const isRoute2_A = (idx >= 50 && idx <= 58);
+    const isRoute2_B = (idx >= 59 && idx <= 79);
+
+    // 💡 Aルート(0)が選択/プレビューされている時は、Bルートのマスの真上に影を落とす
+    if (this.previewRouteIdx === 0 || p.chosenRouteIdx === 0) {
+      if (isRoute1_B || isRoute2_B) {
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; // 影の濃さ
+        this.ctx.fillRect(px, py, pw, ph);
+      }
+    }
+    // 💡 Bルート(1)が選択/プレビューされている時は、Aルートのマスの真上に影を落とす
+    if (this.previewRouteIdx === 1 || p.chosenRouteIdx === 1) {
+      if (isRoute1_A || isRoute2_A) {
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+        this.ctx.fillRect(px, py, pw, ph);
+      }
+    }
   },
 
   draw(playersList, activeIdx) {
@@ -166,3 +195,20 @@ window.boardManager = {
     }
   }
 };
+
+// 🎯 追加：スマホのタップ信号をダイレクトに検知して、PC画面の影をリアルタイムに更新させるリスナー
+socket.on("applyRoutePreview", (data) => {
+  if (window.boardManager) {
+    window.boardManager.previewRouteIdx = data.selectedRouteIndex; // 影の状態を上書き
+    window.boardManager.draw(players, activePlayerIndex); // ラグなしで即座に大画面を再描画
+  }
+});
+
+// 確定信号を受け取ったらプレビュー状態をリセット
+socket.on("routeSelectionConfirmed", (data) => {
+  if (data.players) players = data.players;
+  if (window.boardManager) {
+    window.boardManager.previewRouteIdx = null; // プレビュー影を確定状態へ引き継ぎ
+    window.boardManager.draw(players, activePlayerIndex);
+  }
+});

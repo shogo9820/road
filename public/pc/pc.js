@@ -397,8 +397,7 @@ function updateCurrentPlayerDisplay() {
   renderLocationPlayersList();
 }
 
-// ─── pc.js : 【パーツ6】0秒目のモーダル自動起動を完全に消去し、3秒遅延へ一本化する修正 ───
-// ─── pc.js : 3秒遅延の一本化 ＆ スマホ役職モーダル即時連動修正 ───
+// ─── pc.js : 選択ルートを自動判別して1歩ずつ進む移動探索システム ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -438,7 +437,6 @@ function executeSyncedRoulette(resultNum) {
   }
 
   if (wheel) {
-    console.log("[PCルーレット回転開始]", wheel);
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
@@ -449,7 +447,7 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 4. ルーレットがピタッと停止する3秒後に、出目を即更新して正しい数値型で1歩ずつ探索移動
+  // 4. 🎯 ルーレット停止（3秒後）に、選択された確定ルートに基づいて1歩ずつ正確に移動探索を開始
   setTimeout(() => {
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
@@ -482,21 +480,30 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
+      // 🎯【進路決定ロジック】nextId配列に選択肢が複数（2つ）ある分岐マスの場合
       const nextIdArray = currentSquare.nextId;
-      p.position = Number(nextIdArray[0]);
+      if (nextIdArray.length > 1) {
+        // スマホで選んだインデックス（0または1）のルートを正確に選択、未指定なら最初のルート[0]にする
+        const chosenIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
+        p.position = Number(nextIdArray[chosenIdx]);
+      } else {
+        // 通常の1本道マスなら、配列の最初の要素[0]をそのまま選択
+        p.position = Number(nextIdArray[0]);
+      }
+      
       stepsMoved++;
 
       if (window.boardManager)
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 5. 【完全復活】コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
+    // 5. 【保護】コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
         targetSquare = MAP_SQUARES[p.position];
         p.location = targetSquare.location || "";
-        applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
+        applySquareEffects(p, targetSquare);
       }
 
       if (window.boardManager)
@@ -504,22 +511,12 @@ function executeSyncedRoulette(resultNum) {
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      if (targetSquare) {
-        // 💡【新設・スマホ役職連動】もし着地したマスが役職マスなら、ラグなしでスマホへ即座に就職画面の表示を指示する！
-        if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
-          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          console.log(`[役職マス着地] スマホへ triggerJobChoice を即時送信します: ${jobName}`);
-          socket.emit("triggerJobChoice", { roomCode, playerId: p.id, jobId, jobName });
-        }
-        
-        // もし強制ストップマスならPC大画面のイベントモーダルを表示
-        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
-          handleForceStopSquare(p, targetSquare);
-        }
+      // 強制ストップマスならPCモーダルを表示
+      if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
+        handleForceStopSquare(p, targetSquare);
       }
 
-      // 位置データとスマホ側への通常イベント通知（squareEvent）をラグなしで実行
+      // スマホへラグなしで通知 ＆ 位置同期を実行
       triggerDelayedDisplay(resultNum, targetSquare);
     }
   }, 3000);
