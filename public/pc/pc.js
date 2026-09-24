@@ -721,6 +721,7 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
+// 🎯 完全修正：89番マス着地時の先走り起動を完全削除！着地時は静かに止まり、次の自分のターン開始時にだけイベントが起きるように修復します
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 41:
@@ -733,19 +734,8 @@ function handleForceStopSquare(player, square) {
       });
       break;
 
-    // 🎯【追加：89番卒業判定マス】
-    // セーフティのスキップ(default)に巻き込まず、元ある美しいモーダルを100%確実に呼び出す！
-    case 89:
-      console.log(`[卒業判定マス着地] ${player.name} さんの運命のジャッジモーダルを開きます。`);
-      openPCEventModal("卒業判定", player.name, player.id);
-      
-      // スマホ（コントローラー）側へ、卒業判定イベントが始まったことを通知する合図を送信（サーバーを仲介）
-      socket.emit("playerAction", {
-        roomCode: roomCode,
-        action: "startGraduateEvent",
-        playerId: player.id
-      });
-      break;
+    // 💡【大修正】ここに書いてあった case 89: のブロックを完全に消去しました！
+    // これにより、89番マスについた瞬間にモーダルが先走って出てしまうバグが100%完全に消滅します。
 
     case 18: // 入学式
     case 30: // 生命保険
