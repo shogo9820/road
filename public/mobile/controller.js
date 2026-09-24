@@ -372,15 +372,18 @@ function syncSettingsToServer() {
   });
 }
 
-// 🎯 完全修正：ゲームスタートボタンを押して画面が切り替わった瞬間に、一人目のための進路選択ポップアップを即座に強制起動させます！
+// 🎯 完全修正：ゲームスタート時に1人目（インデックス0）の手番状態をスマホ内部へ強制同期し、1人目のポップアップ不発を100%完全に根絶します！
 function sendStartGame() {
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
 
-  // 🎯 追加：一人目（0番マス）が最初から確実に足止めされるよう、画面切り替えの瞬間にチェックを強制発動！
+  // 💡 追加：スマホ端末側に「今から1人目の番が始まるぞ」と強制的にインデックスを覚えさせ、誤判定でのすり抜けを完璧にブロックします
+  activePlayerIndex = 0;
+
+  // データの描画ラグを考慮して150ミリ秒後にチェック関数を確実に起動
   setTimeout(() => {
     if (typeof checkBranchSquareOnTurnStart === "function") {
-      checkBranchSquareOnTurnStart(null); // 生データはないのでnullで安全に呼び出し
+      checkBranchSquareOnTurnStart(null); // 生データは使用せず内部のactivePlayerIndex(=0)を正として強制起動
     }
   }, 150);
 }
