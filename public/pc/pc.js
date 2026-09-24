@@ -702,8 +702,8 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
       const isPass = i >= 6;
       const badgeBg = isPass ? "#4caf50" : "#f44336";
       const text = isPass
-        ? '<span style="color:#2e7d32; font-weight:bold;">🎓 6以上：おめでとう！【卒業】確定！</span>'
-        : '<span style="color:#c62828; font-weight:bold;">🚨 5以下：単位不足……【留年ルート】突入！</span>';
+        ? '<span style="color:#2e7d32; font-weight:bold;">🎓 6以上：【卒業】</span>'
+        : '<span style="color:#c62828; font-weight:bold;">🚨 5以下：【留年】</span>';
       tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${text}</div></li>`;
     }
     tableHTML += `</ul>`;
