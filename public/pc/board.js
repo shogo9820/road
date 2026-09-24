@@ -2,25 +2,18 @@ window.boardManager = {
   canvas: null,
   ctx: null,
   cellSize: 15,
-  previewRouteIdx: null, // 🎯 追加：スマホの仮選択状態を保持する（0:A, 1:B）
+  previewRouteIdx: null, // スマホのリアルタイム仮選択状態（0:A, 1:B）
 
   squareColors: {
-    start: "#8bc34a",
-    goal: "#f44336",
-    force_stop: "#f5a623",
-    force_stop_rankup: "#f5a623",
-    jobChallenge: "#7b1fa2",
-    location: "#ffffff",
-    normal: "#ffffff",
-    heal: "#ffffff",
-    repeat: "#0d47a1"
+    start: "#8bc34a", goal: "#f44336", force_stop: "#f5a623", force_stop_rankup: "#f5a623",
+    jobChallenge: "#7b1fa2", location: "#ffffff", normal: "#ffffff", heal: "#ffffff", repeat: "#0d47a1"
   },
 
   playerColors: [
     "#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"
   ],
 
-  // 🎯 あなたの提供した100%正しい正解のExcelセルマッピングテーブル
+  // 🎯 Excelセルマッピングテーブル
   gridMap: {
     0: { x: 52, y: 48, w: 7, h: 7 },   1: { x: 54, y: 45, w: 3, h: 3 },   2: { x: 55, y: 42, w: 3, h: 3 },   3: { x: 56, y: 39, w: 3, h: 3 },
     4: { x: 56, y: 36, w: 3, h: 3 },   5: { x: 55, y: 33, w: 3, h: 3 },   6: { x: 54, y: 30, w: 3, h: 3 },   7: { x: 53, y: 27, w: 3, h: 3 },
@@ -55,14 +48,12 @@ window.boardManager = {
     this.ctx = this.canvas.getContext("2d");
     this.canvas.width = 60 * this.cellSize;
     this.canvas.height = 56 * this.cellSize;
+    this.bindSocketListeners(); // 🎯 通信リスナーを確実に初期化
   },
 
   getCoordinates(index) {
     const data = this.gridMap[index] || { x: 0, y: 0, w: 3, h: 3 };
-    return {
-      x: (data.x + data.w / 2) * this.cellSize,
-      y: (data.y + data.h / 2) * this.cellSize
-    };
+    return { x: (data.x + data.w / 2) * this.cellSize, y: (data.y + data.h / 2) * this.cellSize };
   },
 
   draw(playersList, activeIdx) {
@@ -72,123 +63,113 @@ window.boardManager = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES)) return;
 
-    // 1. 各道ブロックを元の完璧な数式のみで隙間なく正しく敷き詰め描画
+    // 1. 各道ブロックの通常描画
     MAP_SQUARES.forEach((sq, idx) => {
       const data = this.gridMap[idx];
       if (!data) return;
 
-      const px = data.x * this.cellSize;
-      const py = data.y * this.cellSize;
-      const pw = data.w * this.cellSize;
-      const ph = data.h * this.cellSize;
+      const px = data.x * this.cellSize; const py = data.y * this.cellSize;
+      const pw = data.w * this.cellSize; const ph = data.h * this.cellSize;
 
       let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
       if (sq.text && sq.text.includes("【役職マス】")) fillColor = this.squareColors.jobChallenge;
 
       this.ctx.fillStyle = fillColor;
       this.ctx.fillRect(px, py, pw, ph);
-
       this.ctx.strokeStyle = (fillColor === "#ffffff") ? "#444444" : "#ffffff";
       this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(px, py, pw, ph);
 
       this.ctx.fillStyle = (fillColor === "#ffffff") ? "#333333" : "#ffffff";
-      this.ctx.font = "bold 11px sans-serif";
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
+      this.ctx.font = "bold 11px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
+      const cx = px + pw / 2; const cy = py + ph / 2;
 
-      const cx = px + pw / 2;
-      const cy = py + ph / 2;
-
-      if (sq.type === "start") {
-        this.ctx.fillText("ST", cx, cy);
-      } else if (sq.type === "goal") {
-        this.ctx.fillText("GOAL", cx, cy);
-      } else {
-        this.ctx.fillText(sq.id.toString(), cx, cy);
-      }
+      if (sq.type === "start") this.ctx.fillText("ST", cx, cy);
+      else if (sq.type === "goal") this.ctx.fillText("GOAL", cx, cy);
+      else this.ctx.fillText(sq.id.toString(), cx, cy);
     });
 
-    // 2. 🎯 修正：マスの通常描画が【全て完全に終わった後】に、影マスクを最前面から独立して重ね描きする
-    const p = playersList ? playersList[activeIdx] : null;
+    // 2. 🎯【大修正】現在地に完全に連動した「独立レイヤー影マスク」の重ね描き処理
+    const p = (playersList && playersList[activeIdx]) ? playersList[activeIdx] : null;
     const currentRoute = (this.previewRouteIdx !== null) ? this.previewRouteIdx : (p ? p.chosenRouteIdx : null);
 
-    if (currentRoute !== null && currentRoute !== undefined) {
+    if (p && currentRoute !== null && currentRoute !== undefined) {
       MAP_SQUARES.forEach((sq, idx) => {
         const data = this.gridMap[idx];
         if (!data) return;
 
-        const isRoute1_A = (idx >= 1 && idx <= 7);
-        const isRoute1_B = (idx >= 8 && idx <= 17);
-        const isRoute2_A = (idx >= 50 && idx <= 58);
-        const isRoute2_B = (idx >= 59 && idx <= 79);
+        // 💡 プレイヤーが0番マスにいる時だけ、1本目の分岐ルート（1〜7 / 8〜17）の影を動かす
+        if (p.position === 0) {
+          if (currentRoute === 0 && idx >= 8 && idx <= 17) { // A選択時はB(8〜17)を暗く
+            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+          }
+          if (currentRoute === 1 && idx >= 1 && idx <= 7) { // B選択時はA(1〜7)を暗く
+            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+          }
+        }
 
-        // Aルート選択中はBルートを、Bルート選択中はAルートに影マスクを独立して重ねる
-        if ((currentRoute === 0 && (isRoute1_B || isRoute2_B)) || (currentRoute === 1 && (isRoute1_A || isRoute2_A))) {
-          this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // 影の濃さ
-          this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+        // 💡 プレイヤーが49番マスにいる時だけ、2本目の分岐ルート（50〜58 / 59〜79）の影を動かす
+        if (p.position === 49) {
+          if (currentRoute === 0 && idx >= 59 && idx <= 79) { // A選択時はB(59〜79)を暗く
+            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+          }
+          if (currentRoute === 1 && idx >= 50 && idx <= 58) { // B選択時はA(50〜58)を暗く
+            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+          }
         }
       });
     }
 
-    // 3. プレイヤーのピンを道の真ん中に重ねて描画
+    // 3. プレイヤーのピンを描画
     if (playersList && Array.isArray(playersList)) {
       const positionCounts = {};
-      playersList.forEach((p, idx) => {
-        const currentPos = p.position !== undefined ? p.position : 0;
+      playersList.forEach((pl, idx) => {
+        const currentPos = pl.position !== undefined ? pl.position : 0;
         const coords = this.getCoordinates(currentPos);
-
         if (positionCounts[currentPos] === undefined) positionCounts[currentPos] = 0;
-        const offsetIdx = positionCounts[currentPos];
-        positionCounts[currentPos]++;
+        const offsetIdx = positionCounts[currentPos]; positionCounts[currentPos]++;
 
         let offsetX = 0; let offsetY = 0;
         if (offsetIdx > 0) {
           const angle = (offsetIdx * Math.PI * 2) / 4;
-          offsetX = Math.cos(angle) * 10;
-          offsetY = Math.sin(angle) * 10;
+          offsetX = Math.cos(angle) * 10; offsetY = Math.sin(angle) * 10;
         }
+        const pinX = coords.x + offsetX; const pinY = coords.y + offsetY;
+        const pinColor = pl.color || this.playerColors[idx % this.playerColors.length];
 
-        const pinX = coords.x + offsetX;
-        const pinY = coords.y + offsetY;
-        const pinColor = p.color || this.playerColors[idx % this.playerColors.length];
-
-        this.ctx.beginPath();
-        this.ctx.arc(pinX, pinY, 8, 0, Math.PI * 2);
-        this.ctx.fillStyle = "#333333";
-        this.ctx.fill();
-
-        this.ctx.beginPath();
-        this.ctx.arc(pinX, pinY, 6, 0, Math.PI * 2);
-        this.ctx.fillStyle = pinColor;
-        this.ctx.fill();
+        this.ctx.beginPath(); this.ctx.arc(pinX, pinY, 8, 0, Math.PI * 2); this.ctx.fillStyle = "#333333"; this.ctx.fill();
+        this.ctx.beginPath(); this.ctx.arc(pinX, pinY, 6, 0, Math.PI * 2); this.ctx.fillStyle = pinColor; this.ctx.fill();
 
         if (idx === activeIdx) {
-          this.ctx.lineWidth = 2;
-          this.ctx.strokeStyle = "#ffffff";
-          this.ctx.beginPath();
-          this.ctx.arc(pinX, pinY, 9, 0, Math.PI * 2);
-          this.ctx.stroke();
+          this.ctx.lineWidth = 2; this.ctx.strokeStyle = "#ffffff";
+          this.ctx.beginPath(); this.ctx.arc(pinX, pinY, 9, 0, Math.PI * 2); this.ctx.stroke();
         }
       });
     }
+  },
+
+  // 🎯【変数エラー解消】スコープの不整合を完全に吸収し、大画面側(pc.js)の「players」を確実に引き込んで再描画する
+  bindSocketListeners() {
+    if (typeof socket === "undefined" || this.hasBound) return;
+    this.hasBound = true;
+
+    socket.on("applyRoutePreview", (data) => {
+      this.previewRouteIdx = data.selectedRouteIndex;
+      // グローバル変数の players, activePlayerIndex を安全に引き渡す
+      if (typeof players !== "undefined") {
+        this.draw(players, activePlayerIndex);
+      }
+    });
+
+    socket.on("routeSelectionConfirmed", (data) => {
+      this.previewRouteIdx = null; // プレビュー影をリセット
+      if (typeof players !== "undefined") {
+        this.draw(players, activePlayerIndex);
+      }
+    });
   }
 };
-
-// 🎯 スマホのリアルタイム信号をPC画面の影へ反映させるリスナー
-if (typeof socket !== "undefined") {
-  socket.on("applyRoutePreview", (data) => {
-    if (window.boardManager) {
-      window.boardManager.previewRouteIdx = data.selectedRouteIndex;
-      window.boardManager.draw(players, activePlayerIndex);
-    }
-  });
-
-  socket.on("routeSelectionConfirmed", (data) => {
-    if (data.players) players = data.players;
-    if (window.boardManager) {
-      window.boardManager.previewRouteIdx = null; // プレビュー影を確定状態へ移行
-      window.boardManager.draw(players, activePlayerIndex);
-    }
-  });
-}

@@ -81,16 +81,22 @@ function initSocketListeners() {
     }
   });
 
+  // 🎯 追加：サーバーからゲーム開始合図を受け取った瞬間に、1人目のための進路選択ポップアップを即座に強制起動させます！
   socket.on("gameStarted", (data) => {
+    console.log("[スマホ] サーバーからゲーム開始通知を受信しました。");
     if (data && data.players) players = data.players;
-    switchScreen("screen-game");
+    if (data && data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    
+    // プレイ画面へ切り替えとステータス表示
+    showScreen("phone-screen-play");
+    updatePhoneStatusDisplay();
 
-    if (window.boardManager) {
-      window.boardManager.init(100);
-      window.boardManager.draw(players, activePlayerIndex);
-    }
-    updateCurrentPlayerDisplay();
-    renderLocationPlayersList();
+    // 💡 データの同期完了を150ミリ秒だけ待ってから、1人目(0番マス)の進路選択チェックを強制発動！
+    setTimeout(() => {
+      if (typeof checkBranchSquareOnTurnStart === "function") {
+        checkBranchSquareOnTurnStart(data);
+      }
+    }, 150);
   });
 }
 // 🎯 注意：initSocketListeners関数が途中で途切れないよう、既存の関数にイベントを後から安全に継承・追加します
