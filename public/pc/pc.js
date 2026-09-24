@@ -389,7 +389,7 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション処理
+  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
   const currentMod = pcCurrentRotation % 360;
@@ -416,47 +416,18 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 4. 🎯 修正：3秒の回転終了（止まった瞬間）に、出目表示と役職モーダル通知を即座に実行
+  // 4. 🎯 修正：ルーレットがピタッと停止する「3秒後」に、すべてのタイミングを一斉に同期起動
   setTimeout(() => {
-    
-    // 【タイミング修正】右上の出目表示を「回転中」から確定数値へ即座に切り替え
-    const resEl = document.getElementById("roulette-result-display");
-    if (resEl) {
-      resEl.textContent = `出目: ${resultNum}`;
-    }
-
-    // 🎯【先回り役職判定】出目分進んだ最終着地予定のマスを事前に計算
-    let checkPos = p.position;
-    for (let i = 0; i < resultNum; i++) {
-      const sq = MAP_SQUARES[checkPos];
-      if (!sq || !sq.nextId || sq.nextId.length === 0) break;
-      
-      // 移動途中に強制ストップがある場合はそこで止まるため、予定地を確定してブレイク
-      if (i > 0 && (sq.type === "force_stop" || sq.type === "force_stop_rankup")) {
-        break;
-      }
-      checkPos = sq.nextId[0]; // 暫定で最初のルートを辿る
-    }
-
-    // もし最終着地予定のマスが「役職マス」なら、ラグなしでスマホへ即座に通知を飛ばす
-    const predictedSquare = MAP_SQUARES[checkPos];
-    if (predictedSquare && predictedSquare.type === "jobChallenge") {
-      console.log(`[先回り役職通知] ${predictedSquare.text} に着地するため、スマホへ即座にモーダル表示を指示します`);
-      socket.emit("playerAction", {
-        roomCode: roomCode,
-        action: "jobChallengeTrigger",
-        jobId: predictedSquare.jobId,
-        squareText: predictedSquare.text
-      });
-    }
+    // 💡 盤面停止と同時に、右上の出目テキストを即座にパッと切り替える
+    if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
     let stepsMoved = 0;
-    
-    // 0.25秒刻みで1マスずつパパパッと進むアニメーションタイマー
+
+    // 出目の数だけ新ルートの nextId を1歩ずつパタパタと辿るアニメーションタイマー
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
-      
-      // 移動中に次の強制ストップマスを踏んだら、そこでピタッと強制停止
+
+      // 移動中に次の強制ストップマスを踏んだら、そこで強制停止
       if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
         clearInterval(moveTimer);
         finalizeMovement();
@@ -470,31 +441,33 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 🎯【バグ完全解消】配列から「0番目の数値」を明確に数字型として取り出し、データ破損を防止
+      // 💡 配列（例: [18]）の最初の要素を、明確に【数値型】として取り出す安全な処理
       const nextIdArray = currentSquare.nextId;
       p.position = Number(nextIdArray[0]); 
       stepsMoved++;
 
+      // 1歩進むごとにピン位置をリアルタイムに再描画
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 最終着地したマスの効果適用と同期処理
+    // 5. 【完全復旧】移動が完全に終了したこの瞬間に、データ同期とイベント判定を一括実行
     function finalizeMovement() {
-      const targetSquare = MAP_SQUARES[p.position];
-      if (targetSquare) {
-        p.location = targetSquare.location || p.location;
-        applySquareEffects(p, targetSquare); // お酒・幸福度計算
+      let targetSquare = null;
+      if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
+        targetSquare = MAP_SQUARES[p.position];
+        p.location = targetSquare.location || "";
+        applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
       }
 
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // マス内容の遅延表示処理へ連携
+      // 元の完璧だった順序の通り、完璧な位置データを持たせて同期・遅延表示へ流す
       triggerDelayedDisplay(resultNum, targetSquare);
     }
 
-  }, 3000); // 3秒のルーレット演出待ち
+  }, 3000); // ルーレット盤がギュンギュン回る3秒間の演出ウェイト
 }
 
 function applySquareEffects(player, square) {
