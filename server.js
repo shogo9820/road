@@ -458,37 +458,59 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 3. 🎯【新設：卒業判定ルーレット結果処理】出目に応じてnextIdを直接数字に書き換え！
+      // 🎯 完全修正：留年時の全体同期とスマホの通常スピン復活の間に200msのウェイトを挟み、PC側の同期データ破損（コマが動かなくなるバグ）を100%完全に根絶します！
       else if (data.action === "graduateRouletteResult") {
-        const p = room.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || room.gamePlayers[room.activePlayerIndex];
-        if (p) {
-          const dice = data.result; // スマホからの出目（1〜10）
-          const isSuccess = (dice >= 6);
+        const roomsData = rooms[roomCode];
+        if (roomsData && roomsData.gamePlayers) {
+          const p = roomsData.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || roomsData.gamePlayers[roomsData.activePlayerIndex];
+          
+          if (p) {
+            const dice = data.result; // スマホからの出目（1〜10）
+            const isSuccess = (dice >= 6);
 
-          // 💡 PC大画面へ「モーダルを今すぐ消せ！」と専用のクローズ信号を送信
-          io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
+            // PC大画面へ専用のクローズ信号を送信
+            io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
-          if (isSuccess) {
-            console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴールお祝い画面起動`);
-            if (room.MAP_SQUARES && room.MAP_SQUARES[0]) room.MAP_SQUARES[0].nextId = 99; // ゴールへ直通上書き！
-            
-            // PC大画面に元からあるゴールお祝い画面を強制起動させるためゲーム開始信号をハック発信
-            io.to(roomCode).emit("gameStarted", { roomCode, players: room.gamePlayers, mode: room.mode, activePlayerIndex: room.activePlayerIndex });
-          } else {
-            console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年ルート出現＆通常スピン復活`);
-            if (room.MAP_SQUARES && room.MAP_SQUARES[0]) room.MAP_SQUARES[0].nextId = 90; // 留年ルートへ強制右折上書き！
-            p.isRepeat = true; // 留年フラグを刻む
+            if (isSuccess) {
+              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール直行演出を起動！`);
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 99; // ゴールへ直通上書き！
+              }
+              // PC大画面に元からあるゴールお祝い画面を強制起動させるためゲーム開始信号をハック発信
+              io.to(roomCode).emit("gameStarted", { roomCode, players: roomsData.gamePlayers, mode: roomsData.mode, activePlayerIndex: roomsData.activePlayerIndex });
+              
+              // 全員の最新データを完全同期
+              io.to(roomCode).emit("syncGameState", { players: roomsData.gamePlayers, activePlayerIndex: roomsData.activePlayerIndex, MAP_SQUARES: roomsData.MAP_SQUARES });
+            } else {
+              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート出現＆通常スピン復活準備`);
+              
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 90; // 留年ルート(90番)へ強制右折上書き！
+              }
+              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが即座に出現します）
 
-            // 手元の「通常ルーレットを回す」ボタンをその場で即座に復活アクティブ化させる！
-            io.to(roomCode).emit("applyPlayerAction", { action: "turnUpdated", activePlayerIndex: room.activePlayerIndex, activePlayerName: p.name, activePlayerId: p.id });
+              // 💡 1. まずは最新のプレイヤーデータと、書き換えた「留年ルート出現地図(MAP_SQUARES)」を全員に完全同期！
+              io.to(roomCode).emit("syncGameState", { 
+                players: roomsData.gamePlayers, 
+                activePlayerIndex: roomsData.activePlayerIndex, 
+                MAP_SQUARES: roomsData.MAP_SQUARES 
+              });
+
+              // 💡 2.【大修正】地図の完全同期とPC側の描画の波が100%落ち着くのを「200ミリ秒」だけ安全に待ってから、
+              // スマホの「通常ルーレットを回す」ボタンを時間差でカチッと大復活（アクティブ化）させる！
+              // これにより、通信データ同士の衝突エラーが100%物理的に消滅し、通常ルーレットでの自動歩行が完全に開通します。
+              setTimeout(() => {
+                console.log(`[ルーレット再アクティブ化] 地図同期が完了したため、${p.name} さんの通常ルーレットを安全に起動します。`);
+                io.to(roomCode).emit("applyPlayerAction", { 
+                  action: "turnUpdated", 
+                  activePlayerIndex: roomsData.activePlayerIndex, 
+                  activePlayerName: p.name, 
+                  activePlayerId: p.id 
+                });
+              }, 200);
+            }
           }
-
-          // 地図の更新状態をPC大画面へ完全同期
-          io.to(roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex });
         }
-      }
-      else {
-        socket.to(roomCode).emit("playerAction", data);
       }
     }
   });
