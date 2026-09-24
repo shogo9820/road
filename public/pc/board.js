@@ -132,7 +132,11 @@ window.boardManager = {
       // マスの境界線をクッキリ引く（白ベースは黒枠、その他は白枠にしてExcel図面を完全再現）
       this.ctx.strokeStyle = (fillColor === "#ffffff") ? "#444444" : "#ffffff";
       this.ctx.lineWidth = 1.5;
-      this.ctx.strokeRect(px, py, pw, ph);
+      
+       // 🎯 追加：マス目が1つ描画されるたびに、そこが「選ばれていない方のルート」なら即座に黒い影を重ねて暗くする！
+      if (typeof this.drawShadowEffect === "function") {
+        this.drawShadowEffect(sq, idx, px, py, pw, ph);
+      }
 
       // マス内のテキスト（数字・文字）の描画
       this.ctx.fillStyle = (fillColor === "#ffffff") ? "#333333" : "#ffffff";

@@ -372,9 +372,17 @@ function syncSettingsToServer() {
   });
 }
 
+// 🎯 完全修正：ゲームスタートボタンを押して画面が切り替わった瞬間に、一人目のための進路選択ポップアップを即座に強制起動させます！
 function sendStartGame() {
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
+
+  // 🎯 追加：一人目（0番マス）が最初から確実に足止めされるよう、画面切り替えの瞬間にチェックを強制発動！
+  setTimeout(() => {
+    if (typeof checkBranchSquareOnTurnStart === "function") {
+      checkBranchSquareOnTurnStart(null); // 生データはないのでnullで安全に呼び出し
+    }
+  }, 150);
 }
 
 function requestSpin() {
