@@ -81,22 +81,19 @@ function initSocketListeners() {
     }
   });
 
-  // 🎯 追加：サーバーからゲーム開始合図を受け取った瞬間に、1人目のための進路選択ポップアップを即座に強制起動させます！
+  // 🎯 完全修正：間違って混入したshowScreenを、元の正しいswitchScreenへ完全修復し、画面崩壊を100%解決します！
   socket.on("gameStarted", (data) => {
-    console.log("[スマホ] サーバーからゲーム開始通知を受信しました。");
     if (data && data.players) players = data.players;
-    if (data && data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     
-    // プレイ画面へ切り替えとステータス表示
-    showScreen("phone-screen-play");
-    updatePhoneStatusDisplay();
+    // 💡 壊れていた部分を、PC側の正しい画面切り替え関数に完全修復！
+    switchScreen("screen-game"); 
 
-    // 💡 データの同期完了を150ミリ秒だけ待ってから、1人目(0番マス)の進路選択チェックを強制発動！
-    setTimeout(() => {
-      if (typeof checkBranchSquareOnTurnStart === "function") {
-        checkBranchSquareOnTurnStart(data);
-      }
-    }, 150);
+    if (window.boardManager) {
+      window.boardManager.init(100);
+      window.boardManager.draw(players, activePlayerIndex);
+    }
+    updateCurrentPlayerDisplay();
+    renderLocationPlayersList();
   });
 }
 // 🎯 注意：initSocketListeners関数が途中で途切れないよう、既存の関数にイベントを後から安全に継承・追加します
