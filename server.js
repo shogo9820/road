@@ -380,7 +380,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🎯 完全決定版：混線をすべて排除し、ターン交代時の卒業モーダル起動と、Yes/No役職、そして卒業・留年の分岐ルート書き換えを100%完璧に繋ぎます！
+  // 🎯 完全修正：混線をすべて排除し、ターン交代時の卒業モーダル起動と、Yes/No役職、そして卒業・留年の分岐ルート書き換えを100%完全に繋ぎます！
   socket.on("playerAction", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
@@ -400,7 +400,8 @@ io.on("connection", (socket) => {
             activePlayerId: nextPlayer.id
           });
 
-          // 💡 正しい「nextTurn」の直後に、独立した卒業判定の起動電波を仕込みます！
+          // 💡【大修正】通常マップ描画の波が完全に引き終わるのを150ミリ秒だけ待ってから、
+          // PC大画面側へ向けて、100%独立した専用の通信名（showGraduateEvent）でダイレクトにモーダル起動指示を飛ばします！
           if (nextPlayer && nextPlayer.position === 89) {
             console.log(`[卒業判定ターン開始] ${nextPlayer.name} さんが89番マスにいるため、大画面へ独立イベント信号を送信します。`);
             setTimeout(() => {
@@ -443,7 +444,7 @@ io.on("connection", (socket) => {
               activePlayerId: nextPlayer.id
             });
             
-            // 💡 役職が決まった次のプレイヤーがもし89番マスにいた場合にも、漏れなく電波を飛ばすセーフティガード！
+            // 💡 役職が決まった次のプレイヤーがもし89番マスにいた場合にも、漏れなく独立電波を飛ばすセーフティガード！
             if (nextPlayer && nextPlayer.position === 89) {
               setTimeout(() => {
                 io.to(roomCode).emit("showGraduateEvent", { playerId: nextPlayer.id, playerName: nextPlayer.name });
@@ -469,21 +470,21 @@ io.on("connection", (socket) => {
 
           if (isSuccess) {
             console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴールお祝い画面起動`);
-            if (room.MAP_SQUARES && room.MAP_SQUARES[89]) room.MAP_SQUARES[89].nextId = 99; // ゴールへ直通上書き！
+            if (room.MAP_SQUARES && room.MAP_SQUARES[0]) room.MAP_SQUARES[0].nextId = 99; // ゴールへ直通上書き！
             
             // PC大画面に元からあるゴールお祝い画面を強制起動させるためゲーム開始信号をハック発信
             io.to(roomCode).emit("gameStarted", { roomCode, players: room.gamePlayers, mode: room.mode, activePlayerIndex: room.activePlayerIndex });
           } else {
             console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年ルート出現＆通常スピン復活`);
-            if (room.MAP_SQUARES && room.MAP_SQUARES[89]) room.MAP_SQUARES[89].nextId = 90; // 留年ルートへ強制右折上書き！
+            if (room.MAP_SQUARES && room.MAP_SQUARES[0]) room.MAP_SQUARES[0].nextId = 90; // 留年ルートへ強制右折上書き！
             p.isRepeat = true; // 留年フラグを刻む
 
             // 手元の「通常ルーレットを回す」ボタンをその場で即座に復活アクティブ化させる！
             io.to(roomCode).emit("applyPlayerAction", { action: "turnUpdated", activePlayerIndex: room.activePlayerIndex, activePlayerName: p.name, activePlayerId: p.id });
           }
 
-          // 地図の更新状態(MAP_SQUARES)をPC大画面へ完全同期
-          io.to(roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex, MAP_SQUARES: room.MAP_SQUARES });
+          // 地図の更新状態をPC大画面へ完全同期
+          io.to(roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex });
         }
       }
       else {

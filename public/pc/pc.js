@@ -528,26 +528,12 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
   }
 }
 
-// 🎯 完全修正：重複していた古い同期イベントを削除し、サーバーからのダイレクトな通知（triggerGraduateModal）とゲーム状態同期を1つの関数に完璧に一本化します！
+// 🎯 1箇所目：pc.js の112行目付近の syncGameState を、余計な割り込みを消して元の綺麗な状態に完全修復！
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
-  
   updateCurrentPlayerDisplay();
-  
-  if (window.boardManager) {
-    window.boardManager.draw(players, activePlayerIndex);
-  }
-
-  // 💡【大合体：卒業判定ターン開始トリガー】
-  // 1つ前のプレイヤーがターンを交代し、89番マスにいる自分の番になったその瞬間に、
-  // 大画面に元からある美しい「🎓 運命の卒業判定チャンス 🎓」モーダルをノータイムで強制起動させます！
-  if (data && data.triggerGraduateModal === true) {
-    console.log("[大画面イベント起動] サーバーからの指示により卒業判定モーダルを展開します");
-    if (typeof openPCEventModal === "function" && data.targetPlayer) {
-      openPCEventModal("卒業判定", data.targetPlayer.name, data.targetPlayer.id);
-    }
-  }
+  if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
 });
 
 function applySquareEffects(player, square) {
@@ -779,19 +765,24 @@ function handleForceStopSquare(player, square) {
   }
 }
 
-// 🎯 完全修正：サーバーからの専用消去信号（closeGraduateModal）をダイレクトに受信！
-// 混線エラーを起こすことなく、出目確定の瞬間に大画面のイベントモーダルを100%確実に消し去ります！
+// 🎯 2箇所目：pc.js の【ファイルの本当の一番最後（最下部）】へ、以下の独立アンテナコードを丸ごとそのまま追記！
 if (typeof socket !== "undefined") {
+  // 💡 サーバーからの独立指示を受け取って、大画面モーダルを100%確実に強制展開させる！
+  socket.on("showGraduateEvent", (data) => {
+    console.log(`[大画面イベント強制起動] サーバーからの独立信号を受信しました。手番: ${data.playerName}`);
+    if (typeof openPCEventModal === "function" && data) {
+      openPCEventModal("卒業判定", data.playerName, data.playerId);
+    }
+  });
+
+  // 💡 スマホでルーレットが止まった瞬間、大画面のイベントモーダルを100%確実に直接消去する！
   socket.on("closeGraduateModal", (data) => {
     console.log("[大画面イベント終了] 卒業判定モーダルをクローズします。");
-    isPCEventMode = false; // イベントモード完全解除
-
-    // 大画面のイベントモーダル要素を直接操作して、100%確実に画面から非表示にする
+    isPCEventMode = false;
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
-      pcModal.style.display = "none"; // 💡 確実に画面から消去！
+      pcModal.style.display = "none"; // 確実に非表示消去！
     }
   });
 }
-
