@@ -431,9 +431,7 @@ function executeSyncedRoulette(resultNum) {
       document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
       document.querySelector("#pc-couple-event-modal .couple-wheel");
   } else {
-    wheel =
-      document.getElementById("controller-roulette-wheel") ||
-      document.getElementById("pc-roulette-wheel");
+    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
   }
 
   if (wheel) {
@@ -441,13 +439,12 @@ function executeSyncedRoulette(resultNum) {
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  // 3. 【保護】2回目イベントモード中（告白ルーレットなど）は移動させずに終了
   if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
     triggerDelayedDisplay(resultNum, null);
     return;
   }
 
-  // 4. 🎯 ルーレット停止（3秒後）に、選択された確定ルートに基づいて1歩ずつ正確に移動探索を開始
+  // 3. 🎯 修正：ルーレット停止（3秒後）に、スマホで選んだ確定進路を1歩ずつ100%正確に自動判別して進む
   setTimeout(() => {
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
@@ -457,47 +454,35 @@ function executeSyncedRoulette(resultNum) {
       const currentSquare = MAP_SQUARES[p.position];
 
       // 移動中に次の強制ストップマスを踏んだら、そこで強制停止
-      if (
-        stepsMoved > 0 &&
-        currentSquare &&
-        (currentSquare.type === "force_stop" ||
-          currentSquare.type === "force_stop_rankup")
-      ) {
+      if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 出目分進みきった、または次の進路（nextId）がない場合は停止
-      if (
-        stepsMoved >= resultNum ||
-        !currentSquare ||
-        !currentSquare.nextId ||
-        currentSquare.nextId.length === 0
-      ) {
+      // 出目分進みきった、または次の進路がない場合は停止
+      if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 🎯【進路決定ロジック】nextId配列に選択肢が複数（2つ）ある分岐マスの場合
+      // 🎯【進路決定のバグ完全解消】
       const nextIdArray = currentSquare.nextId;
-      if (nextIdArray.length > 1) {
-        // スマホで選んだインデックス（0または1）のルートを正確に選択、未指定なら最初のルート[0]にする
-        const chosenIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
-        p.position = Number(nextIdArray[chosenIdx]);
+      if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
+        // 現在地が分岐マス(0番や49番など)の場合、スマホで選んだインデックス（0または1）を確実に数値として取り出す！
+        const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
+        p.position = Number(nextIdArray[routeIdx]);
       } else {
-        // 通常の1本道マスなら、配列の最初の要素[0]をそのまま選択
-        p.position = Number(nextIdArray[0]);
+        // 通常の1本道マスの場合は、配列の最初の要素[0]を確実に取り出す
+        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
       }
       
       stepsMoved++;
 
-      if (window.boardManager)
-        window.boardManager.draw(players, activePlayerIndex);
+      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 5. 【保護】コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
@@ -506,20 +491,56 @@ function executeSyncedRoulette(resultNum) {
         applySquareEffects(p, targetSquare);
       }
 
-      if (window.boardManager)
-        window.boardManager.draw(players, activePlayerIndex);
+      // 次のターンに引き継ぐため、移動完了時にこのターンの進路プレビュー状態を綺麗にリセット
+      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+
+      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // 強制ストップマスならPCモーダルを表示
       if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
         handleForceStopSquare(p, targetSquare);
       }
 
-      // スマホへラグなしで通知 ＆ 位置同期を実行
       triggerDelayedDisplay(resultNum, targetSquare);
     }
   }, 3000);
+}
+
+function triggerDelayedDisplay(resultNum, targetSquare) {
+  if (!targetSquare) return;
+
+  const eventBox = document.getElementById("event-text");
+  if (eventBox) {
+    eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
+  }
+
+  socket.emit("updateGameState", {
+    roomCode: roomCode,
+    activePlayerIndex: activePlayerIndex,
+    players: players.map(pl => ({
+      id: pl.id,
+      position: pl.position,
+      location: pl.location,
+      currentHp: pl.currentHp,
+      drinkCount: pl.drinkCount,
+      happiness: pl.happiness !== undefined ? pl.happiness : 100,
+      isLover: pl.isLover,
+      skipTurn: pl.skipTurn,
+      hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
+      jobId: pl.jobId || null,
+      job: pl.job || "モブ"
+    }))
+  });
+
+  if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
+    console.log(`[即時通知] ${targetSquare.text} のイベント信号を元の正解データ形式で送信します`);
+    socket.emit("playerAction", {
+      roomCode: roomCode,
+      action: "squareEvent",
+      square: targetSquare
+    });
+  }
 }
 
 function applySquareEffects(player, square) {
@@ -556,51 +577,6 @@ function applySquareEffects(player, square) {
     alert(
       `🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`,
     );
-  }
-}
-
-// 🎯 完全修正：送信データのキー名を元の正しい「targetSquare」に修正し、スマホのモーダルを大復活させます！
-function triggerDelayedDisplay(resultNum, targetSquare) {
-  if (!targetSquare) return;
-
-  // 1. コマの着地と同時に、PC画面へマスの説明テキストを即座に表示
-  const eventBox = document.getElementById("event-text");
-  if (eventBox) {
-    eventBox.innerHTML = `
-      <p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">
-        🎲 ${targetSquare.text || "何もないマスのようです。"}
-      </p>
-    `;
-  }
-
-  // 2. コマの着地と同時に、最新のプレイヤー位置をサーバーへ即座に送信（スタートへの巻き戻りを完全防止）
-  socket.emit("updateGameState", {
-    roomCode: roomCode,
-    activePlayerIndex: activePlayerIndex,
-    players: players.map(pl => ({
-      id: pl.id,
-      position: pl.position,
-      location: pl.location,
-      currentHp: pl.currentHp,
-      drinkCount: pl.drinkCount,
-      happiness: pl.happiness !== undefined ? pl.happiness : 100,
-      isLover: pl.isLover,
-      skipTurn: pl.skipTurn,
-      hasJob: pl.hasJob !== undefined ? pl.hasJob : false,
-      jobId: pl.jobId || null,
-      job: pl.job || "モブ"
-    }))
-  });
-
-  // 3. 【完全復旧】データキー名を「targetSquare」にカチッと修正してサーバーへ送信
-  // これによりサーバーが正常にデータを認識し、スマホ側の役職・イベントモーダルがノータイムで大復活します
-  if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
-    console.log(`[完全復旧・即時通知] ${targetSquare.text} のイベント信号を正しいデータ形式で送信します`);
-    socket.emit("playerAction", {
-      roomCode: roomCode,
-      action: "squareEvent",
-      targetSquare: targetSquare // 👈 「square」から「targetSquare」に完全修正
-    });
   }
 }
 
