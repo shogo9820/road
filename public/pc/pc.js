@@ -483,24 +483,36 @@ function executeSyncedRoulette(resultNum) {
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
+    // 5. コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
         targetSquare = MAP_SQUARES[p.position];
         p.location = targetSquare.location || "";
-        applySquareEffects(p, targetSquare);
+        applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
       }
-
-      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
 
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
+      // 🎯【追加・スマホ役職モーダル大復活】
+      // もし着地したマスが「役職マス（jobChallenge）」だった場合、スマホが確実に受信できる triggerJobChoice をラグなしで即座に送信する！
+      if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
+        const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+        console.log(`[役職マス通常着地] スマホへ直接役職モーダル出現を指示します: ${jobName}`);
+        socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
+      }
+
+      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
+
+      // 強制ストップマスならPCモーダルを表示
       if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
         handleForceStopSquare(p, targetSquare);
       }
 
+      // 位置データと通常イベント通知をサーバーへ送信
       triggerDelayedDisplay(resultNum, targetSquare);
     }
   }, 3000);
