@@ -50,8 +50,21 @@ window.boardManager = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES)) return;
 
-    // 1. 通常マス目の描画ループ
+    // 1. 各道ブロックの通常描画ループ
     MAP_SQUARES.forEach((sq, idx) => {
+      
+      // 🎯【追加：留年ルート動的非表示システム】
+      // 現在手番のプレイヤー（activePlayerIndex）の情報を引き出す
+      const currentPlayer = (playersList && playersList[activeIdx]) ? playersList[activeIdx] : null;
+      
+      // 💡 もし描画しようとしているマスが「90番〜98番（留年ルート）」であり、
+      // かつ現在手番のプレイヤーが留年フラグ（isRepeat）を持っていない場合は、画面に描画せず100%完全に隠す（消去）！
+      if (idx >= 90 && idx <= 98) {
+        if (!currentPlayer || currentPlayer.isRepeat !== true) {
+          return; // 描画をスキップして次のマスの処理へ進む
+        }
+      }
+
       const data = this.gridMap[idx]; if (!data) return;
       const px = data.x * this.cellSize; const py = data.y * this.cellSize;
       const pw = data.w * this.cellSize; const ph = data.h * this.cellSize;

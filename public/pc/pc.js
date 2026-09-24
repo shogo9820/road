@@ -615,6 +615,12 @@ const GAME_EVENTS = {
     desc: (name) =>
       `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
   },
+  // 🎯 追加：元からあるイベントモーダル雛形へ、卒業判定専用のテーマとテキストを完全同期！
+  卒業判定: {
+    class: "theme-retirement", // 引退式と同じ格式高い重厚なテーマクラスを適用
+    title: "🎓 運命の卒業判定チャンス 🎓",
+    desc: (name) => `${name} さんの卒業を決める運命のルーレット！【6単位以上】取れたら卒業！`
+  },
 };
 
 function generateCoupleTargetTable(activePlayerId) {
@@ -643,7 +649,6 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
 
-  // 🎯 修正：イベント中は「次のプレイヤーへ」ボタンを完全にロックして非表示化
   const btnNext = document.getElementById("btn-next-turn");
   if (btnNext) {
     btnNext.disabled = true;
@@ -661,7 +666,6 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (titleEl) titleEl.textContent = config.title;
   if (descEl) descEl.textContent = config.desc(playerName);
 
-  // 🎯 新設した結果テキストボックスを初期化（非表示・空）
   const resultBox = document.getElementById("modal-event-result-box");
   if (resultBox) {
     resultBox.style.display = "none";
@@ -674,47 +678,53 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (eventType === "カップル") {
     tableHTML = `
       <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">
-        🎯 1回目スピン：運命の判定条件表
+        🎯 1回目スピン：運命 of 判定条件表
       </div>
       <ul class="event-table-list">`;
-
-    // 🎯 出目1〜10の全10行にそれぞれ偶数・奇数の判定を固定配置
     for (let i = 1; i <= 10; i++) {
       const isEven = i % 2 === 0;
       const badgeBg = isEven ? "#ff4081" : "#78909c";
       const text = isEven
         ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス突入！</span>'
         : '<span style="color:#546e7a;">💦 奇数：フラれて終了...</span>';
-
-      tableHTML += `
-        <li class="event-table-item">
-          <div class="event-table-num-badge" style="background:${badgeBg};">${i}</div>
-          <div>${text}</div>
-        </li>`;
+      tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${text}</div></li>`;
     }
     tableHTML += `</ul>`;
-  } else {
+  } 
+  // 🎯【追加：卒業判定の条件表】元からあるリストの見た目に100%合わせて、1〜10の条件を大画面に流し込む
+  else if (eventType === "卒業判定") {
+    tableHTML = `
+      <div class="event-table-title" style="font-size:1.3rem; color:#e65100; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff9800; padding-bottom:4px;">
+        🎓 卒業判定：運命の単位数対応表
+      </div>
+      <ul class="event-table-list">`;
+    for (let i = 1; i <= 10; i++) {
+      const isPass = i >= 6;
+      const badgeBg = isPass ? "#4caf50" : "#f44336";
+      const text = isPass
+        ? '<span style="color:#2e7d32; font-weight:bold;">🎓 6以上：おめでとう！【卒業】確定！</span>'
+        : '<span style="color:#c62828; font-weight:bold;">🚨 5以下：単位不足……【留年ルート】突入！</span>';
+      tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${text}</div></li>`;
+    }
+    tableHTML += `</ul>`;
+  } 
+  else {
     tableHTML = `<div class="event-table-title">👥 判定条件</div><p>イベントの準備中...</p>`;
   }
 
-  const dynamicTableZone = document.getElementById(
-    "pc-event-table-dynamic-zone",
-  );
+  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
   if (dynamicTableZone) {
     dynamicTableZone.innerHTML = tableHTML;
   }
 
   const modalResEl = document.getElementById("modal-roulette-result-display");
-  if (modalResEl)
-    modalResEl.textContent = "🎯 スマホからルーレットを回してね！";
+  if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
 function handleForceStopSquare(player, square) {
   switch (square.id) {
     case 41:
-      console.log(
-        `${player.name} がカップル成立マスで停止しました。イベント開始！`,
-      );
+      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
       openPCEventModal("カップル", player.name, player.id);
       socket.emit("triggerCoupleEvent", {
         roomCode: roomCode,
@@ -723,14 +733,26 @@ function handleForceStopSquare(player, square) {
       });
       break;
 
+    // 🎯【追加：89番卒業判定マス】
+    // セーフティのスキップ(default)に巻き込まず、元ある美しいモーダルを100%確実に呼び出す！
+    case 89:
+      console.log(`[卒業判定マス着地] ${player.name} さんの運命のジャッジモーダルを開きます。`);
+      openPCEventModal("卒業判定", player.name, player.id);
+      
+      // スマホ（コントローラー）側へ、卒業判定イベントが始まったことを通知する合図を送信（サーバーを仲介）
+      socket.emit("playerAction", {
+        roomCode: roomCode,
+        action: "startGraduateEvent",
+        playerId: player.id
+      });
+      break;
+
     case 18: // 入学式
     case 30: // 生命保険
     case 49: // ランクアップ
     case 80: // 引退/ギャンブル
     default:
-      console.log(
-        `[開発デバッグ] マスID: ${square.id} は仕様未定のため、自動でスキップ処理を行います。`,
-      );
+      console.log(`[開発デバッグ] マスID: ${square.id} は仕様未定のため、自動でスキップ処理を行います。`);
 
       const eventName =
         square.id === 18
@@ -743,9 +765,7 @@ function handleForceStopSquare(player, square) {
       openPCEventModal(eventName, player.name, player.id);
 
       setTimeout(() => {
-        console.log(
-          `[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`,
-        );
+        console.log(`[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`);
         socket.emit("playerAction", {
           roomCode: roomCode,
           action: "nextTurn",
