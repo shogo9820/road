@@ -410,43 +410,43 @@ function executeSyncedRoulette(resultNum) {
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
   }
 
-  // 3. 【新設計】2回目イベントモード中（告白ルーレットなど）は移動させずに終了
+  // 3. 【保護】2回目イベントモード中（告白ルーレットなど）は移動させずに終了
   if (typeof isPCEventMode !== 'undefined' && isPCEventMode) {
     triggerDelayedDisplay(resultNum, null);
     return;
   }
 
-  // 4. 【新設計】ルーレットの3秒間の回転が「止まった瞬間」から1歩ずつの移動探索を開始
+  // 4. 🎯 修正：3秒の回転終了後、nextId配列から【最初の数値】を正しく抽出して1歩ずつ移動開始
   setTimeout(() => {
     let stepsMoved = 0;
     
-    // 出目の数だけパタパタ進むタイマー（0.25秒刻みで軽快に進みます）
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
       
-      // 1歩進む前に、現在地が「強制ストップマス」かつすでに1歩以上進んでいるならそこで強制停止
+      // 移動中に次の強制ストップマスを踏んだら、そこでピタッと強制停止
       if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 出目分進みきった、または次のマスがない（ゴール）なら終了
+      // 出目分進みきった、または次の進路（nextId）がない場合は停止
       if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 🎯 探索：分岐（nextIdが複数ある時）は暫定で最初の進路へ進む
-      p.position = currentSquare.nextId;
+      // 🎯 解決策：配列（例: [1, 8]）の最初の要素 [0] を数値として確実に取り出す
+      const nextIdArray = currentSquare.nextId;
+      p.position = nextIdArray[0]; 
       stepsMoved++;
 
-      // 1歩ごとにピンの見た目をリアルタイム再描画
+      // 1歩進むごとにピン位置をリアルタイムに再描画
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 最終着地したマスの効果適用と同期処理
+    // 最終着地したマスの効果適用と同期
     function finalizeMovement() {
       const targetSquare = MAP_SQUARES[p.position];
       if (targetSquare) {
@@ -458,11 +458,11 @@ function executeSyncedRoulette(resultNum) {
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // 元々連動していた表示遅延処理を安全に起動
+      // 着地演出メッセージを安全に起動
       triggerDelayedDisplay(resultNum, targetSquare);
     }
 
-  }, 3000); // 3000ms（3秒）のルーレット回転待ち
+  }, 3000); // 3秒のルーレット演出待ち
 }
 
 function applySquareEffects(player, square) {
