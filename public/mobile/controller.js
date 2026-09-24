@@ -545,50 +545,64 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：プレイ画面の裏側に隠されてしまう窒息バグを、注入場所を「phone-screen-play」の内側にすることで100%完全に根絶します！
+// 🎯 完全修正：どの条件でモーダルが出ないかを100%あぶり出す徹底デバッグログシステム
 function checkBranchSquareOnTurnStart(syncData) {
+  console.log("=========================================");
+  console.log("[デバッグログ] checkBranchSquareOnTurnStart が起動しました");
+
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
   
+  console.log(`[データ確認] 現在のアクティブインデックス: ${currentIdx}`);
+  console.log(`[データ確認] プレイヤー配列の長さ: ${currentPlayers ? currentPlayers.length : 0}`);
+
+  if (!currentPlayers || currentPlayers.length === 0) {
+    console.error("❌ 弾かれました: プレイヤー配列が空っぽ、または存在しません。");
+    return;
+  }
+
   const p = currentPlayers[currentIdx];
-  if (!p) return;
+  if (!p) {
+    console.error(`❌ 弾かれました: インデックス ${currentIdx} に対応するプレイヤーデータが存在しません。`);
+    return;
+  }
 
-  // 分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
-  if (p.position !== 0 && p.position !== 49) return;
+  console.log(`[プレイヤー確認] 現在手番の人: ${p.name}, 現在地(position): ${p.position}`);
 
-  console.log(`[進路選択強制ロック] ${p.name} さんの分岐マス（${p.position}番）を検知。最前面へのレイヤー配置を実行します`);
+  // 💡 1人目の0番マスでの不発をあぶり出す最重要チェック
+  if (p.position !== 0 && p.position !== 49) {
+    console.warn(`❌ 弾かれました: 現在地が 0 または 49 ではありません（実際の値: ${p.position}）`);
+    return;
+  }
 
-  // 役職選択モーダルと100%同じポップアップ構造
+  console.log(`🎯 条件クリア！モーダル生成を開始します。ターゲット要素: phone-screen-play`);
+
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
         <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
         <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
-        
         <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
-          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Aルート（通常進路）</button>
-          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Bルート（特殊進路）</button>
+          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルート（通常進路）</button>
+          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルート（特殊進路）</button>
         </div>
-        
-        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed; transition:0.2s;">進路を確定してルーレットへ</button>
+        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed;">進路を確定してルーレットへ</button>
       </div>
     </div>
   `;
 
-  // 💡【大修正】bodyではなく、アクティブになったプレイ画面「phone-screen-play」の要素を狙って直接内側に注入します
-  // これにより、画面切り替えのマスクに裏側に隠されるバグが物理的に100%起きなくなります！
   const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
-
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
+  
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
+  console.log("✅ モーダルのHTMLがスマホ画面(phone-screen-play)に正常に注入されました！");
 
-  let tempSelectedIdx = null; // 0:A, 1:B
+  let tempSelectedIdx = null;
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
   const btnConfirm = document.getElementById("btn-route-confirm");
 
-  // Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnA.onclick = () => {
     tempSelectedIdx = 0;
     btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
@@ -597,7 +611,6 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
-  // Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnB.onclick = () => {
     tempSelectedIdx = 1;
     btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
@@ -606,29 +619,29 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove(); // モーダルを閉じて通常のルーレット操作へ復帰
+    if (modalEl) modalEl.remove();
   };
 }
 
-// 🎯【完全復旧】1：データ同期信号の受信時（syncGameState）の末尾に仕込みます
+// 🎯【完全同期】データ更新イベント
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
   updatePhoneStatusDisplay();
 
   setTimeout(() => {
+    console.log("[イベント検知] syncGameState から分岐マスの自動チェックを呼び出します");
     if (typeof checkBranchSquareOnTurnStart === "function") {
       checkBranchSquareOnTurnStart(data);
     }
   }, 100);
 });
 
-// 🎯【完全復旧】2：ターン交代信号の受信時（applyPlayerAction）の末尾にも確実に仕込みます
+// 🎯【完全同期】ターン交代イベント
 socket.on("applyPlayerAction", (data) => {
   if (data.action === "turnUpdated") {
     activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
@@ -642,17 +655,15 @@ socket.on("applyPlayerAction", (data) => {
 
     const nextBtn = document.getElementById("btn-phone-next");
     if (nextBtn) {
-      nextBtn.disabled = true;
-      nextBtn.classList.add("hidden");
-      nextBtn.style.display = "none";
+      nextBtn.disabled = true; nextBtn.classList.add("hidden"); nextBtn.style.display = "none";
     }
 
     const resultDisplay = document.getElementById("roulette-result-display");
     if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
     isSpinning = false;
 
-    // 💡 ターン更新がスマホに届いたまさにこの瞬間に、分岐マスの自動チェックを強制起動！
     setTimeout(() => {
+      console.log("[イベント検知] applyPlayerAction(ターン更新) から分岐マスの自動チェックを呼び出します");
       if (typeof checkBranchSquareOnTurnStart === "function") {
         checkBranchSquareOnTurnStart(data);
       }
