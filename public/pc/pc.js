@@ -528,7 +528,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     socket.emit("playerAction", {
       roomCode: roomCode,
       action: "squareEvent",
-      square: targetSquare
+      targetSquare: targetSquare
     });
   }
 }
