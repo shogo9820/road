@@ -612,11 +612,18 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
+  // 🎯 完全修正：送信キー名をPC側と100%一致させ、コマの進路ズレと役職モーダルの消滅を同時撃破します！
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
-    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
+    
+    // 💡 selectedRouteIndex から、サーバー・PC側が待っている chosenRouteIdx へ名前を完全修正！
+    socket.emit("confirmRouteSelection", { 
+      roomCode: currentRoomCode, 
+      chosenRouteIdx: tempSelectedIdx 
+    });
+    
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove();
+    if (modalEl) modalEl.remove(); // モーダルを閉じてルーレットへ
   };
 }
 
