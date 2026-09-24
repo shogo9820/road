@@ -450,28 +450,25 @@ io.on("connection", (socket) => {
             });
           }
 
-          // 全画面へ最新のゲームデータを完全同期
+          // （既存の nextTurn アクションの末尾、syncGameState の直下に追記した部分を修正します）
           io.to(roomCode).emit("syncGameState", {
             players: rooms[roomCode].gamePlayers,
             activePlayerIndex: rooms[roomCode].activePlayerIndex,
           });
 
-          // 🎯 完全修正：送信データのキー名をPC側が待っている「targetSquare」に修正し、ターン開始時の大画面モーダルを確実に大復活させます！
+          // 🎯 完全修正：中継の網の目を完全にバイパスし、PC大画面(pc.js)が100%直接受信できる専用の電波名で卒業判定モーダルを確実に大復活させます！
           if (nextPlayer && nextPlayer.position === 89) {
             console.log(
               `[卒業判定ターン開始] ${nextPlayer.name} さんが89番マスにいるため、大画面のイベントモーダルを起動します。`,
             );
-            io.to(roomCode).emit("playerAction", {
-              roomCode: roomCode,
-              action: "squareEvent", // 💡 元からある正しい共通イベントアクション名
 
-              // 💡 修正：「square」からPC側が待ち構えている「targetSquare」という正しいキー名に完全修復！
-              targetSquare: {
-                id: 89,
-                type: "force_stop",
-                eventType: "卒業判定", // 💡 これによりPC側の openPCEventModal("卒業判定") が自動起動します
-                text: "【卒業判定マス】運命の判定ルーレット！",
-              },
+            // 💡 修正：「playerAction」という中継エラーを起こす名前を廃止し、
+            // PC大画面側が100%直接キャッチできる、サーバーからのダイレクトな通知として送信！
+            io.to(roomCode).emit("syncGameState", {
+              players: rooms[roomCode].gamePlayers,
+              activePlayerIndex: rooms[roomCode].activePlayerIndex,
+              triggerGraduateModal: true, // 👈 この特殊フラグをPC側に検知させます
+              targetPlayer: nextPlayer,
             });
           }
         }
