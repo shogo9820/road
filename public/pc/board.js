@@ -1,12 +1,8 @@
-// =========================================================================
-// board.js : Excelマップレイアウト完全再現版（セル番地データ完全同期型）
-// =========================================================================
-
 window.boardManager = {
   canvas: null,
   ctx: null,
-  cellSize: 15, // 1セルのピクセルサイズ（60×15=900px、56×15=840pxでテレビ画面にジャスト配置）
-  previewRouteIdx: null,
+  cellSize: 15,
+  previewRouteIdx: null, // 🎯 追加：スマホの仮選択状態を保持する（0:A, 1:B）
 
   squareColors: {
     start: "#8bc34a",
@@ -24,11 +20,11 @@ window.boardManager = {
     "#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"
   ],
 
-  // 🎯 Excelの「A1-BH56」の図面から100%正確に数式変換した各マスの［左上X, 左上Y, 横幅, 縦幅］
+  // 🎯 あなたの提供した100%正しい正解のExcelセルマッピングテーブル
   gridMap: {
     0: { x: 52, y: 48, w: 7, h: 7 },   1: { x: 54, y: 45, w: 3, h: 3 },   2: { x: 55, y: 42, w: 3, h: 3 },   3: { x: 56, y: 39, w: 3, h: 3 },
     4: { x: 56, y: 36, w: 3, h: 3 },   5: { x: 55, y: 33, w: 3, h: 3 },   6: { x: 54, y: 30, w: 3, h: 3 },   7: { x: 53, y: 27, w: 3, h: 3 },
-    8: { x: 49, y: 51, w: 3, h: 3 },   9: { x: 46, y: 49, w: 3, h: 3 },  10: { x: 45, y: 46, w: 3, h: 3 },  11: { x: 44, y: 43, w: 3, h: 3 },
+    8: { x: 49, y: 50, w: 2, h: 3 },   9: { x: 46, y: 49, w: 3, h: 3 },  10: { x: 45, y: 46, w: 3, h: 3 },  11: { x: 44, y: 43, w: 3, h: 3 },
     12: { x: 43, y: 40, w: 3, h: 3 },  13: { x: 43, y: 37, w: 3, h: 3 },  14: { x: 44, y: 34, w: 3, h: 3 },  15: { x: 45, y: 31, w: 3, h: 3 },
     16: { x: 46, y: 28, w: 3, h: 3 },  17: { x: 49, y: 27, w: 3, h: 3 },  18: { x: 50, y: 22, w: 5, h: 5 },  19: { x: 51, y: 19, w: 3, h: 3 },
     20: { x: 50, y: 16, w: 3, h: 3 },  21: { x: 49, y: 13, w: 3, h: 3 },  22: { x: 46, y: 12, w: 3, h: 3 },  23: { x: 43, y: 11, w: 3, h: 3 },
@@ -57,50 +53,16 @@ window.boardManager = {
     this.canvas = document.getElementById("board-canvas");
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext("2d");
-    
-    // 横60セル × 縦56セルにセルサイズ（15px）を掛けて Canvas 解像度を完全決定 [1]
     this.canvas.width = 60 * this.cellSize;
     this.canvas.height = 56 * this.cellSize;
   },
 
-  // 🎯 修正：index（位置番号）を文字列に確実に変換し、gridMapから正確な[列, 行]のセルデータを引き出す
   getCoordinates(index) {
-    const key = String(index !== undefined ? index : 0);
-    const pt = this.gridMap[key] || { x: 52, y: 48, w: 7, h: 7 }; // 見つからない場合はスタート(0番)を安全な初期値にする
-
-    // マスの左上角から、マスの中心（幅・高さの半分）のピクセル位置を100%正確に計算
+    const data = this.gridMap[index] || { x: 0, y: 0, w: 3, h: 3 };
     return {
-      x: (pt.x + (pt.w || 3) / 2) * this.cellSize,
-      y: (pt.y + (pt.h || 3) / 2) * this.cellSize
+      x: (data.x + data.w / 2) * this.cellSize,
+      y: (data.y + data.h / 2) * this.cellSize
     };
-  },
-
-  // 🎯 修正：マスの通常描画の直後に、選ばれていない方の全マスに「影（半透明の黒）」を重ねて暗くするロジックを draw() 内の末尾（プレイヤーピンの描画前）に追記します
-  drawShadowEffect(sq, idx, px, py, pw, ph) {
-    const p = players[activePlayerIndex];
-    if (!p) return;
-
-    // 分岐1（0番マスからの分岐）
-    const isRoute1_A = (idx >= 1 && idx <= 7);
-    const isRoute1_B = (idx >= 8 && idx <= 17);
-    // 分岐2（49番マスからの分岐：50〜58が激シャバA、59〜79が一生の思い出B）
-    const isRoute2_A = (idx >= 50 && idx <= 58);
-    const isRoute2_B = (idx >= 59 && idx <= 79);
-
-    // 💡 Aルート(0)が選択/プレビューされている時は、Bルートのマスの真上に影を落とす
-    if (this.previewRouteIdx === 0 || p.chosenRouteIdx === 0) {
-      if (isRoute1_B || isRoute2_B) {
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; // 影の濃さ
-        this.ctx.fillRect(px, py, pw, ph);
-      }
-    }
-    // 💡 Bルート(1)が選択/プレビューされている時は、Aルートのマスの真上に影を落とす
-    if (this.previewRouteIdx === 1 || p.chosenRouteIdx === 1) {
-      if (isRoute1_A || isRoute2_A) {
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-        this.ctx.fillRect(px, py, pw, ph);
-      }
-    }
   },
 
   draw(playersList, activeIdx) {
@@ -110,9 +72,7 @@ window.boardManager = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES)) return;
 
-    // 🎯 100%完全密着させるため、中心を結ぶ「細い線」の描画は完全に廃止
-
-    // 🎯 各マスの指定された正確な w, h セルサイズに基づいて、隙間なくピッタリ敷き詰めて描画 [1]
+    // 1. 各道ブロックを元の完璧な数式のみで隙間なく正しく敷き詰め描画
     MAP_SQUARES.forEach((sq, idx) => {
       const data = this.gridMap[idx];
       if (!data) return;
@@ -125,20 +85,13 @@ window.boardManager = {
       let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
       if (sq.text && sq.text.includes("【役職マス】")) fillColor = this.squareColors.jobChallenge;
 
-      // 四角い道ブロックを描画
       this.ctx.fillStyle = fillColor;
       this.ctx.fillRect(px, py, pw, ph);
 
-      // マスの境界線をクッキリ引く（白ベースは黒枠、その他は白枠にしてExcel図面を完全再現）
       this.ctx.strokeStyle = (fillColor === "#ffffff") ? "#444444" : "#ffffff";
       this.ctx.lineWidth = 1.5;
-      
-       // 🎯 追加：マス目が1つ描画されるたびに、そこが「選ばれていない方のルート」なら即座に黒い影を重ねて暗くする！
-      if (typeof this.drawShadowEffect === "function") {
-        this.drawShadowEffect(sq, idx, px, py, pw, ph);
-      }
+      this.ctx.strokeRect(px, py, pw, ph);
 
-      // マス内のテキスト（数字・文字）の描画
       this.ctx.fillStyle = (fillColor === "#ffffff") ? "#333333" : "#ffffff";
       this.ctx.font = "bold 11px sans-serif";
       this.ctx.textAlign = "center";
@@ -156,7 +109,29 @@ window.boardManager = {
       }
     });
 
-    // プレイヤーのピンを道の真ん中に描画
+    // 2. 🎯 修正：マスの通常描画が【全て完全に終わった後】に、影マスクを最前面から独立して重ね描きする
+    const p = playersList ? playersList[activeIdx] : null;
+    const currentRoute = (this.previewRouteIdx !== null) ? this.previewRouteIdx : (p ? p.chosenRouteIdx : null);
+
+    if (currentRoute !== null && currentRoute !== undefined) {
+      MAP_SQUARES.forEach((sq, idx) => {
+        const data = this.gridMap[idx];
+        if (!data) return;
+
+        const isRoute1_A = (idx >= 1 && idx <= 7);
+        const isRoute1_B = (idx >= 8 && idx <= 17);
+        const isRoute2_A = (idx >= 50 && idx <= 58);
+        const isRoute2_B = (idx >= 59 && idx <= 79);
+
+        // Aルート選択中はBルートを、Bルート選択中はAルートに影マスクを独立して重ねる
+        if ((currentRoute === 0 && (isRoute1_B || isRoute2_B)) || (currentRoute === 1 && (isRoute1_A || isRoute2_A))) {
+          this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // 影の濃さ
+          this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+        }
+      });
+    }
+
+    // 3. プレイヤーのピンを道の真ん中に重ねて描画
     if (playersList && Array.isArray(playersList)) {
       const positionCounts = {};
       playersList.forEach((p, idx) => {
@@ -200,19 +175,20 @@ window.boardManager = {
   }
 };
 
-// 🎯 追加：スマホのタップ信号をダイレクトに検知して、PC画面の影をリアルタイムに更新させるリスナー
-socket.on("applyRoutePreview", (data) => {
-  if (window.boardManager) {
-    window.boardManager.previewRouteIdx = data.selectedRouteIndex; // 影の状態を上書き
-    window.boardManager.draw(players, activePlayerIndex); // ラグなしで即座に大画面を再描画
-  }
-});
+// 🎯 スマホのリアルタイム信号をPC画面の影へ反映させるリスナー
+if (typeof socket !== "undefined") {
+  socket.on("applyRoutePreview", (data) => {
+    if (window.boardManager) {
+      window.boardManager.previewRouteIdx = data.selectedRouteIndex;
+      window.boardManager.draw(players, activePlayerIndex);
+    }
+  });
 
-// 確定信号を受け取ったらプレビュー状態をリセット
-socket.on("routeSelectionConfirmed", (data) => {
-  if (data.players) players = data.players;
-  if (window.boardManager) {
-    window.boardManager.previewRouteIdx = null; // プレビュー影を確定状態へ引き継ぎ
-    window.boardManager.draw(players, activePlayerIndex);
-  }
-});
+  socket.on("routeSelectionConfirmed", (data) => {
+    if (data.players) players = data.players;
+    if (window.boardManager) {
+      window.boardManager.previewRouteIdx = null; // プレビュー影を確定状態へ移行
+      window.boardManager.draw(players, activePlayerIndex);
+    }
+  });
+}
