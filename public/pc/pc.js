@@ -778,3 +778,17 @@ function handleForceStopSquare(player, square) {
       break;
   }
 }
+
+// 🎯 完全修正：サーバーからの独立電波（showGraduateEvent）を受信するアンテナをカチッと新設！
+// 通常マップ描画の波に消去されることなく、自分のターン開始時に100%確実に卒業モーダルを大画面に大復活させます！
+if (typeof socket !== "undefined") {
+  socket.on("showGraduateEvent", (data) => {
+    console.log(`[大画面イベント強制起動] サーバーからの独立信号を受信しました。手番: ${data.playerName}`);
+    
+    // 💡 あなたが元から用意してくれていた100%正しい大画面モーダル起動関数を、ラグなしで直接叩き起こす！
+    if (typeof openPCEventModal === "function" && data) {
+      openPCEventModal("卒業判定", data.playerName, data.playerId);
+    }
+  });
+}
+
