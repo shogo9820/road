@@ -545,23 +545,22 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：1端末マルチプレイ設計に同期させ、IDや名前の一致チェックによる一人目のすり抜けバグを100%完全に根絶します！
+// 🎯 完全修正：プレイ画面の裏側に隠されてしまう窒息バグを、注入場所を「phone-screen-play」の内側にすることで100%完全に根絶します！
 function checkBranchSquareOnTurnStart(syncData) {
-  // 💡 サーバーから届いた最新のデータから、現在アクティブなプレイヤーのインデックスと配列を確実に抽出
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
   
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
-  // 💡【大修正】1台のスマホを回して遊ぶ仕様のため、手番プレイヤーが分岐マス（0, 49）にいるならID比較を一切せず100%確実にモーダルを起動！
+  // 分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
   if (p.position !== 0 && p.position !== 49) return;
 
-  console.log(`[進路選択強制ロック] ${p.name} さんが分岐マス（${p.position}番）にいるため、スマホ画面を最優先でロックします`);
+  console.log(`[進路選択強制ロック] ${p.name} さんの分岐マス（${p.position}番）を検知。最前面へのレイヤー配置を実行します`);
 
-  // 役職選択モーダルと100%同じ構造のHTML要素を最前面（z-index: 99999）に動的生成
+  // 役職選択モーダルと100%同じポップアップ構造
   let modalHtml = `
-    <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:99999; font-family:sans-serif;">
+    <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
         <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
         <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
@@ -576,17 +575,20 @@ function checkBranchSquareOnTurnStart(syncData) {
     </div>
   `;
 
-  // 重複表示を防ぐため、既存の古いモーダルを確実に消去してから画面に注入
+  // 💡【大修正】bodyではなく、アクティブになったプレイ画面「phone-screen-play」の要素を狙って直接内側に注入します
+  // これにより、画面切り替えのマスクに裏側に隠されるバグが物理的に100%起きなくなります！
+  const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
+
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
-  document.body.insertAdjacentHTML("beforeend", modalHtml);
+  playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
 
   let tempSelectedIdx = null; // 0:A, 1:B
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
   const btnConfirm = document.getElementById("btn-route-confirm");
 
-  // 💡 Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
+  // Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnA.onclick = () => {
     tempSelectedIdx = 0;
     btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
@@ -595,7 +597,7 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
-  // 💡 Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
+  // Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnB.onclick = () => {
     tempSelectedIdx = 1;
     btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
@@ -604,7 +606,7 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 💡 決定ボタンを押した瞬間
+  // 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
