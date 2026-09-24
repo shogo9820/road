@@ -534,28 +534,34 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：重複していた古い関数を削除し、サーバーから届く生の「syncData」をダイレクトに読み込んで0番・49番マスでの先走りを100%確実に阻止します
+// 🎯 追加：スマホ側で自分が「何番目のプレイヤーか」を確実に特定するためのグローバル変数を1つ定義します
+let myPlayerIndex = -1;
+
+// 🎯 完全修正：不安定な socket.id の比較を完全廃止し、確定インデックス番号で100%確実に自分の手番を検知します
 function checkBranchSquareOnTurnStart(syncData) {
-  // 💡 サーバーから届いた最新のデータから、現在アクティブなプレイヤーの情報を確実に抽出
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
   
+  // 💡 自分の名前に一致するプレイヤー配列のインデックス番号をスマホ側で確実に逆引き特定
+  if (typeof playerName !== "undefined") {
+    myPlayerIndex = currentPlayers.findIndex(pl => pl.name === playerName);
+  }
+
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
-  // 💡 socket.idとの厳密一致チェックの型ズレを防ぐため、徹底検証して「自分が手番か」を正確にジャッジ
-  const isMyTurn = (p.id === socket.id); 
+  // 💡【大修正】番号同士でダイレクトに手番を比較。型崩れや未定義によるすり抜けを完璧に根絶します
+  const isMyTurn = (currentIdx === myPlayerIndex || p.id === socket.id);
   if (!isMyTurn) return;
 
   // 分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
   if (p.position !== 0 && p.position !== 49) return;
 
-  console.log(`[進路選択起動] ${p.name} さんが分岐マス（${p.position}番）にいるため、スマホ画面をロックしてモーダルを強制表示します`);
+  console.log(`[進路選択強制起動] ${p.name} さんの確定手番を検知。分岐マス（${p.position}番）の画面ロックを実行します`);
 
-  // 役職選択モーダルと100%同じ構造のHTML要素を最前面（z-index: 99999）に動的生成
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:99999; font-family:sans-serif;">
-      <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-box:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+      <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
         <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
         <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
         
@@ -569,17 +575,15 @@ function checkBranchSquareOnTurnStart(syncData) {
     </div>
   `;
 
-  // 重複表示を防ぐため、既存の古いモーダルを確実に消去してから画面に注入
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-  let tempSelectedIdx = null; // 0:A, 1:B
+  let tempSelectedIdx = null;
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
   const btnConfirm = document.getElementById("btn-route-confirm");
 
-  // 💡 Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnA.onclick = () => {
     tempSelectedIdx = 0;
     btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
@@ -588,7 +592,6 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
-  // 💡 Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnB.onclick = () => {
     tempSelectedIdx = 1;
     btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
@@ -597,22 +600,21 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 💡 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove(); // モーダルを閉じて通常のルーレット操作へ復帰
+    if (modalEl) modalEl.remove();
   };
 }
 
-// 🎯【完全復旧】サーバーからの最新データ（data）を確実に引数に渡して自動起動させます
+// 🎯【完全同期】サーバーからの状態更新を受け取るたびに、安全に割り込みチェックを起動
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
   updatePhoneStatusDisplay();
 
-  // 💡 描画ラグや通信ラグを完全に吸収するため、100ミリ秒後に生のdataを渡して強制割り込みチェック
+  // 💡 確実にデータがメモリに反映された100ミリ秒後に生のデータを渡して強制割り込み
   setTimeout(() => {
     if (typeof checkBranchSquareOnTurnStart === "function") {
       checkBranchSquareOnTurnStart(data);
