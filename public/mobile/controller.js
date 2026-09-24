@@ -534,83 +534,88 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 追加：自分のターン開始時に分岐マス（0, 49）にいたら、ルーレットを止めて進路選択モーダルを出すチェック処理
-function checkBranchSquareOnTurnStart() {
-  const p = players[activePlayerIndex];
-  // 自分が現在アクティブプレイヤー、かつ位置が0番か49番の場合のみ起動
-  if (!p || p.id !== socket.id || (p.position !== 0 && p.position !== 49))
-    return;
+// 🎯 完全修正：重複していた古い関数を削除し、サーバーから届く生の「syncData」をダイレクトに読み込んで0番・49番マスでの先走りを100%確実に阻止します
+function checkBranchSquareOnTurnStart(syncData) {
+  // 💡 サーバーから届いた最新のデータから、現在アクティブなプレイヤーの情報を確実に抽出
+  const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
+  const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
+  
+  const p = currentPlayers[currentIdx];
+  if (!p) return;
 
-  // 💡 役職選択モーダルと全く同じ構造のHTML要素をスマホ画面上に動的生成
+  // 💡 socket.idとの厳密一致チェックの型ズレを防ぐため、徹底検証して「自分が手番か」を正確にジャッジ
+  const isMyTurn = (p.id === socket.id); 
+  if (!isMyTurn) return;
+
+  // 分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
+  if (p.position !== 0 && p.position !== 49) return;
+
+  console.log(`[進路選択起動] ${p.name} さんが分岐マス（${p.position}番）にいるため、スマホ画面をロックしてモーダルを強制表示します`);
+
+  // 役職選択モーダルと100%同じ構造のHTML要素を最前面（z-index: 99999）に動的生成
   let modalHtml = `
-    <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:9999; font-family:sans-serif;">
-      <div style="background:#fff; width:90%; max-width:320px; padding:20px; border-radius:16px; text-align:center; box-sizing:border-box;">
-        <h3 style="margin-top:0; color:#333; font-size:1.2rem;">🧭 運命の進路選択</h3>
-        <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">進むルートをタップすると、大画面で進路をリアルタイムに確認できます。</p>
+    <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:99999; font-family:sans-serif;">
+      <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-box:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+        <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
         
-        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-          <button id="btn-route-a" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:8px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルートを選択</button>
-          <button id="btn-route-b" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:8px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルートを選択</button>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
+          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Aルート（通常進路）</button>
+          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none; transition:0.2s;">Bルート（特殊進路）</button>
         </div>
         
-        <button id="btn-route-confirm" disabled style="width:100%; padding:12px; font-size:1.05rem; font-weight:bold; border:none; border-radius:8px; background:#ccc; color:#fff; cursor:not-allowed;">進路を確定する</button>
+        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed; transition:0.2s;">進路を確定してルーレットへ</button>
       </div>
     </div>
   `;
 
-  // 既存の古いモーダルがあれば削除して差し替え
+  // 重複表示を防ぐため、既存の古いモーダルを確実に消去してから画面に注入
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-  let tempSelectedIdx = null; // 0ならA、1ならB
+  let tempSelectedIdx = null; // 0:A, 1:B
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
   const btnConfirm = document.getElementById("btn-route-confirm");
 
-  // 💡 Aルートをタップした瞬間（PCに即時プレビュー信号を送る）
+  // 💡 Aルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnA.onclick = () => {
     tempSelectedIdx = 0;
-    btnA.style.borderColor = "#00cb75";
-    btnA.style.background = "#e6f9f1";
-    btnB.style.borderColor = "#ccc";
-    btnB.style.background = "#fff";
-    btnConfirm.disabled = false;
-    btnConfirm.style.background = "#00cb75";
-    btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode, selectedRouteIndex: 0 });
+    btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
+    btnB.style.borderColor = "#ddd";    btnB.style.background = "#fff";    btnB.style.color = "#333";
+    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
-  // 💡 Bルートをタップした瞬間（PCに即時プレビュー信号を送る）
+  // 💡 Bルートをタップした瞬間（PC画面へリアルタイム影落とし信号を送信）
   btnB.onclick = () => {
     tempSelectedIdx = 1;
-    btnB.style.borderColor = "#00cb75";
-    btnB.style.background = "#e6f9f1";
-    btnA.style.borderColor = "#ccc";
-    btnA.style.background = "#fff";
-    btnConfirm.disabled = false;
-    btnConfirm.style.background = "#00cb75";
-    btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode, selectedRouteIndex: 1 });
+    btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
+    btnA.style.borderColor = "#ddd";    btnA.style.background = "#fff";    btnA.style.color = "#333";
+    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
-  // 💡 決定ボタンを押した時
+  // 💡 決定ボタンを押した瞬間
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
-    socket.emit("confirmRouteSelection", {
-      roomCode,
-      selectedRouteIndex: tempSelectedIdx,
-    });
-    document.getElementById("route-select-modal").remove(); // モーダルを閉じる
+    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: tempSelectedIdx });
+    const modalEl = document.getElementById("route-select-modal");
+    if (modalEl) modalEl.remove(); // モーダルを閉じて通常のルーレット操作へ復帰
   };
 }
 
-// 🎯 同期信号（syncGameState）などを受け取る既存のブロックの末尾で、この関数を呼び出すように仕込みます
+// 🎯【完全復旧】サーバーからの最新データ（data）を確実に引数に渡して自動起動させます
 socket.on("syncGameState", (data) => {
-  // 既存のプレイヤー同期処理...
-  setTimeout(checkBranchSquareOnTurnStart, 100); // 描画ラグを考慮して一瞬遅らせて自動チェック
-  // 🎯 追加：次のプレイヤーへターンが切り替わった瞬間にも自動チェックをかける
-  if (typeof checkBranchSquareOnTurnStart === "function") {
-    checkBranchSquareOnTurnStart();
-  }
+  if (data.players && Array.isArray(data.players)) players = data.players;
+  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+  updatePhoneStatusDisplay();
+
+  // 💡 描画ラグや通信ラグを完全に吸収するため、100ミリ秒後に生のdataを渡して強制割り込みチェック
+  setTimeout(() => {
+    if (typeof checkBranchSquareOnTurnStart === "function") {
+      checkBranchSquareOnTurnStart(data);
+    }
+  }, 100);
 });
