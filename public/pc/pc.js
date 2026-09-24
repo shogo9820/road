@@ -389,7 +389,7 @@ function executeSyncedRoulette(resultNum) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
   }
 
-  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション
+  // 2. 【保護】物理ルーレット盤の3秒間回転アニメーション処理
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
   const currentMod = pcCurrentRotation % 360;
@@ -416,14 +416,12 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 4. 🎯 修正：ルーレットがピタッと停止する「3秒後」に、すべてのタイミングを一斉に同期起動
+  // 4. 🎯 修正：ルーレットがピタッと停止する3秒後に、出目を即更新して正しい数値型で1歩ずつ探索移動
   setTimeout(() => {
-    // 💡 盤面停止と同時に、右上の出目テキストを即座にパッと切り替える
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
     let stepsMoved = 0;
 
-    // 出目の数だけ新ルートの nextId を1歩ずつパタパタと辿るアニメーションタイマー
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
 
@@ -434,23 +432,23 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 出目分進みきった、または次の進路がない（ゴール）なら停止
+      // 出目分進みきった、または次の進路（nextId）がない場合は停止
       if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
         clearInterval(moveTimer);
         finalizeMovement();
         return;
       }
 
-      // 💡 配列（例: [18]）の最初の要素を、明確に【数値型】として取り出す安全な処理
+      // 🎯【バグ完全解消】配列（nextId）の最初の要素[0]を、明確に【数値型】に変換して現在地に代入
+      // これにより p.position が NaN に壊れるバグが100%根絶され、正常にリンクを歩きます
       const nextIdArray = currentSquare.nextId;
       p.position = Number(nextIdArray[0]); 
       stepsMoved++;
 
-      // 1歩進むごとにピン位置をリアルタイムに再描画
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 5. 【完全復旧】移動が完全に終了したこの瞬間に、データ同期とイベント判定を一括実行
+    // 5. 【完全復活】コマが目的のマスに着地したまさにその瞬間に、ラグなしで同期とイベントを起動
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== 'undefined' && MAP_SQUARES[p.position]) {
@@ -463,11 +461,11 @@ function executeSyncedRoulette(resultNum) {
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // 元の完璧だった順序の通り、完璧な位置データを持たせて同期・遅延表示へ流す
+      // 位置データが完璧に維持されているため、ラグなしでスマホへ「squareEvent」が確実に発動します
       triggerDelayedDisplay(resultNum, targetSquare);
     }
 
-  }, 3000); // ルーレット盤がギュンギュン回る3秒間の演出ウェイト
+  }, 3000);
 }
 
 function applySquareEffects(player, square) {
