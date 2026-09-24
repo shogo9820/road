@@ -458,7 +458,7 @@ io.on("connection", (socket) => {
           });
         }
       } 
-            // 🎯 完全修正：出目に応じて進路を数字に直接書き換え、卒業ならゴール演出、留年ならルート出現させて通常スピンを再起動！
+      // 🎯 完全修正：フリーズの原因だったnextTurn通信を完全撤廃！専用の消去信号(closeGraduateModal)でモーダルを完璧に閉じ、ゴール演出・留年マス出現を即座に起動します！
       else if (data.action === "graduateRouletteResult") {
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
@@ -468,12 +468,9 @@ io.on("connection", (socket) => {
             const dice = data.result; // スマホから届いた出目（1〜10）
             const isSuccess = (dice >= 6);
 
-            // 💡【大画面のイベントモーダルを即座に自動クローズ】
-            // あなたが見抜いてくださった「元ある雛形セーフティ」と同じ、モーダル消去命令を発信！
-            io.to(roomCode).emit("playerAction", {
-              roomCode: roomCode,
-              action: "nextTurn" // これにより PC側の display='none' が100%確実に発動して大画面の影条件表がパッと消えます
-            });
+            // 💡【大修正】サーバーがフリーズする原因だったplayerActionの送信を完全廃止！
+            // PC大画面側へ向けて「イベントモードを終了してモーダルを今すぐ消せ！」とダイレクトに専用の消去信号を発信！
+            io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
             if (isSuccess) {
               console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール直行演出を起動！`);
@@ -483,7 +480,7 @@ io.on("connection", (socket) => {
                 roomsData.MAP_SQUARES[89].nextId = 99;
               }
 
-              // 2. PC大画面に「最初から組み込まれていた完璧なゴールお祝い演出」を強制起動させるため、gameStartedをハック発信！
+              // 2. PC大画面に元から組み込まれている「ゴールお祝い演出」をノータイムでバシッと起動！
               io.to(roomCode).emit("gameStarted", {
                 roomCode,
                 players: roomsData.gamePlayers,
@@ -500,7 +497,7 @@ io.on("connection", (socket) => {
               
               p.isRepeat = true; // 留年フラグを刻む（これでPC大画面のボード描画に90〜98番マスがドクドクと大出現します！）
 
-              // 2. そのプレイヤーの手元画面に、もう一度進むための通常ルーレットをノータイムで大復活（再アクティブ化）させる！
+              // 2. 手元のルーレットボタンを再アクティブ化させて、その場で通常ルーレットを即座に回せるようにする！
               io.to(roomCode).emit("applyPlayerAction", {
                 action: "turnUpdated",
                 activePlayerIndex: roomsData.activePlayerIndex,
@@ -509,11 +506,11 @@ io.on("connection", (socket) => {
               });
             }
 
-            // 全員の最新データを完全同期（留年ルートの出現・プレイヤー位置を完全一致させる）
+            // 最新の全データを同期（留年ルートの出現をPC画面へ完全一致させる）
             io.to(roomCode).emit("syncGameState", {
               players: roomsData.gamePlayers,
               activePlayerIndex: roomsData.activePlayerIndex,
-              MAP_SQUARES: roomsData.MAP_SQUARES // 書き換えた地図を渡す
+              MAP_SQUARES: roomsData.MAP_SQUARES
             });
           }
         }

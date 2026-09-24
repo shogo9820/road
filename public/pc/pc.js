@@ -779,15 +779,18 @@ function handleForceStopSquare(player, square) {
   }
 }
 
-// 🎯 完全修正：サーバーからの独立電波（showGraduateEvent）を受信するアンテナをカチッと新設！
-// 通常マップ描画の波に消去されることなく、自分のターン開始時に100%確実に卒業モーダルを大画面に大復活させます！
+// 🎯 完全修正：サーバーからの専用消去信号（closeGraduateModal）をダイレクトに受信！
+// 混線エラーを起こすことなく、出目確定の瞬間に大画面のイベントモーダルを100%確実に消し去ります！
 if (typeof socket !== "undefined") {
-  socket.on("showGraduateEvent", (data) => {
-    console.log(`[大画面イベント強制起動] サーバーからの独立信号を受信しました。手番: ${data.playerName}`);
-    
-    // 💡 あなたが元から用意してくれていた100%正しい大画面モーダル起動関数を、ラグなしで直接叩き起こす！
-    if (typeof openPCEventModal === "function" && data) {
-      openPCEventModal("卒業判定", data.playerName, data.playerId);
+  socket.on("closeGraduateModal", (data) => {
+    console.log("[大画面イベント終了] 卒業判定モーダルをクローズします。");
+    isPCEventMode = false; // イベントモード完全解除
+
+    // 大画面のイベントモーダル要素を直接操作して、100%確実に画面から非表示にする
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
+      pcModal.style.display = "none"; // 💡 確実に画面から消去！
     }
   });
 }
