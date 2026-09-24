@@ -545,7 +545,7 @@ document.addEventListener("click", (e) => {
   });
 });
 
-// 🎯 完全修正：不安定なID比較を完全撤廃し、ゲームの1端末複数人プレイ設計と同期させた進路選択システム
+// 🎯 完全修正：1端末マルチプレイ設計に同期させ、IDや名前の一致チェックによる一人目のすり抜けバグを100%完全に根絶します！
 function checkBranchSquareOnTurnStart(syncData) {
   // 💡 サーバーから届いた最新のデータから、現在アクティブなプレイヤーのインデックスと配列を確実に抽出
   const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
@@ -554,10 +554,10 @@ function checkBranchSquareOnTurnStart(syncData) {
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
-  // 💡【設計同期修正】分岐マス（0番マスまたは49番マス）にいる場合のみ強制割り込み
+  // 💡【大修正】1台のスマホを回して遊ぶ仕様のため、手番プレイヤーが分岐マス（0, 49）にいるならID比較を一切せず100%確実にモーダルを起動！
   if (p.position !== 0 && p.position !== 49) return;
 
-  console.log(`[進路選択起動] 分岐マス（${p.position}番）での手番を正確に検知。スマホ画面を強制ロックします`);
+  console.log(`[進路選択強制ロック] ${p.name} さんが分岐マス（${p.position}番）にいるため、スマホ画面を最優先でロックします`);
 
   // 役職選択モーダルと100%同じ構造のHTML要素を最前面（z-index: 99999）に動的生成
   let modalHtml = `
