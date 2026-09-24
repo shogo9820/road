@@ -398,6 +398,7 @@ function updateCurrentPlayerDisplay() {
 }
 
 // ─── pc.js : 【パーツ6】0秒目のモーダル自動起動を完全に消去し、3秒遅延へ一本化する修正 ───
+// ─── pc.js : 3秒遅延の一本化 ＆ スマホ役職モーダル即時連動修正 ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -448,7 +449,7 @@ function executeSyncedRoulette(resultNum) {
     return;
   }
 
-  // 4. 🎯 修正：ルーレットがピタッと停止する3秒後に、出目を即更新して正しい数値型で1歩ずつ探索移動
+  // 4. ルーレットがピタッと停止する3秒後に、出目を即更新して正しい数値型で1歩ずつ探索移動
   setTimeout(() => {
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
 
@@ -481,8 +482,6 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 🎯【バグ完全解消】配列（nextId）の最初の要素[0]を、明確に【数値型】に変換して現在地に代入
-      // これにより p.position が NaN に壊れるバグが100%根絶され、正常にリンクを歩きます
       const nextIdArray = currentSquare.nextId;
       p.position = Number(nextIdArray[0]);
       stepsMoved++;
@@ -491,7 +490,7 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 5. 【完全復活】コマが目的のマスに着地したまさにその瞬間に、ラグなしで同期とイベントを起動
+    // 5. 【完全復活】コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
@@ -505,7 +504,22 @@ function executeSyncedRoulette(resultNum) {
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // 位置データが完璧に維持されているため、ラグなしでスマホへ「squareEvent」が確実に発動します
+      if (targetSquare) {
+        // 💡【新設・スマホ役職連動】もし着地したマスが役職マスなら、ラグなしでスマホへ即座に就職画面の表示を指示する！
+        if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
+          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+          console.log(`[役職マス着地] スマホへ triggerJobChoice を即時送信します: ${jobName}`);
+          socket.emit("triggerJobChoice", { roomCode, playerId: p.id, jobId, jobName });
+        }
+        
+        // もし強制ストップマスならPC大画面のイベントモーダルを表示
+        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+          handleForceStopSquare(p, targetSquare);
+        }
+      }
+
+      // 位置データとスマホ側への通常イベント通知（squareEvent）をラグなしで実行
       triggerDelayedDisplay(resultNum, targetSquare);
     }
   }, 3000);
@@ -736,11 +750,13 @@ function handleForceStopSquare(player, square) {
       );
 
       const eventName =
-        square.id === 15
+        square.id === 18
           ? "入学式"
-          : square.id === 52
-            ? "ランクアップ"
-            : "引退";
+          : square.id === 30
+            ? "生命保険"
+            : square.id === 49
+              ? "ランクアップ"
+              : "引退";
       openPCEventModal(eventName, player.name, player.id);
 
       setTimeout(() => {
