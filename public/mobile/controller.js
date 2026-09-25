@@ -144,12 +144,14 @@ window.addEventListener("DOMContentLoaded", () => {
           }
         }
       }       // 🎯【追加：卒業判定スピン停止時の処理】
-      // プレイヤーが89番マス（卒業判定）にいる時のイベントルーレット停止を検知
-      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89) {
+      // 🎯 完全修正：すでに一度卒業判定スピンが終わっている(true)場合は、通常移動として100%正確にコマを進ませて無限ループを粉砕します！
+      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && window.hasFinishedGraduateJudge !== true) {
         const p = players[activePlayerIndex];
         console.log(`[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`);
         
-        // サーバーへ運命の出目を送信して自動ジャッジを要請！
+        // 💡 運命のジャッジボタンが押されたので、このターン内は二度と判定として誤作動しないようフラグを即座にtrueロック！
+        window.hasFinishedGraduateJudge = true;
+
         socket.emit("playerAction", {
           roomCode: currentRoomCode,
           action: "graduateRouletteResult",
@@ -158,14 +160,19 @@ window.addEventListener("DOMContentLoaded", () => {
         });
       }
       else {
-        // 通常時：ルーレットが止まったので、手元のデータを進めて「次へ」ボタンを普通に表示
+        // 💡 2回目の通常ルーレットが止まった時は、フラグがtrueになっているため、100%確実にこちらへ進んできます！
+        console.log(`[スマホ] 移動用の通常ルーレット停止を検知しました。出目: ${finalSteps} でコマを進めます`);
         handleRouletteStop(finalSteps);
       }
     });
   });
-  socket.on("applyPlayerAction", (data) => {
+socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
-      activePlayerIndex =
+      window.hasConfirmedThisTurn = false; // 既存の分岐ロック解除
+      
+      // 🎯【追加・無限ループフラグリセット】次のプレイヤーへ番が回ったので、卒業判定終了ロックを真っさらに解除！
+      window.hasFinishedGraduateJudge = false;
+      console.log("[状態リセット] 卒業判定ロックフラグを安全に完全解放しました。");      activePlayerIndex =
         data.activePlayerIndex !== undefined
           ? data.activePlayerIndex
           : activePlayerIndex;
