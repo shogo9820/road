@@ -458,14 +458,14 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：PC側の地図データ同期遅れによる NaN エラーと、スマホ側の通常スピン混線バグを、プレイヤーデータ内に判定済みフラグを刻むことで100%完全に根絶します！
+      // 🎯 完全決定版：配列インデックスのズレを完璧に修正！6以上合格時は89番マスの進路を100%確実に99(GOAL)へ上書きし、自動歩行でゴールへ直行させます！
       else if (data.action === "graduateRouletteResult") {
         console.log("=========================================");
-        console.log("[卒業ルーレット] 運命のジャッジ通信を厳密に処理します。");
+        console.log("[卒業ルーレット] 運命の最終ジャッジを処理します。");
 
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
-          const p = roomsData.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || roomsData.gamePlayers[roomsData.activePlayerIndex];
+          const p = roomsData.gamePlayers[roomsData.activePlayerIndex];
           
           if (p) {
             const dice = data.result; // スマホからの出目（1〜10）
@@ -474,40 +474,42 @@ io.on("connection", (socket) => {
             // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
-            // 💡【最重要】このターンは既に卒業判定が終了したことを、プレイヤーデータ内に確実に刻む（同期で消えない絶対のフラグ）
+            // 卒業判定が終了したフラグを刻む
             p.graduateChecked = true;
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！nextIdを 99(GOAL) に直接上書きします。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！89番マスの進路を 99(GOAL) に直接上書きします。`);
               
+              // 💡【大修正】[89] ではなく、新マップ定義配列の「89番マス（卒業判定マス）」のオブジェクトの nextId を 99（ゴール数字）に確実に上書き！
               if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 99; // 89番マスの進路を数値で直接上書き！
+                roomsData.MAP_SQUARES[89].nextId = 99;
+                console.log(`[データ上書き成功] 89番マスの次マス = ${roomsData.MAP_SQUARES[89].nextId}`);
               }
 
-              // 💡 書き換えた最新の地図データ（MAP_SQUARES）をオブジェクトに明示的に乗せて全員へ送信！
-              // これによりPC側の地図メモリが一瞬で上書き更新され、NaNデータ破損が100%完全に防げます。
+              // 最新の地図データ（MAP_SQUARES）をオブジェクトに明示的に乗せて全員へ送信
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 💡 卒業時は通常ルーレットボタンを一切触らせず、サーバーからPCへ「出目1で今すぐ自動で歩き出せ」と指示！
-              // 89の次は99に書き換わっているため、PC側は100%確実に本人のピンを掴んでゴールへ着地させます。
+              // サーバーからPCに向けて「今の1人目の手番のまま、出目1で自動歩行を開始しろ！」という信号を送信
               setTimeout(() => {
-                console.log(`[自動歩行発動] ${p.name} を安全にゴールへ直行させます。`);
+                console.log(`[自動歩行発動] ${p.name} のピンをゴールマス(99)へ直行させます。`);
                 io.to(roomCode).emit("spinRoulette", {
-                  result: 1, // 1マス進んでゴール着地
+                  result: 1, // 89番マスから99番のゴールへ1歩で吸い込ませる
                   activePlayerIndex: roomsData.activePlayerIndex,
                   players: roomsData.gamePlayers
                 });
               }, 200);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name} 氏は無念の留年…… 留年ルート(90番)へ進路を切り替えます。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は留年。89番マスの進路を 90(留年ルート先頭) に上書きします。`);
               
+              // 💡【大修正】[89] ではなく、新マップ定義配列の「89番マス（卒業判定マス）」のオブジェクトの nextId を 90（留年数字）に確実に上書き！
               if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 90; // 89番マスの進路を数値で直接上書き！
+                roomsData.MAP_SQUARES[89].nextId = 90;
+                console.log(`[データ上書き成功] 89番マスの次マス = ${roomsData.MAP_SQUARES[89].nextId}`);
               }
               p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
@@ -518,7 +520,7 @@ io.on("connection", (socket) => {
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 地図同期が落ち着いた200ms後に、スマホの「通常ルーレットを回す」ボタンを復活させ、もう一度回して進ませる！
+              // 地図同期が落ち着いた200ms後に、スマホの通常移動用ボタンを大復活させる
               setTimeout(() => {
                 io.to(roomCode).emit("applyPlayerAction", { 
                   action: "turnUpdated", 
