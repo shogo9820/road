@@ -458,7 +458,8 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：配列インデックスのズレを完璧に修正！6以上合格時は89番マスの進路を100%確実に99(GOAL)へ上書きし、自動歩行でゴールへ直行させます！
+      // 🎯 完全決定版：配列の添字指定(89)による番号のズレを完全撤廃！
+      // 配列内からマスIDが「89」のオブジェクトを100%直接検索してnextIdを上書きすることで、進路ミスを完全に根絶します！
       else if (data.action === "graduateRouletteResult") {
         console.log("=========================================");
         console.log("[卒業ルーレット] 運命の最終ジャッジを処理します。");
@@ -477,13 +478,19 @@ io.on("connection", (socket) => {
             // 卒業判定が終了したフラグを刻む
             p.graduateChecked = true;
 
+            // 💡【大修正】インデックス違いを防ぐため、MAP_SQUARES配列の中から id が 89 (または文字が卒業判定) のマスを直接検索する！
+            let gradSquare = null;
+            if (roomsData.MAP_SQUARES && Array.isArray(roomsData.MAP_SQUARES)) {
+              gradSquare = roomsData.MAP_SQUARES.find(sq => sq && (sq.id === 89 || sq.eventType === "卒業判定"));
+            }
+
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！89番マスの進路を 99(GOAL) に直接上書きします。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！卒業判定マスの進路を 99(GOAL) に直接上書きします。`);
               
-              // 💡【大修正】[89] ではなく、新マップ定義配列の「89番マス（卒業判定マス）」のオブジェクトの nextId を 99（ゴール数字）に確実に上書き！
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 99;
-                console.log(`[データ上書き成功] 89番マスの次マス = ${roomsData.MAP_SQUARES[89].nextId}`);
+              // 💡 検索で見つかった「卒業判定マス」のオブジェクトの nextId を 99（ゴール数字）に確実に上書き！
+              if (gradSquare) {
+                gradSquare.nextId = 99;
+                console.log(`[データ検索上書き成功] 卒業マスの次のマス = ${gradSquare.nextId}`);
               }
 
               // 最新の地図データ（MAP_SQUARES）をオブジェクトに明示的に乗せて全員へ送信
@@ -497,19 +504,19 @@ io.on("connection", (socket) => {
               setTimeout(() => {
                 console.log(`[自動歩行発動] ${p.name} のピンをゴールマス(99)へ直行させます。`);
                 io.to(roomCode).emit("spinRoulette", {
-                  result: 1, // 89番マスから99番のゴールへ1歩で吸い込ませる
+                  result: 1, // 1マス移動でゴール着地
                   activePlayerIndex: roomsData.activePlayerIndex,
                   players: roomsData.gamePlayers
                 });
               }, 200);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name} 氏は留年。89番マスの進路を 90(留年ルート先頭) に上書きします。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は留年。卒業判定マスの進路を 90(留年ルート先頭) に上書きします。`);
               
-              // 💡【大修正】[89] ではなく、新マップ定義配列の「89番マス（卒業判定マス）」のオブジェクトの nextId を 90（留年数字）に確実に上書き！
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 90;
-                console.log(`[データ上書き成功] 89番マスの次マス = ${roomsData.MAP_SQUARES[89].nextId}`);
+              // 💡 検索で見つかった「卒業判定マス」のオブジェクトの nextId を 90（留年数字）に確実に上書き！
+              if (gradSquare) {
+                gradSquare.nextId = 90;
+                console.log(`[データ検索上書き成功] 卒業マスの次のマス = ${gradSquare.nextId}`);
               }
               p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
