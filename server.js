@@ -458,8 +458,8 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：余計なフェイク歩行は一切なし！
-      // 6以上合格時はその場でプレイヤーの位置を99(GOAL)にセットし、PC側へ「99番マスに到着したぞ」と共通の到着イベントを直接送信して演出を起動させます！
+      // 🎯 完全決定版：余計な進路書き換えやダミーの出目1信号を100%全廃！
+      // 6以上合格時はただ単純にプレイヤーの位置を99(GOAL)にセットし、PC側へ「99番マスの到着イベントを起動しろ」と共通の到着電波を直接送信するだけの神設計です！
       else if (data.action === "graduateRouletteResult") {
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
@@ -469,27 +469,27 @@ io.on("connection", (socket) => {
             const dice = data.result; // スマホからの出目（1〜10）
             const isSuccess = (dice >= 6);
 
-            // PC大画面へ専用 of クローズ信号を送信（モーダルをシュッと消します）
+            // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
             // 卒業判定が終了したフラグを刻む
             p.graduateChecked = true;
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を 99(GOAL) へ変更し、99番マスの到着イベントを起動します。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ変更し、99番マスの到着イベントを起動します。`);
               
-              // 💡 ご指示の通り、位置をダイレクトに99（ゴール）に書き換える
+              // 💡 お指示の通り、位置をダイレクトに99（ゴール）に書き換える
               p.position = 99; 
               p.location = "ゴール";
 
-              // 💡 最新の位置(99)をPC大画面とスマホへ完全一斉同期！（ピンがGOALマスへ移動します）
+              // 💡 最新の位置(99)をPC大画面とスマホへ完全一斉同期！（ピンがGOALマスへパッと移動します）
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex
               });
 
-              // 💡【大正解のロジック】PC大画面側へ向けて「99番マス（GOAL）の到着イベントを起動しろ！」とダイレクトに発信！
-              // これにより、PC側の handleForceStopSquare 内の case 99: が100%確実に作動します。
+              // 💡【大正解のロジック】PC大画面側へ向けて「99番マスの到着イベント（case 99:）を今すぐ起動しろ！」とダイレクトに発信！
+              // これにより、PC側の handleForceStopSquare 内の新設した case 99: が100%確実に作動し、お祝いテキストが炸裂します。
               setTimeout(() => {
                 io.to(roomCode).emit("playerAction", {
                   roomCode: roomCode,
