@@ -458,7 +458,7 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全修正：留年時の全体同期とスマホの通常スピン復活の間に200msのウェイトを挟み、PC側の同期データ破損（コマが動かなくなるバグ）を100%完全に根絶します！
+      // 🎯 完全決定版：6以上合格時に手番(Index)を進めずそのプレイヤーのまま維持し、進むための通常通常ルーレットを100%安全に再起動させます！
       else if (data.action === "graduateRouletteResult") {
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
@@ -468,39 +468,52 @@ io.on("connection", (socket) => {
             const dice = data.result; // スマホからの出目（1〜10）
             const isSuccess = (dice >= 6);
 
-            // PC大画面へ専用のクローズ信号を送信
+            // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール直行演出を起動！`);
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 99; // ゴールへ直通上書き！
-              }
-              // PC大画面に元からあるゴールお祝い画面を強制起動させるためゲーム開始信号をハック発信
-              io.to(roomCode).emit("gameStarted", { roomCode, players: roomsData.gamePlayers, mode: roomsData.mode, activePlayerIndex: roomsData.activePlayerIndex });
+              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール(99番)へ進路を変更し、通常通常ルーレットを復活させます。`);
               
-              // 全員の最新データを完全同期
-              io.to(roomCode).emit("syncGameState", { players: roomsData.gamePlayers, activePlayerIndex: roomsData.activePlayerIndex, MAP_SQUARES: roomsData.MAP_SQUARES });
-            } else {
-              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート出現＆通常スピン復活準備`);
-              
+              // 💡 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に数値として直接上書き！
               if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 90; // 留年ルート(90番)へ強制右折上書き！
+                roomsData.MAP_SQUARES[89].nextId = 99;
               }
-              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが即座に出現します）
 
-              // 💡 1. まずは最新のプレイヤーデータと、書き換えた「留年ルート出現地図(MAP_SQUARES)」を全員に完全同期！
+              // 💡 2. 最新のプレイヤーデータと、書き換えた「ゴール直通地図」を全員に完全同期！
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 💡 2.【大修正】地図の完全同期とPC側の描画の波が100%落ち着くのを「200ミリ秒」だけ安全に待ってから、
-              // スマホの「通常ルーレットを回す」ボタンを時間差でカチッと大復活（アクティブ化）させる！
-              // これにより、通信データ同士の衝突エラーが100%物理的に消滅し、通常ルーレットでの自動歩行が完全に開通します。
+              // 💡 3. 手番を次に進めず【今のプレイヤーのまま】、通常ルーレットボタンを即座に再起動させて進ませる！
               setTimeout(() => {
-                console.log(`[ルーレット再アクティブ化] 地図同期が完了したため、${p.name} さんの通常ルーレットを安全に起動します。`);
+                io.to(roomCode).emit("applyPlayerAction", { 
+                  action: "turnUpdated", 
+                  activePlayerIndex: roomsData.activePlayerIndex, 
+                  activePlayerName: p.name, 
+                  activePlayerId: p.id 
+                });
+              }, 200);
+
+            } else {
+              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート(90番)へ進路を変更します。`);
+              
+              // 1. 分岐マスである89番マスのnextIdを「90番（留年）」に数値として直接上書き！
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 90;
+              }
+              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが即座に出現します）
+
+              // 2. 最新のプレイヤーデータと、書き換えた「留年ルート出現地図」を全員に完全同期！
+              io.to(roomCode).emit("syncGameState", { 
+                players: roomsData.gamePlayers, 
+                activePlayerIndex: roomsData.activePlayerIndex, 
+                MAP_SQUARES: roomsData.MAP_SQUARES 
+              });
+
+              // 3. 手番を次に進めず【今のプレイヤーのまま】、通常ルーレットボタンを即座に再起動させて進ませる！
+              setTimeout(() => {
                 io.to(roomCode).emit("applyPlayerAction", { 
                   action: "turnUpdated", 
                   activePlayerIndex: roomsData.activePlayerIndex, 
