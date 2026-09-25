@@ -453,13 +453,16 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 🎯【進路決定】ご指示の通りの超シンプル設計！分岐マスの場合は選んだ側のインデックスIDを直接掴み取る
+      // 🎯【進路決定のバグ完全解消】
+      // サーバーから上書き同期された最新の MAP_SQUARES を正しくトレースし、
+      // 分岐マスの nextId が「数字(99や90)」に書き換わっている場合は、Numberとしてダイレクトに安全に代入します！
       const nextIdArray = currentSquare.nextId;
       if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
         const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
-        p.position = Number(nextIdArray[routeIdx]); // 選んだマスIDをダイレクト代入
+        p.position = Number(nextIdArray[routeIdx]); 
       } else {
-        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray : nextIdArray);
+        // 💡 もし配列ではなく「単一の数字」が入っている場合は、そのまま確実に取り出してエラーを防ぐ
+        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
       }
       
       stepsMoved++;

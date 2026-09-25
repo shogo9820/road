@@ -144,14 +144,12 @@ window.addEventListener("DOMContentLoaded", () => {
           }
         }
       }       // 🎯【追加：卒業判定スピン停止時の処理】
-      // 🎯 完全修正：すでに一度卒業判定スピンが終わっている(true)場合は、通常移動として100%正確にコマを進ませて無限ループを粉砕します！
-      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && window.hasFinishedGraduateJudge !== true) {
+      // 🎯 完全修正：プレイヤーデータ内の graduateChecked フラグを読み込む形へ大修正。
+      // すでに一度判定が終わっている(true)場合は、通常移動として100%確実にhandleRouletteStopへ流します！
+      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && players[activePlayerIndex].graduateChecked !== true) {
         const p = players[activePlayerIndex];
         console.log(`[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`);
         
-        // 💡 運命のジャッジボタンが押されたので、このターン内は二度と判定として誤作動しないようフラグを即座にtrueロック！
-        window.hasFinishedGraduateJudge = true;
-
         socket.emit("playerAction", {
           roomCode: currentRoomCode,
           action: "graduateRouletteResult",
@@ -160,22 +158,18 @@ window.addEventListener("DOMContentLoaded", () => {
         });
       }
       else {
-        // 💡 2回目の通常ルーレットが止まった時は、フラグがtrueになっているため、100%確実にこちらへ進んできます！
+        // 💡 2回目の通常ルーレットが止まった時は、100%確実にこちらへ進んでコマが進みます！
         console.log(`[スマホ] 移動用の通常ルーレット停止を検知しました。出目: ${finalSteps} でコマを進めます`);
         handleRouletteStop(finalSteps);
       }
     });
   });
-socket.on("applyPlayerAction", (data) => {
+
+  socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false; // 既存の分岐ロック解除
       
-      // 🎯【追加・無限ループフラグリセット】次のプレイヤーへ番が回ったので、卒業判定終了ロックを真っさらに解除！
-      window.hasFinishedGraduateJudge = false;
-      console.log("[状態リセット] 卒業判定ロックフラグを安全に完全解放しました。");      activePlayerIndex =
-        data.activePlayerIndex !== undefined
-          ? data.activePlayerIndex
-          : activePlayerIndex;
+      activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
       const activeName = data.activePlayerName || `プレイヤー`;
 
       const banner = document.getElementById("current-player-banner");

@@ -458,10 +458,10 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：6以上卒業時は通常ルーレットを挟まず、その場で自動的にゴール（99番）へコマをパタパタ歩かせます！
+      // 🎯 完全決定版：PC側の地図データ同期遅れによる NaN エラーと、スマホ側の通常スピン混線バグを、プレイヤーデータ内に判定済みフラグを刻むことで100%完全に根絶します！
       else if (data.action === "graduateRouletteResult") {
         console.log("=========================================");
-        console.log("[卒業ルーレット] ジャッジ処理を開始します。");
+        console.log("[卒業ルーレット] 運命のジャッジ通信を厳密に処理します。");
 
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
@@ -474,38 +474,40 @@ io.on("connection", (socket) => {
             // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
+            // 💡【最重要】このターンは既に卒業判定が終了したことを、プレイヤーデータ内に確実に刻む（同期で消えない絶対のフラグ）
+            p.graduateChecked = true;
+
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏は ${dice} で合格！通常ルーレットをスキップしてゴールへ自動歩行させます。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！nextIdを 99(GOAL) に直接上書きします。`);
               
-              // 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に直接数値として上書き！
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES) {
-                roomsData.MAP_SQUARES.nextId = 99;
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 99; // 89番マスの進路を数値で直接上書き！
               }
 
-              // 2. 最新の地図(MAP_SQUARES)をPC側へ完全同期
+              // 💡 書き換えた最新の地図データ（MAP_SQUARES）をオブジェクトに明示的に乗せて全員へ送信！
+              // これによりPC側の地図メモリが一瞬で上書き更新され、NaNデータ破損が100%完全に防げます。
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 💡 3.【最重要：自動歩行トリガー】スマホの通常ルーレットボタンを一切触らせず、
-              // サーバーからPC大画面に向けて「出目1で今すぐコマをパタパタ歩き出せ！」という合図をダイレクトに送信！
-              // 89番マスの次は99番(ゴール)に書き換わっているため、1歩進むだけで確実にGOALへカチッと着地します。
+              // 💡 卒業時は通常ルーレットボタンを一切触らせず、サーバーからPCへ「出目1で今すぐ自動で歩き出せ」と指示！
+              // 89の次は99に書き換わっているため、PC側は100%確実に本人のピンを掴んでゴールへ着地させます。
               setTimeout(() => {
-                console.log(`[自動歩行発動] ${p.name} をゴールへ向かわせます。`);
+                console.log(`[自動歩行発動] ${p.name} を安全にゴールへ直行させます。`);
                 io.to(roomCode).emit("spinRoulette", {
-                  result: 1, // 89から99へは1マス移動で着地するため「1」を指定
+                  result: 1, // 1マス進んでゴール着地
                   activePlayerIndex: roomsData.activePlayerIndex,
                   players: roomsData.gamePlayers
                 });
-              }, 250);
+              }, 200);
 
             } else {
               console.log(`🚨 [留年確定] ${p.name} 氏は無念の留年…… 留年ルート(90番)へ進路を切り替えます。`);
               
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES) {
-                roomsData.MAP_SQUARES.nextId = 90; // 留年ルートへ強制右折上書き！
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
+                roomsData.MAP_SQUARES[89].nextId = 90; // 89番マスの進路を数値で直接上書き！
               }
               p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
