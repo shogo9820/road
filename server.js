@@ -458,12 +458,9 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：PC大画面には指一本触れさせない！
-      // 6以上卒業時は手元（スマホ）側に独立した終了合図（showGraduateNextButton）を送り、お祝い演出と手番交代ボタンを一撃で完全開通させます！
+      // 🎯 完全決定版：余計なフェイク歩行は一切なし！
+      // 6以上合格時はその場でプレイヤーの位置を99(GOAL)にセットし、PC側へ「99番マスに到着したぞ」と共通の到着イベントを直接送信して演出を起動させます！
       else if (data.action === "graduateRouletteResult") {
-        console.log("=========================================");
-        console.log("[卒業ルーレット] スマホ完結型の進行処理を実行します。");
-
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
           const p = roomsData.gamePlayers[roomsData.activePlayerIndex];
@@ -472,40 +469,37 @@ io.on("connection", (socket) => {
             const dice = data.result; // スマホからの出目（1〜10）
             const isSuccess = (dice >= 6);
 
-            // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
+            // PC大画面へ専用 of クローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
             // 卒業判定が終了したフラグを刻む
             p.graduateChecked = true;
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ上書きし、お祝い演出を流します。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を 99(GOAL) へ変更し、99番マスの到着イベントを起動します。`);
               
+              // 💡 ご指示の通り、位置をダイレクトに99（ゴール）に書き換える
               p.position = 99; 
               p.location = "ゴール";
 
-              // 💡 1. 最新のゴール位置(99)をPC大画面とスマホへ完全一斉同期！
-              // これにより、大画面のマップ上でピンが赤色の「GOALマス」の上へパッと移動します
+              // 💡 最新の位置(99)をPC大画面とスマホへ完全一斉同期！（ピンがGOALマスへ移動します）
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex
               });
 
-              // 💡 2. 大画面の右側テキストに「ゴールおめでとう！」の祝福イベントテキストを確実に流し込む！
-              io.to(roomCode).emit("playerAction", {
-                roomCode: roomCode,
-                action: "squareEvent",
-                targetSquare: { id: 99, type: "goal", text: `🎉 ゴール！！！ ${p.name} さん、ストレート卒業おめでとう！！！ 🎉` }
-              });
-
-              // 💡 3. 通常移動をバグらせる turnUpdated を完全に廃止！
-              // スマホ側へ向けて「通常ルーレット画面に戻さず、交代ボタンだけを出せ！」と独立電波をダイレクトに送信！
+              // 💡【大正解のロジック】PC大画面側へ向けて「99番マス（GOAL）の到着イベントを起動しろ！」とダイレクトに発信！
+              // これにより、PC側の handleForceStopSquare 内の case 99: が100%確実に作動します。
               setTimeout(() => {
-                io.to(roomCode).emit("showGraduateNextButton");
+                io.to(roomCode).emit("playerAction", {
+                  roomCode: roomCode,
+                  action: "squareEvent",
+                  targetSquare: { id: 99, type: "goal", text: "🎉 ゴール！！！卒業おめでとう！！！ 🎉" }
+                });
               }, 200);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name} 氏は留年。卒業判定マスの進路を 90(留年ルート先頭) に上書きします。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は留年。89番マスの進路を 90(留年ルート先頭) に書き換えます。`);
               
               let gradSquare = roomsData.MAP_SQUARES?.find(sq => sq && (sq.id === 89 || sq.eventType === "卒業判定"));
               if (gradSquare) {
@@ -520,7 +514,7 @@ io.on("connection", (socket) => {
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 留年の場合はもう一度通常ルーレットを回させる完璧な流れを完全維持
+              // 留年の場合は通常移動ルーレットボタンを復活させる
               setTimeout(() => {
                 io.to(roomCode).emit("applyPlayerAction", { 
                   action: "turnUpdated", 
@@ -532,7 +526,6 @@ io.on("connection", (socket) => {
             }
           }
         }
-        console.log("=========================================");
       }
     }
   });

@@ -742,15 +742,9 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
-// 🎯 完全修正：GAME_EVENTS追加に伴う仕様未定セーフティの暴走を完全封殺！89番マス着地時は完全にスルーさせて次のターン開始時に一本化します
+// 🎯 完全修正：99番マス（ゴール）への到着を、カップルマスと100%同じルール構造の「到着時イベント（case 99:）」として新設！
+// これにより、ストレート卒業でも留年裏ルート経由でも、99番マスを踏んだ瞬間に全く同じ最高のゴール演出が確実に発動します！
 function handleForceStopSquare(player, square) {
-  // 💡【大修正】もし着地したマスIDが「89番（卒業判定マス）」だった場合は、
-  // 着地した瞬間はモーダルを一切開かせず、そのまま処理を終了（リターン）して静かにコマを止めます！
-  if (square && square.id === 89) {
-    console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
-    return;
-  }
-
   switch (square.id) {
     case 41:
       console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
@@ -759,6 +753,24 @@ function handleForceStopSquare(player, square) {
         roomCode: roomCode,
         playerId: player.id,
         playerName: player.name,
+      });
+      break;
+
+    // 💡【大新設：99番ゴールマス到着イベント】
+    // どんな経路からでも、99番マスにコマが着地したその瞬間に、大画面へお祝いの特大演出をバシッと表示します！
+    case 99:
+      console.log(`[ゴールマスイベント起動] ${player.name} 氏が99番GOALマスへ着地しました。`);
+      
+      // 大画面右側のテキストボックスへ、お祝いメッセージをダイレクトに注入！
+      const eventBox = document.getElementById("event-text");
+      if (eventBox) {
+        eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.25rem; animation: pulse 1s infinite; background: #fff3e0; padding: 15px; border-radius: 12px; border: 3px solid #ff9800;">🎉👑 ゴール！！！ ${player.name} さん、大学生活お疲れ様でした！無事にストレート卒業おめでとう！！！ 👑🎉</p>`;
+      }
+
+      // スマホへ向けて「通常ルーレットを戻さず、交代ボタンだけを出せ！」と独立電波をダイレクトに送信！
+      socket.emit("playerAction", {
+        roomCode: roomCode,
+        action: "showGraduateNextButton"
       });
       break;
 
