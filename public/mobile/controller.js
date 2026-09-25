@@ -624,20 +624,22 @@ socket.on("syncGameState", (data) => {
   setTimeout(() => { if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data); }, 100);
 });
 
-socket.on("applyPlayerAction", (data) => {
-  if (data.action === "turnUpdated") {
-    window.hasConfirmedThisTurn = false; // 交代時にロック解除
-    activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
-    const activeName = data.activePlayerName || `プレイヤー`;
-    const banner = document.getElementById("current-player-banner");
-    if (banner) banner.textContent = `TURN: ${activeName}`;
-    const spinBtn = document.getElementById("btn-phone-spin");
-    if (spinBtn) spinBtn.disabled = false;
+// 🎯 完全修正：既存の通常移動関数を一切壊さず、卒業確定時専用の独立電波（showGraduateNextButton）で手元に「次へ」ボタンを1発で正常出現させます！
+if (typeof socket !== "undefined") {
+  socket.on("showGraduateNextButton", () => {
+    console.log("[スマホ] 卒業ゴールに伴う手番終了を検知。交代ボタンを表示します。");
+    
+    // 💡 既存のルーレット待機画面を汚さず、手元の「次のプレイヤーへ」ボタンだけを最前面に1発で直接出現させる！
     const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) { nextBtn.disabled = true; nextBtn.classList.add("hidden"); nextBtn.style.display = "none"; }
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.classList.remove("hidden");
+      nextBtn.style.display = "block";
+    }
+    
     const resultDisplay = document.getElementById("roulette-result-display");
-    if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
-    isSpinning = false;
-    setTimeout(() => { if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data); }, 100);
-  }
-});
+    if (resultDisplay) {
+      resultDisplay.textContent = "🎉 卒業確定！手元で手番を交代してね！";
+    }
+  });
+}

@@ -458,9 +458,12 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：余計な通常ルーレット画面を完全排除！
-      // 6以上卒業時は手元を「通常移動の終了状態」に直接カチッと同期させ、お祝い演出と手番交代ボタンを一撃で完全開通させます！
+      // 🎯 完全決定版：PC大画面には指一本触れさせない！
+      // 6以上卒業時は手元（スマホ）側に独立した終了合図（showGraduateNextButton）を送り、お祝い演出と手番交代ボタンを一撃で完全開通させます！
       else if (data.action === "graduateRouletteResult") {
+        console.log("=========================================");
+        console.log("[卒業ルーレット] スマホ完結型の進行処理を実行します。");
+
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
           const p = roomsData.gamePlayers[roomsData.activePlayerIndex];
@@ -476,12 +479,13 @@ io.on("connection", (socket) => {
             p.graduateChecked = true;
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ上書きし、お祝い演出へ繋ぎます。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ上書きし、お祝い演出を流します。`);
               
               p.position = 99; 
               p.location = "ゴール";
 
               // 💡 1. 最新のゴール位置(99)をPC大画面とスマホへ完全一斉同期！
+              // これにより、大画面のマップ上でピンが赤色の「GOALマス」の上へパッと移動します
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex
@@ -494,14 +498,10 @@ io.on("connection", (socket) => {
                 targetSquare: { id: 99, type: "goal", text: `🎉 ゴール！！！ ${p.name} さん、ストレート卒業おめでとう！！！ 🎉` }
               });
 
-              // 💡 3.【スマホ側の謎ルーレット完全消滅】
-              // turnUpdatedを呼ぶと通常ルーレット画面に化けてしまうため、これを完全撤廃！
-              // 通常の移動が止まった時と100%同じ終了電波を送ることで、スマホに「➡ 次のプレイヤーへ」ボタンを1発でダイレクトに出現させます！
+              // 💡 3. 通常移動をバグらせる turnUpdated を完全に廃止！
+              // スマホ側へ向けて「通常ルーレット画面に戻さず、交代ボタンだけを出せ！」と独立電波をダイレクトに送信！
               setTimeout(() => {
-                io.to(roomCode).emit("playerAction", {
-                  roomCode: roomCode,
-                  action: "nextTurnReady" // スマホ側で次の手番へ進めるための準備完了通知
-                });
+                io.to(roomCode).emit("showGraduateNextButton");
               }, 200);
 
             } else {
@@ -511,7 +511,7 @@ io.on("connection", (socket) => {
               if (gradSquare) {
                 gradSquare.nextId = 90;
               }
-              p.isRepeat = true; // 留年フラグを刻む
+              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
               // 最新のプレイヤーデータと地図を完全同期
               io.to(roomCode).emit("syncGameState", { 
@@ -532,6 +532,7 @@ io.on("connection", (socket) => {
             }
           }
         }
+        console.log("=========================================");
       }
     }
   });
