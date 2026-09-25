@@ -458,12 +458,9 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：配列の添字指定(89)による番号のズレを完全撤廃！
-      // 配列内からマスIDが「89」のオブジェクトを100%直接検索してnextIdを上書きすることで、進路ミスを完全に根絶します！
+      // 🎯 完全決定版：ややこしいnextId書き換えや自動歩行信号(出目1)を完全撤廃！
+      // 6以上合格時はその場でプレイヤーの位置を「99(GOAL)」へ直接上書きワープさせ、完璧にゴール演出へ突入させます！
       else if (data.action === "graduateRouletteResult") {
-        console.log("=========================================");
-        console.log("[卒業ルーレット] 運命の最終ジャッジを処理します。");
-
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
           const p = roomsData.gamePlayers[roomsData.activePlayerIndex];
@@ -475,59 +472,51 @@ io.on("connection", (socket) => {
             // PC大画面へ専用のクローズ信号を送信（モーダルをシュッと消します）
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
-            // 卒業判定が終了したフラグを刻む
+            // 卒業判定が終了したフラグを刻む（通常スピンとの混線を完全ガード）
             p.graduateChecked = true;
 
-            // 💡【大修正】インデックス違いを防ぐため、MAP_SQUARES配列の中から id が 89 (または文字が卒業判定) のマスを直接検索する！
-            let gradSquare = null;
-            if (roomsData.MAP_SQUARES && Array.isArray(roomsData.MAP_SQUARES)) {
-              gradSquare = roomsData.MAP_SQUARES.find(sq => sq && (sq.id === 89 || sq.eventType === "卒業判定"));
-            }
-
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！卒業判定マスの進路を 99(GOAL) に直接上書きします。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ強制上書きします。`);
               
-              // 💡 検索で見つかった「卒業判定マス」のオブジェクトの nextId を 99（ゴール数字）に確実に上書き！
-              if (gradSquare) {
-                gradSquare.nextId = 99;
-                console.log(`[データ検索上書き成功] 卒業マスの次のマス = ${gradSquare.nextId}`);
-              }
+              // 💡 ご指示の通り、位置の値をダイレクトに「99」へ上書き上塗り！これで90番への誤吸い込みは100%物理的に消滅します
+              p.position = 99; 
+              p.location = "ゴール";
 
-              // 最新の地図データ（MAP_SQUARES）をオブジェクトに明示的に乗せて全員へ送信
+              // 💡 最新の位置(99)をPC大画面とスマホへノータイムで一斉同期！
+              // これにより、大画面のマップ上でプレイヤーのピンがジャストで赤色の「GOALマス」の上へパッと瞬時に移動します！
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
-                activePlayerIndex: roomsData.activePlayerIndex, 
-                MAP_SQUARES: roomsData.MAP_SQUARES 
+                activePlayerIndex: roomsData.activePlayerIndex
               });
 
-              // サーバーからPCに向けて「今の1人目の手番のまま、出目1で自動歩行を開始しろ！」という信号を送信
+              // 💡 ゲームが元々持っている完璧な「ゴールお祝いテキスト・イベント処理」をその場で即座に強制発動！
+              // これにより大画面に祝福の演出が走り、画面下部には通常通り「➡ 次のプレイヤーへ」ボタンがパッと100%大復活します！
               setTimeout(() => {
-                console.log(`[自動歩行発動] ${p.name} のピンをゴールマス(99)へ直行させます。`);
-                io.to(roomCode).emit("spinRoulette", {
-                  result: 1, // 1マス移動でゴール着地
-                  activePlayerIndex: roomsData.activePlayerIndex,
-                  players: roomsData.gamePlayers
+                io.to(roomCode).emit("playerAction", {
+                  roomCode: roomCode,
+                  action: "squareEvent",
+                  targetSquare: { id: 99, type: "goal", text: "🎉 ゴール！！！卒業おめでとう！！！ 🎉" }
                 });
               }, 200);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name} 氏は留年。卒業判定マスの進路を 90(留年ルート先頭) に上書きします。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は留年。89番マスの進路を 90(留年ルート先頭) に上書きします。`);
               
-              // 💡 検索で見つかった「卒業判定マス」のオブジェクトの nextId を 90（留年数字）に確実に上書き！
+              // 💡 留年の場合は、ご指示通りに裏ルートの地図を出現させて通常ルーレットを回させる完璧な流れを完全維持
+              let gradSquare = roomsData.MAP_SQUARES?.find(sq => sq && (sq.id === 89 || sq.eventType === "卒業判定"));
               if (gradSquare) {
                 gradSquare.nextId = 90;
-                console.log(`[データ検索上書き成功] 卒業マスの次のマス = ${gradSquare.nextId}`);
               }
               p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
-              // 最新のプレイヤーデータと、書き換えた「留年ルート出現地図」を全員に完全同期
+              // 最新のプレイヤーデータと地図を完全同期
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 地図同期が落ち着いた200ms後に、スマホの通常移動用ボタンを大復活させる
+              // 200ms後にスマホの通常移動用ボタンを大復活させる
               setTimeout(() => {
                 io.to(roomCode).emit("applyPlayerAction", { 
                   action: "turnUpdated", 
@@ -539,7 +528,6 @@ io.on("connection", (socket) => {
             }
           }
         }
-        console.log("=========================================");
       }
     }
   });
