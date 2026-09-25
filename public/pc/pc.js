@@ -118,6 +118,41 @@ function appendSocketListeners() {
     }
   });
 
+    // 🎯 追加：サーバーからの演出信号（squareEvent）を大画面で直接キャッチし、画面上に状態を強制表示して原因を突き止めます！
+  socket.on("playerAction", (data) => {
+    // 💡 画面の最上部に、デバッグ用のメッセージ表示エリアをリアルタイムで動的生成
+    let debugContainer = document.getElementById("pc-debug-status-bar");
+    if (!debugContainer) {
+      debugContainer = document.createElement("div");
+      debugContainer.id = "pc-debug-status-bar";
+      debugContainer.style = "position:fixed; top:0; left:0; width:100%; background:#f44336; color:#fff; padding:8px; font-weight:bold; font-size:12px; z-index:999999; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.3);";
+      document.body.appendChild(debugContainer);
+    }
+
+    if (data && data.action === "squareEvent") {
+      const sq = data.targetSquare;
+      console.log("[大画面デバッグ] squareEventを受信しました:", sq);
+      
+      // 💡 画面上の赤い帯に、受信したイベント内容をダイレクトに表示！
+      debugContainer.style.background = "#4caf50"; // 成功時は緑色に変化
+      debugContainer.textContent = `🟢 [演出受信成功] マスID: ${sq ? sq.id : "なし"}, タイプ: ${sq ? sq.type : "なし"}, テキスト: ${sq ? sq.text : "なし"}`;
+
+      // 💡 大画面右側のイベントテキストボックス（#event-text）への書き込みを強制実行
+      const eventBox = document.getElementById("event-text");
+      if (eventBox && sq) {
+        eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; animation: pulse 1s infinite;">🎲 ${sq.text || "何もないマスのようです。"}</p>`;
+        console.log("[大画面デバッグ] #event-text へのHTML注入が完了しました");
+      } else {
+        console.error("[大画面デバッグ] エラー: #event-text の要素が見つからないか、スクエアデータが空です");
+        debugContainer.style.background = "#ff9800";
+        debugContainer.textContent = `⚠️ 要素未発見エラー: #event-text がHTML内に存在しません。`;
+      }
+    } else {
+      debugContainer.style.background = "#f44336";
+      debugContainer.textContent = `🔴 [その他のアクション受信] action: ${data ? data.action : "データ空"}`;
+    }
+  });
+
   // 🛠️【デバッグ専用】ワープ受信：指定マスに着地させて即座にイベントを起動
   socket.on("executeDebugWarp", (data) => {
     if (data.players) players = data.players;
