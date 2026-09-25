@@ -458,8 +458,11 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：6以上合格時に手番(Index)を進めずそのプレイヤーのまま維持し、進むための通常通常ルーレットを100%安全に再起動させます！
+      // 🎯 完全決定版：6以上卒業時は通常ルーレットを挟まず、その場で自動的にゴール（99番）へコマをパタパタ歩かせます！
       else if (data.action === "graduateRouletteResult") {
+        console.log("=========================================");
+        console.log("[卒業ルーレット] ジャッジ処理を開始します。");
+
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
           const p = roomsData.gamePlayers.find(pl => String(pl.id) === String(data.playerId)) || roomsData.gamePlayers[roomsData.activePlayerIndex];
@@ -472,47 +475,48 @@ io.on("connection", (socket) => {
             io.to(roomCode).emit("closeGraduateModal", { success: isSuccess });
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name}: 出目 ${dice} -> ゴール(99番)へ進路を変更し、通常通常ルーレットを復活させます。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏は ${dice} で合格！通常ルーレットをスキップしてゴールへ自動歩行させます。`);
               
-              // 💡 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に数値として直接上書き！
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 99;
+              // 1. 分岐マスである89番マスのnextIdを「99番（ゴール）」に直接数値として上書き！
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES) {
+                roomsData.MAP_SQUARES.nextId = 99;
               }
 
-              // 💡 2. 最新のプレイヤーデータと、書き換えた「ゴール直通地図」を全員に完全同期！
+              // 2. 最新の地図(MAP_SQUARES)をPC側へ完全同期
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 💡 3. 手番を次に進めず【今のプレイヤーのまま】、通常ルーレットボタンを即座に再起動させて進ませる！
+              // 💡 3.【最重要：自動歩行トリガー】スマホの通常ルーレットボタンを一切触らせず、
+              // サーバーからPC大画面に向けて「出目1で今すぐコマをパタパタ歩き出せ！」という合図をダイレクトに送信！
+              // 89番マスの次は99番(ゴール)に書き換わっているため、1歩進むだけで確実にGOALへカチッと着地します。
               setTimeout(() => {
-                io.to(roomCode).emit("applyPlayerAction", { 
-                  action: "turnUpdated", 
-                  activePlayerIndex: roomsData.activePlayerIndex, 
-                  activePlayerName: p.name, 
-                  activePlayerId: p.id 
+                console.log(`[自動歩行発動] ${p.name} をゴールへ向かわせます。`);
+                io.to(roomCode).emit("spinRoulette", {
+                  result: 1, // 89から99へは1マス移動で着地するため「1」を指定
+                  activePlayerIndex: roomsData.activePlayerIndex,
+                  players: roomsData.gamePlayers
                 });
-              }, 200);
+              }, 250);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name}: 出目 ${dice} -> 留年裏ルート(90番)へ進路を変更します。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は無念の留年…… 留年ルート(90番)へ進路を切り替えます。`);
               
-              // 1. 分岐マスである89番マスのnextIdを「90番（留年）」に数値として直接上書き！
-              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES[89]) {
-                roomsData.MAP_SQUARES[89].nextId = 90;
+              if (roomsData.MAP_SQUARES && roomsData.MAP_SQUARES) {
+                roomsData.MAP_SQUARES.nextId = 90; // 留年ルートへ強制右折上書き！
               }
-              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが即座に出現します）
+              p.isRepeat = true; // 留年フラグを刻む（これでPC大画面に90〜98番マスが出現します）
 
-              // 2. 最新のプレイヤーデータと、書き換えた「留年ルート出現地図」を全員に完全同期！
+              // 最新のプレイヤーデータと、書き換えた「留年ルート出現地図」を全員に完全同期
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex, 
                 MAP_SQUARES: roomsData.MAP_SQUARES 
               });
 
-              // 3. 手番を次に進めず【今のプレイヤーのまま】、通常ルーレットボタンを即座に再起動させて進ませる！
+              // 地図同期が落ち着いた200ms後に、スマホの「通常ルーレットを回す」ボタンを復活させ、もう一度回して進ませる！
               setTimeout(() => {
                 io.to(roomCode).emit("applyPlayerAction", { 
                   action: "turnUpdated", 
@@ -524,6 +528,7 @@ io.on("connection", (socket) => {
             }
           }
         }
+        console.log("=========================================");
       }
     }
   });
