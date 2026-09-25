@@ -742,9 +742,9 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
-// 🎯 完全復元：89番マスの先走り起動を完全に消去！お指示の通り、99番(GOAL)への着地時イベント(case 99:)だけをカップルマスと100%同じルール構造でピンポイント追加します！
+// 🎯 完全修復：HTMLに存在しないIDエラーによるフリーズを完全粉砕！お指示の通り、99番(GOAL)着地時は元々ある完璧な着地処理(triggerDelayedDisplay)へ100%綺麗に流し込みます！
 function handleForceStopSquare(player, square) {
-  // 💡 完璧だった元の仕様へ完全復元：89番マス着地時は何もせず静かにピンを止めます
+  // 💡 完璧だった元の仕様：89番マス着地時は何もせず静かにピンを止めます
   if (square && square.id === 89) {
     console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
     return;
@@ -761,17 +761,17 @@ function handleForceStopSquare(player, square) {
       });
       break;
 
-    // 💡【お指示通りここだけを追加！】99番マス（GOAL）にピンが着地した瞬間に、大画面にお祝いテキストを炸裂させます！
+    // 💡【大修正】勝手なIDテキスト書き換えは全て消去！
+    // 99番(GOAL)にピンが着地した瞬間に、元からある正しい着地処理(triggerDelayedDisplay)をキックして画面を100%綺麗に連動させます！
     case 99:
       console.log(`[ゴールマスイベント起動] ${player.name} 氏が99番GOALマスへ着地しました。`);
       
-      // 大画面右側のイベントテキストボックスへ、お祝いの太文字祝福メッセージを直接流し込む！
-      const eventBox = document.getElementById("event-text");
-      if (eventBox) {
-        eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.25rem; animation: pulse 1s infinite; background: #fff3e0; padding: 15px; border-radius: 12px; border: 3px solid #ff9800;">🎉👑 ゴール！！！ ${player.name} さん、大学生活お疲れ様でした！無事にストレート卒業おめでとう！！！ 👑🎉</p>`;
+      // 💡 あなたが元から一番最初に作ってくれていた、正しいHTMLのIDを自動で書き換える関数をそのまま通過させる！
+      if (typeof triggerDelayedDisplay === "function") {
+        triggerDelayedDisplay(1, square);
       }
 
-      // スマホ（手元）側へ向けて、通常移動をバグらせずに「➡ 次のプレイヤーへ」ボタンだけを出せと独立電波を送信！
+      // スマホ（手元）側へ向けて「➡ 次のプレイヤーへ」ボタンだけを出せと独立電波を送信！
       socket.emit("playerAction", {
         roomCode: roomCode,
         action: "showGraduateNextButton"

@@ -458,8 +458,7 @@ io.on("connection", (socket) => {
           });
         }
       } 
-      // 🎯 完全決定版：余計な進路書き換えやダミーの出目1信号を100%全廃！
-      // 6以上合格時はただ単純にプレイヤーの位置を99(GOAL)にセットし、PC側へ「99番マスの到着イベントを起動しろ」と共通の到着電波を直接送信するだけの神設計です！
+      // 🎯 完全決定版：サーバー側からの勝手な文字送信を全廃！位置を直接99にワープさせ、PC側の「case 99:」を純粋にキックするだけのスマートな神設計に復元します！
       else if (data.action === "graduateRouletteResult") {
         const roomsData = rooms[roomCode];
         if (roomsData && roomsData.gamePlayers) {
@@ -476,30 +475,29 @@ io.on("connection", (socket) => {
             p.graduateChecked = true;
 
             if (isSuccess) {
-              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ変更し、99番マスの到着イベントを起動します。`);
+              console.log(`🎉 [卒業確定] ${p.name} 氏が合格！位置を直接 99(GOAL) へ強制上書きします。`);
               
-              // 💡 お指示の通り、位置をダイレクトに99（ゴール）に書き換える
               p.position = 99; 
               p.location = "ゴール";
 
-              // 💡 最新の位置(99)をPC大画面とスマホへ完全一斉同期！（ピンがGOALマスへパッと移動します）
+              // 最新の位置(99)をPC大画面とスマホへ完全一斉同期！（ピンが赤色のGOALマスへ移動します）
               io.to(roomCode).emit("syncGameState", { 
                 players: roomsData.gamePlayers, 
                 activePlayerIndex: roomsData.activePlayerIndex
               });
 
-              // 💡【大正解のロジック】PC大画面側へ向けて「99番マスの到着イベント（case 99:）を今すぐ起動しろ！」とダイレクトに発信！
-              // これにより、PC側の handleForceStopSquare 内の新設した case 99: が100%確実に作動し、お祝いテキストが炸裂します。
+              // 💡 PC大画面側へ向けて「99番マスの到着イベント（case 99:）を今すぐ起動しろ！」とダイレクトに発信！
+              // PC側は元の正しい着地処理（triggerDelayedDisplay）を通過するため、IDエラーが100%完全に消滅します。
               setTimeout(() => {
                 io.to(roomCode).emit("playerAction", {
                   roomCode: roomCode,
                   action: "squareEvent",
-                  targetSquare: { id: 99, type: "goal", text: "🎉 ゴール！！！卒業おめでとう！！！ 🎉" }
+                  targetSquare: { id: 99, type: "goal", text: `🎉👑 ゴール！！！ ${p.name} さん、大学生活お疲れ様でした！無事にストレート卒業おめでとう！！！ 👑🎉` }
                 });
               }, 200);
 
             } else {
-              console.log(`🚨 [留年確定] ${p.name} 氏は留年。89番マスの進路を 90(留年ルート先頭) に書き換えます。`);
+              console.log(`🚨 [留年確定] ${p.name} 氏は留年。卒業判定マスの進路を 90(留年ルート先頭) に上書きします。`);
               
               let gradSquare = roomsData.MAP_SQUARES?.find(sq => sq && (sq.id === 89 || sq.eventType === "卒業判定"));
               if (gradSquare) {
