@@ -296,6 +296,11 @@ function renderLocationPlayersList() {
     html ||
     '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
 }
+
+// ==========================================================================
+// 🎯 【完全修正版】複数交際（2股対応）プレイヤーカード表示アップデート
+// 恋人が何人いても、すべての恋人の名前を「、」で繋いでリアルタイムに全員分表示します。
+// ==========================================================================
 function updateCurrentPlayerDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -324,26 +329,27 @@ function updateCurrentPlayerDisplay() {
   if (jobEl) jobEl.textContent = jobMaster ? jobMaster.label : p.job || "モブ";
 
   const playerColors = [
-    "#f44336",
-    "#2196f3",
-    "#4caf50",
-    "#ff9800",
-    "#9c27b0",
-    "#00bcd4",
-    "#e91e63",
-    "#795548",
+    "#f44336", "#2196f3", "#4caf50", "#ff9800",
+    "#9c27b0", "#00bcd4", "#e91e63", "#795548"
   ];
 
   const playerCardEl = document.querySelector(".current-player-card");
   if (playerCardEl) {
-    const playerColor =
-      p.color || playerColors[activePlayerIndex % playerColors.length];
+    const playerColor = p.color || playerColors[activePlayerIndex % playerColors.length];
     playerCardEl.style.background = `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`;
   }
 
+  // 💕 【2股・複数交際対応表示システム】
   const loverIconEl = document.getElementById("current-player-lover-icon");
   if (loverIconEl) {
-    if (p.isLover) {
+    if (p.isLover && p.lovers && p.lovers.length > 0) {
+      // 💡 恋人たちの名前を「、」で綺麗に結合して、人数に関わらず全員分大画面に表示！
+      const loversListText = p.lovers.join("、");
+      loverIconEl.innerHTML = `<span style="font-size: 0.95rem; font-weight: bold; color: #ffeb3b; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 20px;">💕 恋人: ${loversListText}</span>`;
+      loverIconEl.style.display = "inline-block";
+    } else if (p.isLover) {
+      // 万が一名前データが無い場合の古い仕様へのフォールバック（ハートアイコン点灯）
+      loverIconEl.innerHTML = "❤️";
       loverIconEl.style.display = "inline-block";
     } else {
       loverIconEl.style.display = "none";
@@ -352,35 +358,26 @@ function updateCurrentPlayerDisplay() {
 
   const hpTextEl = document.getElementById("current-player-hp");
   const hpBarEl = document.getElementById("current-player-drunk");
-  const drunkPercentEl = document.getElementById(
-    "current-player-drunk-percent",
-  );
+  const drunkPercentEl = document.getElementById("current-player-drunk-percent");
 
   if (hpTextEl) hpTextEl.textContent = `${currentHp} / ${maxHp}`;
   if (hpBarEl) {
     const hpRate = Math.max(0, (currentHp / maxHp) * 100);
     hpBarEl.style.width = `${hpRate}%`;
-    hpBarEl.style.backgroundColor =
-      hpRate > 50 ? "#4caf50" : hpRate > 20 ? "#ff9800" : "#f44336";
+    hpBarEl.style.backgroundColor = hpRate > 50 ? "#4caf50" : hpRate > 20 ? "#ff9800" : "#f44336";
   }
   if (drunkPercentEl) drunkPercentEl.textContent = `${drunkPercent}%`;
 
   const drinksEl = document.getElementById("current-player-drinks");
   if (drinksEl) drinksEl.textContent = `${p.drinkCount || 0} 杯`;
 
-  // 🎯 幸福度の画面表示反映
   const happinessEl = document.getElementById("current-player-happiness");
   if (happinessEl) {
     const hpVal = p.happiness !== undefined ? p.happiness : 100;
     happinessEl.textContent = `${hpVal} pt`;
-    // 幸福度に応じて文字色を分かりやすく変化
-    if (hpVal >= 100) {
-      happinessEl.style.color = "#ffeb3b"; // 黄色（好調・高得点）
-    } else if (hpVal >= 50) {
-      happinessEl.style.color = "#ffffff"; // 白（通常）
-    } else {
-      happinessEl.style.color = "#ff8a80"; // 赤寄り（ピンチ・不調）
-    }
+    if (hpVal >= 100) happinessEl.style.color = "#ffeb3b";
+    else if (hpVal >= 50) happinessEl.style.color = "#ffffff";
+    else hospitalityEl.style.color = "#ff8a80";
   }
 
   const locationEl = document.getElementById("current-player-location");

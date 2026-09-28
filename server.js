@@ -116,12 +116,13 @@ io.on("connection", (socket) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      // 🎯 修正：スマホから届いたプレイヤーリスト（ID・名前）をもとに、雛形から正式なステータスを一括生成
+      // 🎯 修正：複数恋人システム（2股以上対応）のため、初期ステータスに空の配列 (lovers) を安全に配線！
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
+          lovers: [] // 👈 🎯【新規配線】恋人たちの名前を何人でも格納できるリストの初期化！
         };
       });
       room.activePlayerIndex = 0;
@@ -132,9 +133,7 @@ io.on("connection", (socket) => {
         mode: room.mode,
         activePlayerIndex: room.activePlayerIndex,
       });
-      console.log(
-        `[ゲーム開始] ルーム ${roomCode}: プレイヤー ${room.gamePlayers.length} 名のステータスを一括生成しました`,
-      );
+      console.log(`[ゲーム開始] ルーム ${roomCode}: 複数交際対応の lovers 配列を初期化しました`);
     }
   });
 
@@ -268,7 +267,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🎯【カップル2回目判定】スマホ側からの実際の出目（1〜10）を受け取り、サーバー側で厳密に一元合否判定！
+  // ==========================================================================
+  // 💖 【完全修正版】複数交際（2股以上）対応・カップル決着ロジック
+  // 成立時、お互いの「lovers」配列に相手の名前を自動で push 追加します。
+  // ==========================================================================
   socket.on("coupleSecondRouletteResult", (data) => {
     const { roomCode, playerId, result } = data; // resultにはスマホから実際の出目(1〜10)が入ってくる
     const room = rooms[roomCode];
@@ -280,32 +282,44 @@ io.on("connection", (socket) => {
       const hitTarget = mapping[result]; // 止まった出目にプレイヤーが割り当てられているか確認
 
       if (player && hitTarget) {
-        // 🎯 見事「当たりマス（他プレイヤーがいるマス）」に止まった場合：カップル成立！
+        // 🎯 見事「当たりマス」に止まった場合：カップル成立！
         const targetPlayer = gamePlayers.find(
-          (p) => String(p.id) === String(hitTarget.id),
+          (p) => String(p.id) === String(hitTarget.id)
         );
 
         player.isLover = true;
         if (targetPlayer) targetPlayer.isLover = true;
 
+        // 🛡️ セーフティ：もし何らかの理由で lovers 配列が初期化されていなければここで作成
+        if (!player.lovers) player.lovers = [];
+        if (targetPlayer && !targetPlayer.lovers) targetPlayer.lovers = [];
+
+        // 🎯 【新規追加】お互いの lovers 配列に相手の名前を push 追加！
+        if (targetPlayer) {
+          // 重複して同じ人と付き合うのを防ぐガード（必要であれば）
+          if (!player.lovers.includes(targetPlayer.name)) {
+            player.lovers.push(targetPlayer.name);
+          }
+          if (!targetPlayer.lovers.includes(player.name)) {
+            targetPlayer.lovers.push(player.name);
+          }
+        }
+
         player.drinkCount = (player.drinkCount || 0) + 1;
-        if (targetPlayer)
+        if (targetPlayer) {
           targetPlayer.drinkCount = (targetPlayer.drinkCount || 0) + 1;
+        }
 
-        console.log(
-          `[カップル成立 💕] ${player.name} と ${targetPlayer ? targetPlayer.name : "相手"} が結ばれました！`,
-        );
+        console.log(`[カップル成立 💕] ${player.name} と ${targetPlayer ? targetPlayer.name : "相手"} が結ばれました！(現在の恋人数: ${player.lovers.length}名)`);
 
-        // PCとスマホに成功を通知（メッセージに対応相手の名前を載せる）
+        // PCとスマホに成功を通知（付き合ったお相手の名前を載せる）
         io.to(roomCode).emit("coupleEventFinished", {
           success: true,
           message: `💕 カップル成立！ ${player.name} と ${targetPlayer ? targetPlayer.name : "お相手"} は、2人仲良く 杯数＋1！ 🍺`,
         });
       } else {
-        // 💦 「無し」のハズレマスに止まった場合：告白失敗！
-        console.log(
-          `[カップル失敗 💦] ターゲットのいないマス（出目: ${result}）に止まったため失敗`,
-        );
+        // 💦 ハズレマスに止まった場合：告白失敗
+        console.log(`[カップル失敗 💦] ターゲットのいないマス（出目: ${result}）に止まったため失敗`);
         io.to(roomCode).emit("coupleEventFinished", {
           success: false,
           message: "告白失敗...！💦",
