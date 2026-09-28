@@ -5,11 +5,10 @@ let players = [];
 let isSpinning = false;
 let currentRotation = 0;
 
-// カップルイベントの状態管理用
 let coupleEventState = {
   active: false,
-  step: 1, // 1: 最初の判定, 2: 相手を決定する2回目
-  targetPlayerId: null,
+  step: 1,
+  targetPlayerId: null
 };
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -32,35 +31,18 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 🎯 修正：HTML側の「参加する」ボタン（ID: btn-join-room）のクリックイベントを確実に登録！
-  // これが記述されていなかったため、コードを打ってボタンを押しても完全に無反応になっていました。
   const btnJoin = document.getElementById("btn-join-room");
   if (btnJoin) {
-    console.log(
-      "[スマホ] 参加するボタンを発見。クリックイベントを登録します。",
-    );
     btnJoin.addEventListener("click", (e) => {
       e.preventDefault();
-      joinRoom(); // 記述されていた入室処理関数を確実に呼び出す
+      joinRoom();
     });
-  } else {
-    console.error(
-      "⚠️ エラー: スマホのHTML内に 'btn-join-room' というIDのボタンが見つかりません。",
-    );
   }
 
-  document
-    .getElementById("btn-phone-add-player")
-    ?.addEventListener("click", addPlayerRow);
-  document
-    .getElementById("btn-phone-start")
-    ?.addEventListener("click", sendStartGame);
-  document
-    .getElementById("btn-phone-spin")
-    ?.addEventListener("click", requestSpin);
-  document
-    .getElementById("btn-phone-next")
-    ?.addEventListener("click", sendNextTurn);
+  document.getElementById("btn-phone-add-player")?.addEventListener("click", addPlayerRow);
+  document.getElementById("btn-phone-start")?.addEventListener("click", sendStartGame);
+  document.getElementById("btn-phone-spin")?.addEventListener("click", requestSpin);
+  document.getElementById("btn-phone-next")?.addEventListener("click", sendNextTurn);
 
   document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
     radio.addEventListener("change", (e) => {
@@ -79,18 +61,10 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("errorMsg", (data) => {
     alert("エラー: " + data.message);
   });
-
   socket.on("applySettings", (data) => {
-    if (
-      data.players &&
-      Array.isArray(data.players) &&
-      data.players.length > 0
-    ) {
+    if (data.players && Array.isArray(data.players) && data.players.length > 0) {
       const activeEl = document.activeElement;
-      const isUserTyping =
-        activeEl &&
-        activeEl.tagName === "INPUT" &&
-        activeEl.closest("#phone-player-list");
+      const isUserTyping = activeEl && activeEl.tagName === "INPUT" && activeEl.closest("#phone-player-list");
       if (!isUserTyping) {
         players = data.players;
         renderPlayerInputs();
@@ -101,20 +75,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const targetMode = data.mode || data.gameMode;
     if (targetMode) {
-      const targetRadio = document.querySelector(
-        `input[name="phone-mode"][value="${targetMode}"]`,
-      );
+      const targetRadio = document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`);
       if (targetRadio) targetRadio.checked = true;
     }
   });
 
-  // 🎯【サーバー主導】出目が確定してサーバーから回転合図が飛んできた時の処理
   socket.on("spinRoulette", (data) => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
 
-    // 0秒目：即座に回転の角度を計算してアニメーションを開始させる
-    const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
     const stopAngle = targetDegrees[resultNum - 1];
     const currentMod = currentRotation % 360;
     currentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
@@ -123,50 +93,20 @@ window.addEventListener("DOMContentLoaded", () => {
     playMobileRouletteAnimation(resultNum, currentRotation, (finalSteps) => {
       isSpinning = false;
 
-      // ─── ★ここからは3秒後（ルーレットが完全に止まった瞬間）に実行する処理 ───
       if (coupleEventState.active) {
         const p = players[activePlayerIndex];
         if (p) {
           if (coupleEventState.step === 1) {
-            // 1回目：偶数・奇数の判定結果をサーバーへ事後報告
-            socket.emit("coupleRouletteResult", {
-              roomCode: currentRoomCode,
-              playerId: p.id,
-              result: finalSteps,
-            });
+            socket.emit("coupleRouletteResult", { roomCode: currentRoomCode, playerId: p.id, result: finalSteps });
           } else if (coupleEventState.step === 2) {
-            // 2回目：実際の出目（1〜10）を細工せずストレートにサーバーへ事後報告（合否はサーバー側で一元管理）
-            socket.emit("coupleSecondRouletteResult", {
-              roomCode: currentRoomCode,
-              playerId: p.id,
-              result: finalSteps,
-            });
+            socket.emit("coupleSecondRouletteResult", { roomCode: currentRoomCode, playerId: p.id, result: finalSteps });
           }
         }
-      } // 🎯【追加：卒業判定スピン停止時の処理】
-      // 🎯 完全修正：プレイヤーデータ内の graduateChecked フラグを読み込む形へ大修正。
-      // すでに一度判定が終わっている(true)場合は、通常移動として100%確実にhandleRouletteStopへ流します！
-      else if (
-        players[activePlayerIndex] &&
-        players[activePlayerIndex].position === 89 &&
-        players[activePlayerIndex].graduateChecked !== true
-      ) {
+      } 
+      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && players[activePlayerIndex].graduateChecked !== true) {
         const p = players[activePlayerIndex];
-        console.log(
-          `[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`,
-        );
-
-        socket.emit("playerAction", {
-          roomCode: currentRoomCode,
-          action: "graduateRouletteResult",
-          playerId: p.id,
-          result: finalSteps,
-        });
+        socket.emit("playerAction", { roomCode: currentRoomCode, action: "graduateRouletteResult", playerId: p.id, result: finalSteps });
       } else {
-        // 💡 2回目の通常ルーレットが止まった時は、100%確実にこちらへ進んでコマが進みます！
-        console.log(
-          `[スマホ] 移動用の通常ルーレット停止を検知しました。出目: ${finalSteps} でコマを進めます`,
-        );
         handleRouletteStop(finalSteps);
       }
     });
@@ -174,12 +114,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
-      window.hasConfirmedThisTurn = false; // 既存の分岐ロック解除
+      window.hasConfirmedThisTurn = false;
 
-      activePlayerIndex =
-        data.activePlayerIndex !== undefined
-          ? data.activePlayerIndex
-          : activePlayerIndex;
+      activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
       const activeName = data.activePlayerName || `プレイヤー`;
 
       const banner = document.getElementById("current-player-banner");
@@ -191,8 +128,9 @@ window.addEventListener("DOMContentLoaded", () => {
       const nextBtn = document.getElementById("btn-phone-next");
       if (nextBtn) {
         nextBtn.disabled = true;
-        nextBtn.classList.add("hidden");
-        nextBtn.style.display = "none";
+        nextBtn.style.opacity = "0.35";
+        nextBtn.style.pointerEvents = "none";
+        nextBtn.style.filter = "grayscale(80%)";
       }
 
       const resultDisplay = document.getElementById("roulette-result-display");
@@ -200,46 +138,25 @@ window.addEventListener("DOMContentLoaded", () => {
       isSpinning = false;
     }
   });
-
-  // 役職選択ダイアログ受取
   socket.on("showJobChoice", (data) => {
     showJobChoiceDialog(data.jobId, data.jobName, data.playerId);
   });
 
-  // カップルイベント受取（1回目スタート）
   socket.on("showCoupleEvent", (data) => {
-    console.log("サーバーからカップルイベント開始指示を受信しました:", data);
-    coupleEventState = {
-      active: true,
-      step: 1,
-      targetPlayerId: null,
-    };
+    coupleEventState = { active: true, step: 1, targetPlayerId: null };
 
-    // スマホのカードや全体コンテナに 'theme-couple' を付与して見た目をピンクに変身させる
     document.body.classList.add("theme-couple");
-    document
-      .querySelector(".phone-screen .card")
-      ?.classList.add("theme-couple");
+    document.querySelector(".phone-screen .card")?.classList.add("theme-couple");
     document.querySelector(".phone-card")?.classList.add("theme-couple");
 
     const resultDisplay = document.getElementById("roulette-result-display");
     if (resultDisplay) {
-      resultDisplay.innerHTML = `<span style="color: #d81b60; font-weight: bold; font-size: 1.1rem;">
-        💖 カップルチャンス（1回目）<br>偶数を出して告白に進め！
-      </span>`;
+      resultDisplay.innerHTML = `<span style="color: #d81b60; font-weight: bold; font-size: 1.1rem;">💖 カップルチャンス（1回目）<br>偶数を出して告白に進め！</span>`;
     }
   });
 
-  // 偶数だった場合：サーバーから2回目のルーレット開始指示（対応表データ付き）を受信
   socket.on("startCoupleSecondRoulette", (data) => {
-    console.log("スマホ側：告白チャンス！2回目のルーレット指示を受信", data);
-
-    coupleEventState = {
-      active: true,
-      step: 2,
-      targetPlayerId: data.targetPlayerId,
-    };
-
+    coupleEventState = { active: true, step: 2, targetPlayerId: data.targetPlayerId };
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) {
       const descEl = modal.querySelector(".couple-desc");
@@ -252,21 +169,15 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // カップルイベントが完全に終了した時
   socket.on("coupleEventFinished", (data) => {
     alert(data.message);
-
     coupleEventState.active = false;
     coupleEventState.step = 1;
 
-    // イベントが終わったら着せ替えクラスを外して元の通常デザインに戻す
     document.body.classList.remove("theme-couple");
-    document
-      .querySelector(".phone-screen .card")
-      ?.classList.remove("theme-couple");
+    document.querySelector(".phone-screen .card")?.classList.remove("theme-couple");
     document.querySelector(".phone-card")?.classList.remove("theme-couple");
 
-    // モーダルが開いていたら閉じる
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
 
@@ -276,58 +187,31 @@ window.addEventListener("DOMContentLoaded", () => {
     const nextBtn = document.getElementById("btn-phone-next");
     if (nextBtn) {
       nextBtn.disabled = false;
-      nextBtn.classList.remove("hidden");
-      nextBtn.style.display = "block";
+      nextBtn.style.opacity = "1.0";
+      nextBtn.style.pointerEvents = "auto";
+      nextBtn.style.filter = "none";
     }
   });
 
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
-    if (data.activePlayerIndex !== undefined)
-      activePlayerIndex = data.activePlayerIndex;
+    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
-    // 🎯 追加：データ同期が走るたびに、自分が分岐マスにいるか自動チェックする
     if (typeof checkBranchSquareOnTurnStart === "function") {
       checkBranchSquareOnTurnStart();
     }
   });
 
-  // ==========================================================================
-  // 📱 【イベントモーダル仕様変更】「次のプレイヤーへ」ボタン活性・非活性制御
-  // ボタンの物理的な表示・非表示（display）を完全に全廃し、
-  // 半透明の影マスク（opacity / disabled）のオンオフだけで手動進行をコントロールします。
-  // ==========================================================================
-  if (typeof socket !== "undefined") {
-    // 🌟 1. PC側で一斉乾杯モーダル等が出現した瞬間に、スマホ側のボタンの影マスクを解除してピカッと点灯！
-    socket.on("enableNextTurnButton", () => {
-      const btnNext = document.getElementById("btn-next-turn");
-      if (btnNext) {
-        console.log(
-          "[スマホ制御] 特大イベント発生により、次のプレイヤーへボタンを点灯（活性化）します。",
-        );
-        btnNext.disabled = false; // クリック機能を完全開放
-        btnNext.style.opacity = "1.0"; // 本来の明るさに戻して点灯させる
-        btnNext.style.pointerEvents = "auto"; // タップに100%反応するようにする
-        btnNext.style.filter = "none"; // 念のためグレーアウトを完全パージ
-      }
-    });
-
-    // 🌟 2. ターンが新しく切り替わった（あるいは次のルーレットが始まった）瞬間に、自動で半透明の影マスクをかけてロック！
-    socket.on("applyPlayerAction", (data) => {
-      if (data && data.action === "turnUpdated") {
-        const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) {
-          console.log(
-            "[スマホ制御] ターン更新を検知。次のプレイヤーへボタンに影マスクを落としてロック（非活性化）します。",
-          );
-          btnNext.disabled = true; // ボタンのクリック機能を完全に無効化
-          btnNext.style.opacity = "0.35"; // 半透明の影を重ねたようなグレーアウト表示にする
-          btnNext.style.pointerEvents = "none"; // マウスやタップの反応を物理的に遮断
-          btnNext.style.filter = "grayscale(80%)"; // 視覚的に触れない影であることを強調
-        }
-      }
-    });
-  }
+  socket.on("enableNextTurnButton", () => {
+    const btnNext = document.getElementById("btn-phone-next");
+    if (btnNext) {
+      console.log("[スマホ一元制御] 影マスクを解除してボタンを点灯します。");
+      btnNext.disabled = false;
+      btnNext.style.opacity = "1.0";
+      btnNext.style.pointerEvents = "auto";
+      btnNext.style.filter = "none";
+    }
+  });
 });
 
 function joinRoom() {
@@ -343,11 +227,7 @@ function joinRoom() {
 }
 
 function showScreen(targetId) {
-  const screens = [
-    "phone-screen-join",
-    "phone-screen-setup",
-    "phone-screen-play",
-  ];
+  const screens = ["phone-screen-join", "phone-screen-setup", "phone-screen-play"];
   screens.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
@@ -361,7 +241,6 @@ function showScreen(targetId) {
     }
   });
 }
-
 function renderPlayerInputs() {
   const container = document.getElementById("phone-player-list");
   if (!container) return;
@@ -410,62 +289,40 @@ function renderPlayerInputs() {
   });
 }
 
-// 🎯 修正：スマホ側は「IDと名前」のみを身軽に管理（ステータスはサーバーのcreatePlayerに一任）
 function addPlayerRow() {
   const newId = "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-  players.push({
-    id: newId,
-    name: `プレイヤー${players.length + 1}`,
-  });
+  players.push({ id: newId, name: `プレイヤー${players.length + 1}` });
   renderPlayerInputs();
   syncSettingsToServer();
 }
 
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
-  const selectedMode =
-    document.querySelector('input[name="phone-mode"]:checked')?.value ||
-    "normal";
-  socket.emit("updateSettings", {
-    roomCode: currentRoomCode,
-    players: players,
-    mode: selectedMode,
-    gameMode: selectedMode,
-  });
+  const selectedMode = document.querySelector('input[name="phone-mode"]:checked')?.value || "normal";
+  socket.emit("updateSettings", { roomCode: currentRoomCode, players: players, mode: selectedMode, gameMode: selectedMode });
 }
-
-// 🎯 完全修正：ゲームスタート時に1人目（インデックス0）の手番状態をスマホ内部へ強制同期し、1人目のポップアップ不発を100%完全に根絶します！
 function sendStartGame() {
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
-  activePlayerIndex = 0; // 一人目同期
+  activePlayerIndex = 0;
   setTimeout(() => {
-    if (typeof checkBranchSquareOnTurnStart === "function")
-      checkBranchSquareOnTurnStart(null);
+    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(null);
   }, 150);
 }
 
 function requestSpin() {
   if (isSpinning) return;
-
   const spinBtn = document.getElementById("btn-phone-spin");
   if (spinBtn) spinBtn.disabled = true;
-
   const modal = document.getElementById("mobile-couple-event-modal");
   if (modal) modal.style.display = "none";
-
   socket.emit("requestSpinRoulette", { roomCode: currentRoomCode });
 }
 
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
-  const nextBtn = document.getElementById("btn-phone-next");
 
-  if (nextBtn) {
-    nextBtn.classList.add("hidden");
-    nextBtn.style.display = "none";
-  }
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
 
   if (wheel) {
@@ -475,18 +332,20 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
 
   setTimeout(() => {
     if (resultDisplay) resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
-    if (typeof callback === "function") {
-      callback(finalSteps);
-    }
+    if (typeof callback === "function") callback(finalSteps);
   }, 3000);
 }
 
+// 🎯 通常マスの移動ルーレットが止まった瞬間
+// ※元の表示切り替え用の display 命令を完全に全廃！本物のボタンを明るく点灯させます
 function handleRouletteStop(steps) {
   const nextBtn = document.getElementById("btn-phone-next");
   if (nextBtn) {
+    console.log("[スマホ] 通常移動完了。ボタンを点灯（ロック解除）します。");
     nextBtn.disabled = false;
-    nextBtn.classList.remove("hidden");
-    nextBtn.style.display = "block";
+    nextBtn.style.opacity = "1.0";
+    nextBtn.style.pointerEvents = "auto";
+    nextBtn.style.filter = "none";
   }
 }
 
@@ -503,13 +362,11 @@ function updatePhoneStatusDisplay() {
   const hpEl = document.getElementById("phone-current-hp");
   if (hpEl) hpEl.textContent = `${p.currentHp} / ${p.baseCap || 100}`;
 
-  // 🎯 スマホ側の幸福度表示を反映
   const happinessEl = document.getElementById("phone-current-happiness");
   if (happinessEl) {
     happinessEl.textContent = `${p.happiness !== undefined ? p.happiness : 100} pt`;
   }
 }
-
 function showJobChoiceDialog(jobId, jobName, playerId) {
   const overlay = document.getElementById("job-modal-overlay");
   const descEl = document.getElementById("job-modal-desc");
@@ -526,58 +383,44 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   btnNo.parentNode.replaceChild(newBtnNo, btnNo);
 
   newBtnYes.addEventListener("click", () => {
-    socket.emit("playerAction", {
-      roomCode: currentRoomCode,
-      action: "chooseJob",
-      choice: "yes",
-      jobId: jobId,
-      jobName: jobName,
-      playerId: playerId,
-    });
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "yes", jobId: jobId, jobName: jobName, playerId: playerId });
     overlay.style.display = "none";
   });
 
   newBtnNo.addEventListener("click", () => {
-    socket.emit("playerAction", {
-      roomCode: currentRoomCode,
-      action: "chooseJob",
-      choice: "no",
-      playerId: playerId,
-    });
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "no", playerId: playerId });
     overlay.style.display = "none";
   });
 
   overlay.style.display = "flex";
 }
 
+// 🎯 次のプレイヤーへ手動クリック時
+// ※元の display: none 命令を完全抹消！タップされた瞬間は即座に半透明の影マスクロックに戻します
 function sendNextTurn() {
-  socket.emit("playerAction", {
-    roomCode: currentRoomCode,
-    action: "nextTurn",
-  });
+  socket.emit("playerAction", { roomCode: currentRoomCode, action: "nextTurn" });
 
   const nextBtn = document.getElementById("btn-phone-next");
   if (nextBtn) {
     nextBtn.disabled = true;
-    nextBtn.classList.add("hidden");
-    nextBtn.style.display = "none";
+    nextBtn.style.opacity = "0.35";
+    nextBtn.style.pointerEvents = "none";
+    nextBtn.style.filter = "grayscale(80%)";
   }
 }
 
-// ─── controller.js : 開発デバッグ用メニューの指定マスワープ処理（イベント外れ防止・常時監視版） ───
+// 🛠 開発用デバッグワープ
 document.addEventListener("click", (e) => {
-  // クリックされた要素が「ワープボタン」またはその子要素か判定
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
 
   e.preventDefault();
-
   const inputDebugSquare = document.getElementById("input-debug-square");
   if (!inputDebugSquare) return;
 
   const targetVal = inputDebugSquare.value.trim();
   if (targetVal === "") {
-    alert("ワープ先のマス番号（0〜99）を入力してください");
+    alert("ワープ先のマス番号を入力してください");
     return;
   }
 
@@ -587,31 +430,15 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // ルームコードを確実に取得（変数またはURLパラメータから取得）
-  const roomCodeToSend =
-    currentRoomCode ||
-    new URLSearchParams(window.location.search).get("room") ||
-    "";
-
-  console.log(
-    `[デバッグワープ発動] マス: ${targetSquareId}, ルーム: ${roomCodeToSend}`,
-  );
-  socket.emit("debugWarp", {
-    roomCode: roomCodeToSend,
-    targetSquareId: targetSquareId,
-  });
+  const roomCodeToSend = currentRoomCode || new URLSearchParams(window.location.search).get("room") || "";
+  socket.emit("debugWarp", { roomCode: roomCodeToSend, targetSquareId: targetSquareId });
 });
 
-// 🎯 完全修正：画面のHTML状態を直接見張ることで無限ループを100%物理的に完全シャットアウトします
 function checkBranchSquareOnTurnStart(syncData) {
   if (document.getElementById("route-select-modal")) return;
 
-  const currentIdx =
-    syncData && syncData.activePlayerIndex !== undefined
-      ? syncData.activePlayerIndex
-      : activePlayerIndex;
-  const currentPlayers =
-    syncData && syncData.players ? syncData.players : players;
+  const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
+  const currentPlayers = syncData && syncData.players ? syncData.players : players;
 
   if (!currentPlayers || currentPlayers.length === 0) return;
   const p = currentPlayers[currentIdx];
@@ -619,8 +446,7 @@ function checkBranchSquareOnTurnStart(syncData) {
 
   if (window.hasConfirmedThisTurn === true) return;
 
-  const playerPos =
-    p.position !== undefined && p.position !== null ? Number(p.position) : 0;
+  const playerPos = p.position !== undefined && p.position !== null ? Number(p.position) : 0;
   if (playerPos !== 0 && playerPos !== 49) return;
 
   let modalHtml = `
@@ -637,8 +463,7 @@ function checkBranchSquareOnTurnStart(syncData) {
     </div>
   `;
 
-  const playScreenContainer =
-    document.getElementById("phone-screen-play") || document.body;
+  const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
@@ -650,45 +475,24 @@ function checkBranchSquareOnTurnStart(syncData) {
 
   btnA.onclick = () => {
     tempSelectedIdx = 0;
-    btnA.style.borderColor = "#00cb75";
-    btnA.style.background = "#e6f9f1";
-    btnA.style.color = "#00cb75";
-    btnB.style.borderColor = "#ddd";
-    btnB.style.background = "#fff";
-    btnB.style.color = "#333";
-    btnConfirm.disabled = false;
-    btnConfirm.style.background = "#00cb75";
-    btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", {
-      roomCode: currentRoomCode,
-      selectedRouteIndex: 0,
-    });
+    btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
+    btnB.style.borderColor = "#ddd"; btnB.style.background = "#fff"; btnB.style.color = "#333";
+    btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
 
   btnB.onclick = () => {
     tempSelectedIdx = 1;
-    btnB.style.borderColor = "#00cb75";
-    btnB.style.background = "#e6f9f1";
-    btnB.style.color = "#00cb75";
-    btnA.style.borderColor = "#ddd";
-    btnA.style.background = "#fff";
-    btnA.style.color = "#333";
-    btnConfirm.disabled = false;
-    btnConfirm.style.background = "#00cb75";
-    btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", {
-      roomCode: currentRoomCode,
-      selectedRouteIndex: 1,
-    });
+    btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
+    btnA.style.borderColor = "#ddd"; btnA.style.background = "#fff"; btnA.style.color = "#333";
+    btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
-    window.hasConfirmedThisTurn = true; // 確定ロック
-    socket.emit("confirmRouteSelection", {
-      roomCode: currentRoomCode,
-      chosenRouteIdx: tempSelectedIdx,
-    });
+    window.hasConfirmedThisTurn = true;
+    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
     if (modalEl) modalEl.remove();
   };
@@ -696,33 +500,21 @@ function checkBranchSquareOnTurnStart(syncData) {
 
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
-  if (data.activePlayerIndex !== undefined)
-    activePlayerIndex = data.activePlayerIndex;
+  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
   updatePhoneStatusDisplay();
   setTimeout(() => {
-    if (typeof checkBranchSquareOnTurnStart === "function")
-      checkBranchSquareOnTurnStart(data);
+    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
   }, 100);
 });
 
-// 🎯 完全修正：既存の通常移動関数を一切壊さず、卒業確定時専用の独立電波（showGraduateNextButton）で手元に「次へ」ボタンを1発で正常出現させます！
-if (typeof socket !== "undefined") {
-  socket.on("showGraduateNextButton", () => {
-    console.log(
-      "[スマホ] 卒業ゴールに伴う手番終了を検知。交代ボタンを表示します。",
-    );
-
-    // 💡 既存のルーレット待機画面を汚さず、手元の「次のプレイヤーへ」ボタンだけを最前面に1発で直接出現させる！
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) {
-      nextBtn.disabled = false;
-      nextBtn.classList.remove("hidden");
-      nextBtn.style.display = "block";
-    }
-
-    const resultDisplay = document.getElementById("roulette-result-display");
-    if (resultDisplay) {
-      resultDisplay.textContent = "🎉 卒業確定！手元で手番を交代してね！";
-    }
-  });
-}
+socket.on("showGraduateNextButton", () => {
+  const nextBtn = document.getElementById("btn-phone-next");
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = "1.0";
+    nextBtn.style.pointerEvents = "auto";
+    nextBtn.style.filter = "none";
+  }
+  const resultDisplay = document.getElementById("roulette-result-display");
+  if (resultDisplay) resultDisplay.textContent = "🎉 卒業確定！交代してね！";
+});
