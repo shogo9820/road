@@ -805,3 +805,75 @@ if (typeof socket !== "undefined") {
     }
   });
 }
+
+// ==========================================================================
+// 🎯 【新規追記】マスコンポーネント自動実行ハブエンジン
+// 既存のシステムや通信タイミングを1ミリも壊さずに、裏側でJSファイルを動的ロードします。
+// ==========================================================================
+function loadAndApplySquareComponent(squareId, callback) {
+  // 現在のゲームモード（"normal", "short" 等）を取得（なければデフォルトは "normal"）
+  let currentMode = "normal";
+  if (typeof roomCode !== "undefined" && typeof rooms !== "undefined" && rooms[roomCode]) {
+    currentMode = rooms[roomCode].mode || "normal";
+  }
+
+  // すでにブラウザがそのマスのJSをロード済みなら、そのまま即座に次の処理へ
+  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) {
+    if (typeof callback === "function") callback();
+    return;
+  }
+
+  // まだ読み込まれていない場合は、非同期で public/squares/ フォルダからJSスクリプトを動的生成してロード
+  const script = document.createElement("script");
+  script.src = `/squares/sq_${squareId}.js`;
+  
+  script.onload = () => {
+    console.log(`[コンポーネント読込成功] sq_${squareId}.js がシステムに結合されました (Mode: ${currentMode})`);
+    // ロードが完了したら、バトンを既存の処理（callback）へ戻して完全に同じタイミングで実行
+    if (typeof callback === "function") callback();
+  };
+
+  script.onerror = () => {
+    // 万が一、ファイルがまだ空っぽだったり、読み込みエラーが起きてもゲームを絶対にフリーズさせない最強の防壁
+    console.warn(`[ℹ️通知] sq_${squareId}.js がまだ未作成かロードできません。既存のマスターデータで進行します。`);
+    if (typeof callback === "function") callback();
+  };
+
+  document.head.appendChild(script);
+}
+    // 5. コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
+    function finalizeMovement() {
+      // 🎯 【新規配線】着地したマスのコンポーネントJSファイルを裏側で安全に動的ロードさせる！
+      loadAndApplySquareComponent(p.position, () => {
+        
+        // 💡 ロード完了後に、元々あった完璧な着地処理を100%全く同じタイミングで実行します
+        let targetSquare = null;
+        if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
+          targetSquare = MAP_SQUARES[p.position];
+          p.location = targetSquare.location || "";
+          applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
+        }
+
+        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+        renderLocationPlayersList();
+        updateCurrentPlayerDisplay();
+
+        // スマホ役職モーダル大復活
+        if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
+          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+          console.log(`[役職マス通常着地] スマホへ直接役職モーダル出現を指示します: ${jobName}`);
+          socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
+        }
+
+        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
+
+        // 強制ストップマスならPCモーダルを表示
+        if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
+          handleForceStopSquare(p, targetSquare);
+        }
+
+        // 位置データと通常イベント通知をサーバーへ送信
+        triggerDelayedDisplay(resultNum, targetSquare);
+      });
+    }

@@ -1,3 +1,6 @@
+// ==========================================================================
+// 宅飲み人生ゲーム : 盤面Canvas描画＆同期システム（board.js - 前編）
+// ==========================================================================
 window.boardManager = {
   canvas: null, ctx: null, cellSize: 15, previewRouteIdx: null,
   squareColors: {
@@ -52,16 +55,10 @@ window.boardManager = {
 
     // 1. 各道ブロックの通常描画ループ
     MAP_SQUARES.forEach((sq, idx) => {
-      
-      // 🎯【追加：留年ルート動的非表示システム】
-      // 現在手番のプレイヤー（activePlayerIndex）の情報を引き出す
       const currentPlayer = (playersList && playersList[activeIdx]) ? playersList[activeIdx] : null;
-      
-      // 💡 もし描画しようとしているマスが「90番〜98番（留年ルート）」であり、
-      // かつ現在手番のプレイヤーが留年フラグ（isRepeat）を持っていない場合は、画面に描画せず100%完全に隠す（消去）！
       if (idx >= 90 && idx <= 98) {
         if (!currentPlayer || currentPlayer.isRepeat !== true) {
-          return; // 描画をスキップして次のマスの処理へ進む
+          return;
         }
       }
 
@@ -79,23 +76,57 @@ window.boardManager = {
       else if (sq.type === "goal") this.ctx.fillText("GOAL", cx, cy);
       else this.ctx.fillText(sq.id.toString(), cx, cy);
     });
-
     // 2. 独立影マスクのレイヤー重ね描き（位置限定）
     const p = (playersList && playersList[activeIdx]) ? playersList[activeIdx] : null;
     const currentRoute = (this.previewRouteIdx !== null) ? this.previewRouteIdx : (p ? p.chosenRouteIdx : null);
 
     if (p && currentRoute !== null && currentRoute !== undefined) {
-      MAP_SQUARES.forEach((sq, idx) => {
-        const data = this.gridMap[idx]; if (!data) return;
-        if (p.position === 0) {
-          if (currentRoute === 0 && idx >= 8 && idx <= 17) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
-          if (currentRoute === 1 && idx >= 1 && idx <= 7) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
+      // 🎯 現在のゲームモード（"normal" 等）を取得するセーフティ（グローバルに rooms が無い場合の対策付き）
+      let currentMode = "normal";
+      if (typeof rooms !== "undefined" && typeof roomCode !== "undefined" && rooms[roomCode]) {
+        currentMode = rooms[roomCode].mode || "normal";
+      }
+
+      let hasDrawnNewShadow = false;
+
+      // 🌟 新システム：コンポーネント化されたマスのデータが存在するかチェックして動的描画
+      if (window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode]) {
+        const compData = window.SQ_MODULES[p.position][currentMode];
+        
+        if (compData.type === "branch" && compData.shadowTargets) {
+          let targets = [];
+          if (currentRoute === 0 && compData.shadowTargets.routeA) {
+            targets = compData.shadowTargets.routeA;
+          } else if (currentRoute === 1 && compData.shadowTargets.routeB) {
+            targets = compData.shadowTargets.routeB;
+          }
+          
+          // 該当ルートのマス一式に一斉に影を自動重ね描き！
+          MAP_SQUARES.forEach((sq, idx) => {
+            if (targets.includes(idx)) {
+              const data = this.gridMap[idx]; if (!data) return;
+              this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+              this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
+              hasDrawnNewShadow = true;
+            }
+          });
         }
-        if (p.position === 49) {
-          if (currentRoute === 0 && idx >= 59 && idx <= 79) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
-          if (currentRoute === 1 && idx >= 50 && idx <= 58) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
-        }
-      });
+      }
+
+      // 🛡️ 絶対安全ガード（フォールバック）：新システムで影が描画されなかった場合のみ、元の直書きロジックを100%動かす
+      if (!hasDrawnNewShadow) {
+        MAP_SQUARES.forEach((sq, idx) => {
+          const data = this.gridMap[idx]; if (!data) return;
+          if (p.position === 0) {
+            if (currentRoute === 0 && idx >= 8 && idx <= 17) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
+            if (currentRoute === 1 && idx >= 1 && idx <= 7) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
+          }
+          if (p.position === 49) {
+            if (currentRoute === 0 && idx >= 59 && idx <= 79) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
+            if (currentRoute === 1 && idx >= 50 && idx <= 58) { this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize); }
+          }
+        });
+      }
     }
 
     // 3. ピンの描画
@@ -116,7 +147,19 @@ window.boardManager = {
 
   bindSocketListeners() {
     if (typeof socket === "undefined" || this.hasBound) return; this.hasBound = true;
-    socket.on("applyRoutePreview", (data) => { this.previewRouteIdx = data.selectedRouteIndex; if (typeof players !== "undefined") this.draw(players, activePlayerIndex); });
+    socket.on("applyRoutePreview", (data) => { 
+      this.previewRouteIdx = data.selectedRouteIndex; 
+      if (typeof players !== "undefined") {
+        // 先回りでコンポーネントをロードさせるフック（※グローバル関数 loadAndApplySquareComponent が pc.js 側にあれば自動連動）
+        if (typeof loadAndApplySquareComponent === "function") {
+          const activePlayer = players[activePlayerIndex];
+          const currentPos = activePlayer ? activePlayer.position : 0;
+          loadAndApplySquareComponent(currentPos, () => { this.draw(players, activePlayerIndex); });
+        } else {
+          this.draw(players, activePlayerIndex); 
+        }
+      } 
+    });
     socket.on("routeSelectionConfirmed", (data) => { this.previewRouteIdx = null; if (typeof players !== "undefined") this.draw(players, activePlayerIndex); });
   }
 };
