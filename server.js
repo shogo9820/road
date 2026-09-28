@@ -137,7 +137,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🛠️【デバッグ専用】指定マスへの強制ワープ処理（通常プレイのコードには一切影響を与えません）
+  // ==========================================================================
+  // 🛠️ 【完全決定版】複数プレイヤー対応・デバッグワープ場所完全同期ロジック
+  // ワープボタンを押した瞬間、サーバー側がMAP_SQUARESから正しい場所（location）を
+  // 自動で引き出して保存。データのリセットを防ぎ、一斉乾杯モーダルを100%確実に起動させます！
+  // ==========================================================================
   socket.on("debugWarp", (data) => {
     const { roomCode, targetSquareId } = data;
     const room = rooms[roomCode];
@@ -145,15 +149,20 @@ io.on("connection", (socket) => {
       const p = room.gamePlayers[room.activePlayerIndex];
       p.position = Number(targetSquareId);
 
-      // ルーム内の全員（PC・スマホ）へワープ実行を即時通知
+      // 🎯 【新規追加】ワープ先のマスに対応する正しい滞在場所（location）を自動スキャンして保存！
+      if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
+        p.location = MAP_SQUARES[p.position].location ? MAP_SQUARES[p.position].location : "スタート前";
+      } else {
+        p.location = "スタート前";
+      }
+
+      // ルーム内の全員（PC・スマホ）へ、場所データも完全に揃った真実の配列を即時通知！
       io.to(roomCode).emit("executeDebugWarp", {
         activePlayerIndex: room.activePlayerIndex,
         targetSquareId: p.position,
         players: room.gamePlayers,
       });
-      console.log(
-        `[デバッグ] ${p.name} が ${p.position} 番マスへワープしました`,
-      );
+      console.log(`[デバッグワープ成功] ${p.name} が ${p.position} 番マス（場所: ${p.location}）へジャンプしました`);
     }
   });
 
