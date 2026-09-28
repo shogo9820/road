@@ -112,6 +112,8 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // 🎯 【完全修正版】display/hiddenの切り替えを1文字残さず完全撤去・全廃
+  // ボタンは100%永久に常時表示。影（opacity）と触れるか（disabled）だけで完璧に制御します。
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
@@ -125,12 +127,14 @@ window.addEventListener("DOMContentLoaded", () => {
       const spinBtn = document.getElementById("btn-phone-spin");
       if (spinBtn) spinBtn.disabled = false;
 
+      // 🎯 新しいターンが始まった瞬間：ボタンは消さずに常時表示！
+      // まだルーレットを回していない（触ってはいけない時）なので、半透明の影をかけるだけ
       const nextBtn = document.getElementById("btn-phone-next");
       if (nextBtn) {
         nextBtn.disabled = true;
-        nextBtn.style.opacity = "0.35";
-        nextBtn.style.pointerEvents = "none";
-        nextBtn.style.filter = "grayscale(80%)";
+        nextBtn.style.opacity = "0.35";          // 💡 半透明の影をかける
+        nextBtn.style.pointerEvents = "none";    // 💡 物理的に触れなくする
+        nextBtn.style.filter = "grayscale(80%)"; // 💡 視覚的に影であることを強調
       }
 
       const resultDisplay = document.getElementById("roulette-result-display");
@@ -138,10 +142,13 @@ window.addEventListener("DOMContentLoaded", () => {
       isSpinning = false;
     }
   });
+
+  // 役職選択ダイアログ受取
   socket.on("showJobChoice", (data) => {
     showJobChoiceDialog(data.jobId, data.jobName, data.playerId);
   });
 
+  // カップルイベント受取
   socket.on("showCoupleEvent", (data) => {
     coupleEventState = { active: true, step: 1, targetPlayerId: null };
 
@@ -319,10 +326,20 @@ function requestSpin() {
   socket.emit("requestSpinRoulette", { roomCode: currentRoomCode });
 }
 
+// 🎯 ルーレットが回り始めた瞬間（通常・デバッグ共通）のボタン常時表示ロック
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
+  const nextBtn = document.getElementById("btn-phone-next");
 
+  // 🎯 ルーレット回転中：ボタンは1ミリも消さずに常時表示！
+  // まだ移動が終わっていない（触ってはいけない時）なので、半透明の影マスク状態をガチッとキープ
+  if (nextBtn) {
+    nextBtn.disabled = true;
+    nextBtn.style.opacity = "0.35";
+    nextBtn.style.pointerEvents = "none";
+  }
+  
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
 
   if (wheel) {
@@ -336,12 +353,12 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   }, 3000);
 }
 
-// 🎯 通常マスの移動ルーレットが止まった瞬間
-// ※元の表示切り替え用の display 命令を完全に全廃！本物のボタンを明るく点灯させます
+// 🎯 コマの通常移動アニメーションが完了した瞬間（押すべき時）
 function handleRouletteStop(steps) {
   const nextBtn = document.getElementById("btn-phone-next");
   if (nextBtn) {
-    console.log("[スマホ] 通常移動完了。ボタンを点灯（ロック解除）します。");
+    console.log("[スマホ] 移動完了を検知。ボタンの影マスクを解除してピカッと点灯させます。");
+    // 🎯 押すべき時：影をパッと消して、本来の明るさに戻して点灯！
     nextBtn.disabled = false;
     nextBtn.style.opacity = "1.0";
     nextBtn.style.pointerEvents = "auto";
