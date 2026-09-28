@@ -496,36 +496,39 @@ function executeSyncedRoulette(resultNum) {
 }
 
 // ==========================================================================
-// 🎯 【完全決定版】手番交代時の場所リセットバグ完全修正コード
-// ルームにいる全プレイヤーの最新の滞在場所（location）をサーバーへ100%完璧に同期し、
-// 他人の場所が「スタート前」に巻き戻るフリーズ現象を物理的に完全消滅させます。
+// 🎯 【最終決定版】複数プレイヤー位置巻き戻しバグ完全粉砕コード
+// 手番プレイヤー本人の最新データのみをピンポイントでサーバーへ報告し、
+// 他のプレイヤーの位置や滞在場所が「0（スタート前）」にリセットされるのを物理的に100%防ぎます。
 // ==========================================================================
 function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
+
+  const p = players[activePlayerIndex];
+  if (!p) return;
 
   const eventBox = document.getElementById("event-text");
   if (eventBox) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
   }
 
-  // 🎯 【大修正】手番本人だけでなく、現在PC画面（メモリ）が持っている
-  // ルームにいる「全員の最新の滞在場所（pl.location）」を何一つ落とさずにそのままサーバーへ送る！
+  // 🎯 【超重要修正】他人のデータを汚す map ループを完全に撤去！
+  // 現在の手番プレイヤー（本人）の最新の位置と場所データだけを、サーバーへ安全に報告！
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
-    players: players.map(pl => ({
-      id: pl.id, 
-      position: pl.position, 
-      location: pl.location ? pl.location : "スタート前", // 👈 🎯ここ！全員の最新の滞在場所を確実に保護して送信！
-      currentHp: pl.currentHp, 
-      drinkCount: pl.drinkCount,
-      happiness: pl.happiness !== undefined ? pl.happiness : 100, 
-      isLover: pl.isLover, 
-      skipTurn: pl.skipTurn,
-      hasJob: pl.hasJob !== undefined ? pl.hasJob : false, 
-      jobId: pl.jobId || null, 
-      job: pl.job || "モブ"
-    }))
+    players: [{
+      id: p.id,
+      position: p.position,
+      location: targetSquare.location ? targetSquare.location : "スタート前",
+      currentHp: p.currentHp,
+      drinkCount: p.drinkCount,
+      happiness: p.happiness !== undefined ? p.happiness : 100,
+      isLover: p.isLover,
+      skipTurn: p.skipTurn,
+      hasJob: p.hasJob !== undefined ? p.hasJob : false,
+      jobId: p.jobId || null,
+      job: p.job || "モブ"
+    }]
   });
 
   if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
@@ -536,11 +539,10 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     });
   }
 
-  // すべての処理が終わったあとに先回りで非同期ロード（安全な既存システム）
-  if (typeof loadAndApplySquareComponent === "function" && players && players[activePlayerIndex]) {
-    const currentPosition = players[activePlayerIndex].position;
-    loadAndApplySquareComponent(currentPosition, () => {
-      console.log(`[先回り完了] マス ${currentPosition} のコンポーネントのロードに成功しました。`);
+  // 裏側での先回り非同期ロード（安全な既存システム）
+  if (typeof loadAndApplySquareComponent === "function") {
+    loadAndApplySquareComponent(p.position, () => {
+      console.log(`[先回り完了] マス ${p.position} のコンポーネントのロードに成功しました。`);
     });
   }
 }
