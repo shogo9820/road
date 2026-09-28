@@ -349,16 +349,19 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   }, 3000);
 }
 
-// 🎯 コマの通常移動アニメーションが完了した瞬間（押すべき時）
+// 🎯 【タイミング①：通常マスの移動完了時】
+// 止まったマスが分岐(0,49)でも役職マス(1〜17)でもない場合のみ、移動完了で即時点灯させます。
 function handleRouletteStop(steps) {
-  const nextBtn = document.getElementById("btn-phone-next");
-  if (nextBtn) {
-    console.log("[スマホ] 移動完了を検知。ボタンの影マスクを解除してピカッと点灯させます。");
-    // 🎯 押すべき時：影をパッと消して、本来の明るさに戻して点灯！
-    nextBtn.disabled = false;
-    nextBtn.style.opacity = "1.0";
-    nextBtn.style.pointerEvents = "auto";
-    nextBtn.style.filter = "none";
+  const p = players[activePlayerIndex];
+  const pos = p ? Number(p.position) : 0;
+
+  // 分岐マスと役職マス(1〜17)は、スマホ側で選択を確定するまで絶対にボタンを点灯させない！
+  if (pos !== 0 && pos !== 49 && !(pos >= 1 && pos <= 17)) {
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) {
+      console.log("[進行精査] 通常マスの移動完了を確認。次のプレイヤーへボタンを開放します。");
+      nextBtn.disabled = false; // 🔓 点灯
+    }
   }
 }
 
@@ -395,14 +398,23 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   btnYes.parentNode.replaceChild(newBtnYes, btnYes);
   btnNo.parentNode.replaceChild(newBtnNo, btnNo);
 
+  // 🎯 【タイミング②：役職の選択完了時】
+  // 「はい」を押して就職処理が完了した瞬間に、ボタンのロックを安全に解除！
   newBtnYes.addEventListener("click", () => {
     socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "yes", jobId: jobId, jobName: jobName, playerId: playerId });
     overlay.style.display = "none";
+    
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) nextBtn.disabled = false; // 🔓 点灯
   });
 
+  // 「いいえ」を押して辞退した瞬間に、ボタンのロックを安全に解除！
   newBtnNo.addEventListener("click", () => {
     socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "no", playerId: playerId });
     overlay.style.display = "none";
+    
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) nextBtn.disabled = false; // 🔓 点灯
   });
 
   overlay.style.display = "flex";
@@ -502,12 +514,20 @@ function checkBranchSquareOnTurnStart(syncData) {
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
 
+  // 🎯 【タイミング③：進路のルート確定時】
+  // スマホ画面でAまたはBルートの確定ボタンが押されたまさにその瞬間に、ボタンのロックを安全に解除！
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     const modalEl = document.getElementById("route-select-modal");
     if (modalEl) modalEl.remove();
+    
+    const nextBtn = document.getElementById("btn-phone-next");
+    if (nextBtn) {
+      console.log("[進行精査] 進路確定を確認。次のプレイヤーへボタンを開放します。");
+      nextBtn.disabled = false; // 🔓 点灯
+    }
   };
 }
 
