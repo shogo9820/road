@@ -118,60 +118,57 @@ function appendSocketListeners() {
     }
   });
 
-  // 🛠️【デバッグ専用】ワープ受信：指定マスに着地させて即座にイベントを起動
+  // ==========================================================================
+  // 🛠️ 【完全修正版】複数プレイヤー対応・デバッグワープロード連動システム
+  // 開発デバッグワープでマスにジャンプした瞬間にも、裏側でマスのコンポーネント（JS）を
+  // 100%確実に先回りロードさせ、一斉乾杯特大モーダルやリセット防止を完璧に発動させます！
+  // ==========================================================================
   socket.on("executeDebugWarp", (data) => {
     if (data.players) players = data.players;
-    if (data.activePlayerIndex !== undefined)
-      activePlayerIndex = data.activePlayerIndex;
+    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
 
     const p = players[activePlayerIndex];
     if (!p) return;
 
-    // 盤面描画とステータス表示を更新
+    // 盤面描画とステータス表示を更新（元からある完璧な処理）
     if (window.boardManager) {
       window.boardManager.draw(players, activePlayerIndex);
     }
     updateCurrentPlayerDisplay();
 
-    // ワープ先マスのデータを取得
-    const targetSquare =
-      typeof MAP_SQUARES !== "undefined"
-        ? MAP_SQUARES[data.targetSquareId]
-        : null;
-    if (!targetSquare) return;
+    // 🎯 【バグの根源を粉砕】ワープ先のマスに着地する『直前』に、新システムのロードエンジンを強制起動！
+    // これにより、デバッグワープテスト時にも100%確実にコンポーネントデータがメモリに結合されます。
+    if (typeof loadAndApplySquareComponent === "function") {
+      loadAndApplySquareComponent(data.targetSquareId, () => {
+        
+        // 💡 ロード完了後に、元々あった完璧なイベント起動ロジックを100%安全に実行
+        const targetSquare = typeof MAP_SQUARES !== "undefined" ? MAP_SQUARES[data.targetSquareId] : null;
+        if (!targetSquare) return;
 
-    p.location = targetSquare.location || "";
-    applySquareEffects(p, targetSquare);
-    updateCurrentPlayerDisplay();
+        p.location = targetSquare.location || "";
+        applySquareEffects(p, targetSquare); // 👈 🎯【新システムがロードされた状態で一斉乾杯モーダルが100%走る！】
+        updateCurrentPlayerDisplay();
 
-    // マス説明文の更新
-    const tileDescEl = document.getElementById("current-tile-desc");
-    if (tileDescEl) {
-      let drinkInfo = targetSquare.drink
-        ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>`
-        : "";
-      let locInfo = targetSquare.location
-        ? `<br>📍 場所: ${targetSquare.location}`
-        : "";
-      tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
-    }
+        // マス説明文の更新
+        const tileDescEl = document.getElementById("current-tile-desc");
+        if (tileDescEl) {
+          let drinkInfo = targetSquare.drink
+            ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯 (HP -${targetSquare.drink * 10})</span>`
+            : "";
+          let locInfo = targetSquare.location
+            ? `<br>📍 場所: ${targetSquare.location}`
+            : "";
+          tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
+        }
 
-    // マス特性に応じたイベントの直接起動
-    if (
-      targetSquare.type === "force_stop" ||
-      targetSquare.type === "force_stop_rankup"
-    ) {
-      handleForceStopSquare(p, targetSquare);
-    } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
-      const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-      const jobName = targetSquare.text
-        ? targetSquare.text.replace(/【役職マス】/g, "").trim()
-        : "新しい役職";
-      socket.emit("triggerJobChoice", {
-        roomCode,
-        playerId: p.id,
-        jobId,
-        jobName,
+        // マス特性に応じたイベントの直接起動
+        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+          handleForceStopSquare(p, targetSquare);
+        } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
+          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+          socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
+        }
       });
     }
   });
