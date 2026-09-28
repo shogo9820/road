@@ -108,12 +108,16 @@ function appendSocketListeners() {
     }
   });
 
+  // 💡 【新規追記】スマホで「次のプレイヤーへ」が手動クリックされた電波をキャッチ！
+  // サーバーからターン更新（turnUpdated）の電波が降ってきた瞬間に、PC大画面の特大乾杯モーダルを100%確実に非表示消去します。
   socket.on("applyPlayerAction", (data) => {
     if (data && data.action === "turnUpdated") {
-      activePlayerIndex = data.activePlayerIndex;
-      updateCurrentPlayerDisplay();
-      if (window.boardManager) {
-        window.boardManager.draw(players, activePlayerIndex);
+      console.log("[大画面イベント手動終了] スマホ操作を検知。一斉乾杯モーダルをクローズします。");
+      isPCEventMode = false;
+      const pcModal = document.getElementById("pc-event-modal");
+      if (pcModal) {
+        pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
+        pcModal.style.display = "none"; // 確実に大画面のポップアップを消去！
       }
     }
   });
@@ -556,9 +560,9 @@ socket.on("syncGameState", (data) => {
 });
 
 // ==========================================================================
-// 🍻 【完全修正版】場所自動スキャン型・一斉乾杯モーダルシステム
-// 同じ場所に2人以上が集まった瞬間、名前を自動集計して大画面中央に特大モーダルを展開！
-// 巻き込まれた全員のお酒を＋1杯し、他の全ゲーム機能を完璧に保護します。
+// 🍻 【完全手動進行版】場所自動スキャン型・一斉乾杯モーダルシステム
+// 自動消滅タイマーを完全全廃。大画面中央に特大乾杯モーダルを展開すると同時に、
+// 操作権を持つスマホ側の「次のプレイヤーへ」ボタンを即座にアクティブ点灯させます。
 // ==========================================================================
 function applySquareEffects(player, square) {
   // 1. お酒ペナルティの適用（元からある完璧な処理）
@@ -589,12 +593,11 @@ function applySquareEffects(player, square) {
     alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
   }
 
-  // 🎯 4. 【新規追加】同じ場所にいる人で一斉乾杯＆特大モーダル出現システム
-  // ※ 除外する場所パターン（「家」「スタート前」「-」または空っぽは除外）
+  // 🎯 4. 【仕様変更】同じ場所にいる人での一斉乾杯＆スマホ手動進行システム
   const loc = square.location ? square.location.trim() : "";
   if (loc !== "" && loc !== "家" && loc !== "スタート前" && loc !== "-") {
     
-    // 現在同じ場所に滞在しているプレイヤー（手番プレイヤー自身を含む）を自動でスキャンして集計
+    // 現在同じ場所に滞在しているプレイヤー（サーバー同期済みの最新位置）を自動でスキャン
     const drinkingBuddies = players.filter(p => p && p.location && p.location.trim() === loc);
     
     // 自分を含めて2人以上がその場所に揃った場合、特大乾杯イベントを発動！
@@ -602,13 +605,6 @@ function applySquareEffects(player, square) {
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
         isPCEventMode = true;
-
-        // ターン交代の次へボタンを一旦無効化（乾杯をちゃんと確認させるため）
-        const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) {
-          btnNext.disabled = true;
-          btnNext.style.display = "none";
-        }
 
         // 🍻 乾杯に参加する全員の名前を綺麗にリストアップ
         const buddyNames = drinkingBuddies.map(p => `👤 ${p.name}`).join("、");
@@ -638,32 +634,29 @@ function applySquareEffects(player, square) {
             p.currentHp = Math.max(0, p.currentHp - 10);
           }
           
-          // もしこの巻き込み乾杯で肝臓HPが0になって潰れた人がいたら、安全に潰れペナルティを起動
           if (p.currentHp !== undefined && p.currentHp <= 0) {
             if (p.happiness === undefined) p.happiness = 100;
             p.happiness = Math.max(0, p.happiness - 30);
             p.skipTurn = true;
             const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);
             p.currentHp = maxHp;
-            console.log(`[乾杯潰れ] ${p.name} が巻き込み乾杯により急性アルコール中毒で潰れました。`);
           }
         });
 
-        // 3秒間しっかり大画面で乾杯の余韻を楽しませてから、手元の操作や次へボタンを自動復旧させる
-        setTimeout(() => {
-          pcModal.className = "event-modal-overlay";
-          pcModal.style.display = "none";
-          isPCEventMode = false;
-
-          if (btnNext) {
-            btnNext.disabled = false;
-            btnNext.style.display = "block";
-          }
-          // 最新の乾杯ペナルティ数値を全員の画面へ反映
-          updateCurrentPlayerDisplay();
-        }, 3500);
+        // 💡 変更の核心：勝手に消える setTimeout タイマーを完全に全廃！
+        // 乾杯演出が完了したこの瞬間に、サーバー経由でスマホへ「次のプレイヤーへ」ボタンを明るく点灯させろ！と通知を飛ばします。
+        // ※ サーバー側の playerAction (showGraduateNextButton) の仕組みを綺麗に再利用して、スマホのボタンロックを安全に解除させます。
+        if (typeof socket !== "undefined") {
+          socket.emit("playerAction", {
+            roomCode: roomCode,
+            action: "showGraduateNextButton" // 👈 スマホ側に「次へ」ボタンを1発で強制出現させる既存の最強電波
+          });
+        }
 
         pcModal.style.display = "flex";
+        
+        // 画面左カラムの数値を最新の杯数に即座に更新反映
+        updateCurrentPlayerDisplay();
       }
     }
   }
