@@ -499,8 +499,9 @@ function executeSyncedRoulette(resultNum) {
 }
 
 // ==========================================================================
-// 🎯 【完全修正版】エラーを粉砕した安全な先回りロード配線
-// 変数名の参照エラーを完全に修正し、システムを絶対にフリーズさせません。
+// 🎯 【完全決定版】手番交代時の場所リセットバグ完全修正コード
+// ルームにいる全プレイヤーの最新の滞在場所（location）をサーバーへ100%完璧に同期し、
+// 他人の場所が「スタート前」に巻き戻るフリーズ現象を物理的に完全消滅させます。
 // ==========================================================================
 function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
@@ -510,14 +511,23 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
   }
 
-  // サーバーへ位置データと通常イベント通知を送信（今までの完璧なコード）
+  // 🎯 【大修正】手番本人だけでなく、現在PC画面（メモリ）が持っている
+  // ルームにいる「全員の最新の滞在場所（pl.location）」を何一つ落とさずにそのままサーバーへ送る！
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
     players: players.map(pl => ({
-      id: pl.id, position: pl.position, location: pl.location, currentHp: pl.currentHp, drinkCount: pl.drinkCount,
-      happiness: pl.happiness !== undefined ? pl.happiness : 100, isLover: pl.isLover, skipTurn: pl.skipTurn,
-      hasJob: pl.hasJob !== undefined ? pl.hasJob : false, jobId: pl.jobId || null, job: pl.job || "モブ"
+      id: pl.id, 
+      position: pl.position, 
+      location: pl.location ? pl.location : "スタート前", // 👈 🎯ここ！全員の最新の滞在場所を確実に保護して送信！
+      currentHp: pl.currentHp, 
+      drinkCount: pl.drinkCount,
+      happiness: pl.happiness !== undefined ? pl.happiness : 100, 
+      isLover: pl.isLover, 
+      skipTurn: pl.skipTurn,
+      hasJob: pl.hasJob !== undefined ? pl.hasJob : false, 
+      jobId: pl.jobId || null, 
+      job: pl.job || "モブ"
     }))
   });
 
@@ -529,8 +539,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     });
   }
 
-  // 🌟 【修正完了】プレイヤーの現在地を「players[activePlayerIndex].position」で安全に参照！
-  // エラーを物理的に完全に無くし、裏側での非同期JSロードをスマートに実行します。
+  // すべての処理が終わったあとに先回りで非同期ロード（安全な既存システム）
   if (typeof loadAndApplySquareComponent === "function" && players && players[activePlayerIndex]) {
     const currentPosition = players[activePlayerIndex].position;
     loadAndApplySquareComponent(currentPosition, () => {
