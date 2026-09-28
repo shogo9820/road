@@ -338,9 +338,9 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 📍 【完全決定版】複数プレイヤー場所リセット巻き戻しバグ完全粉砕ロジック
-  // PC側から他人の location データが一時的に届かないタイミングであっても、
-  // サーバー側が保持している最新の滞在場所を絶対に破壊（リセット）せず完全に守り抜きます。
+  // 📍 【最終決定版】データ一元管理型・場所リセットバグ完全粉砕ロジック
+  // PC側からの位置報告をトリガーに、サーバー側がMAP_SQUARESから正確な場所を自動引き出し。
+  // 他人の場所を1ミリも破壊せず、完全にサーバー主導で正しい滞在場所を固定・死守します。
   // ==========================================================================
   socket.on("updateGameState", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -351,18 +351,19 @@ io.on("connection", (socket) => {
             (p) => String(p.id) === String(updatedP.id)
           );
           if (target) {
+            // 位置の更新
             target.position = updatedP.position !== undefined ? updatedP.position : target.position;
             
-            // 🎯 【超重要修正】もし届いたデータが「スタート前」や「空っぽ」であっても、
-            // ターゲット（元々そこにいた他プレイヤー）がすでに居酒屋などの場所（家やスタート前以外）に滞在している場合は、
-            // 古いデータで上書き（リセット）せず、元々保持していた正しい場所を100%完全に保護・維持する！
-            if (updatedP.location && updatedP.location !== "スタート前" && updatedP.location !== "") {
-              target.location = updatedP.location;
+            // 🎯 【バグの根源を粉砕】現在の位置（position）に対応する正しいマスデータを gameMaster から自動検索！
+            if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[target.position]) {
+              const matchedSquare = MAP_SQUARES[target.position];
+              // マスに場所（location）が設定されていればそれを適用、無ければ初期値の「スタート前」
+              target.location = matchedSquare.location ? matchedSquare.location : "スタート前";
             } else {
-              // 届いたデータが空、かつサーバー側にもまだ場所が無い場合のみ初期値を適用
               target.location = target.location ? target.location : "スタート前";
             }
 
+            // その他のステータス同期（完璧な既存ロジックを完全保護）
             target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
             target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
             target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;
@@ -378,7 +379,7 @@ io.on("connection", (socket) => {
         rooms[roomCode].activePlayerIndex = data.activePlayerIndex;
       }
 
-      // 完全に保護された状態のプレイヤーデータを全員（PC・スマホ）へ一斉同期！
+      // 完全にサーバー主導で場所が死守された「真実のプレイヤーデータ」を Room 全員へ一斉同期！
       io.to(roomCode).emit("syncGameState", {
         players: rooms[roomCode].gamePlayers,
         activePlayerIndex: rooms[roomCode].activePlayerIndex,
