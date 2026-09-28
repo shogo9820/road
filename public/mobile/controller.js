@@ -143,23 +143,30 @@ window.addEventListener("DOMContentLoaded", () => {
             });
           }
         }
-      }       // 🎯【追加：卒業判定スピン停止時の処理】
+      } // 🎯【追加：卒業判定スピン停止時の処理】
       // 🎯 完全修正：プレイヤーデータ内の graduateChecked フラグを読み込む形へ大修正。
       // すでに一度判定が終わっている(true)場合は、通常移動として100%確実にhandleRouletteStopへ流します！
-      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && players[activePlayerIndex].graduateChecked !== true) {
+      else if (
+        players[activePlayerIndex] &&
+        players[activePlayerIndex].position === 89 &&
+        players[activePlayerIndex].graduateChecked !== true
+      ) {
         const p = players[activePlayerIndex];
-        console.log(`[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`);
-        
+        console.log(
+          `[スマホ] 卒業判定ルーレットが停止しました。出目: ${finalSteps} をサーバーへ送信します`,
+        );
+
         socket.emit("playerAction", {
           roomCode: currentRoomCode,
           action: "graduateRouletteResult",
           playerId: p.id,
-          result: finalSteps
+          result: finalSteps,
         });
-      }
-      else {
+      } else {
         // 💡 2回目の通常ルーレットが止まった時は、100%確実にこちらへ進んでコマが進みます！
-        console.log(`[スマホ] 移動用の通常ルーレット停止を検知しました。出目: ${finalSteps} でコマを進めます`);
+        console.log(
+          `[スマホ] 移動用の通常ルーレット停止を検知しました。出目: ${finalSteps} でコマを進めます`,
+        );
         handleRouletteStop(finalSteps);
       }
     });
@@ -168,8 +175,11 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false; // 既存の分岐ロック解除
-      
-      activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+
+      activePlayerIndex =
+        data.activePlayerIndex !== undefined
+          ? data.activePlayerIndex
+          : activePlayerIndex;
       const activeName = data.activePlayerName || `プレイヤー`;
 
       const banner = document.getElementById("current-player-banner");
@@ -281,6 +291,43 @@ window.addEventListener("DOMContentLoaded", () => {
       checkBranchSquareOnTurnStart();
     }
   });
+
+  // ==========================================================================
+  // 📱 【イベントモーダル仕様変更】「次のプレイヤーへ」ボタン活性・非活性制御
+  // ボタンの物理的な表示・非表示（display）を完全に全廃し、
+  // 半透明の影マスク（opacity / disabled）のオンオフだけで手動進行をコントロールします。
+  // ==========================================================================
+  if (typeof socket !== "undefined") {
+    // 🌟 1. PC側で一斉乾杯モーダル等が出現した瞬間に、スマホ側のボタンの影マスクを解除してピカッと点灯！
+    socket.on("enableNextTurnButton", () => {
+      const btnNext = document.getElementById("btn-next-turn");
+      if (btnNext) {
+        console.log(
+          "[スマホ制御] 特大イベント発生により、次のプレイヤーへボタンを点灯（活性化）します。",
+        );
+        btnNext.disabled = false; // クリック機能を完全開放
+        btnNext.style.opacity = "1.0"; // 本来の明るさに戻して点灯させる
+        btnNext.style.pointerEvents = "auto"; // タップに100%反応するようにする
+        btnNext.style.filter = "none"; // 念のためグレーアウトを完全パージ
+      }
+    });
+
+    // 🌟 2. ターンが新しく切り替わった（あるいは次のルーレットが始まった）瞬間に、自動で半透明の影マスクをかけてロック！
+    socket.on("applyPlayerAction", (data) => {
+      if (data && data.action === "turnUpdated") {
+        const btnNext = document.getElementById("btn-next-turn");
+        if (btnNext) {
+          console.log(
+            "[スマホ制御] ターン更新を検知。次のプレイヤーへボタンに影マスクを落としてロック（非活性化）します。",
+          );
+          btnNext.disabled = true; // ボタンのクリック機能を完全に無効化
+          btnNext.style.opacity = "0.35"; // 半透明の影を重ねたようなグレーアウト表示にする
+          btnNext.style.pointerEvents = "none"; // マウスやタップの反応を物理的に遮断
+          btnNext.style.filter = "grayscale(80%)"; // 視覚的に触れない影であることを強調
+        }
+      }
+    });
+  }
 });
 
 function joinRoom() {
@@ -392,7 +439,10 @@ function sendStartGame() {
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
   activePlayerIndex = 0; // 一人目同期
-  setTimeout(() => { if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(null); }, 150);
+  setTimeout(() => {
+    if (typeof checkBranchSquareOnTurnStart === "function")
+      checkBranchSquareOnTurnStart(null);
+  }, 150);
 }
 
 function requestSpin() {
@@ -556,16 +606,21 @@ document.addEventListener("click", (e) => {
 function checkBranchSquareOnTurnStart(syncData) {
   if (document.getElementById("route-select-modal")) return;
 
-  const currentIdx = (syncData && syncData.activePlayerIndex !== undefined) ? syncData.activePlayerIndex : activePlayerIndex;
-  const currentPlayers = (syncData && syncData.players) ? syncData.players : players;
-  
+  const currentIdx =
+    syncData && syncData.activePlayerIndex !== undefined
+      ? syncData.activePlayerIndex
+      : activePlayerIndex;
+  const currentPlayers =
+    syncData && syncData.players ? syncData.players : players;
+
   if (!currentPlayers || currentPlayers.length === 0) return;
   const p = currentPlayers[currentIdx];
   if (!p) return;
 
   if (window.hasConfirmedThisTurn === true) return;
 
-  const playerPos = (p.position !== undefined && p.position !== null) ? Number(p.position) : 0;
+  const playerPos =
+    p.position !== undefined && p.position !== null ? Number(p.position) : 0;
   if (playerPos !== 0 && playerPos !== 49) return;
 
   let modalHtml = `
@@ -582,7 +637,8 @@ function checkBranchSquareOnTurnStart(syncData) {
     </div>
   `;
 
-  const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
+  const playScreenContainer =
+    document.getElementById("phone-screen-play") || document.body;
   const oldModal = document.getElementById("route-select-modal");
   if (oldModal) oldModal.remove();
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
@@ -594,24 +650,45 @@ function checkBranchSquareOnTurnStart(syncData) {
 
   btnA.onclick = () => {
     tempSelectedIdx = 0;
-    btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
-    btnB.style.borderColor = "#ddd";    btnB.style.background = "#fff";    btnB.style.color = "#333";
-    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
+    btnA.style.borderColor = "#00cb75";
+    btnA.style.background = "#e6f9f1";
+    btnA.style.color = "#00cb75";
+    btnB.style.borderColor = "#ddd";
+    btnB.style.background = "#fff";
+    btnB.style.color = "#333";
+    btnConfirm.disabled = false;
+    btnConfirm.style.background = "#00cb75";
+    btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", {
+      roomCode: currentRoomCode,
+      selectedRouteIndex: 0,
+    });
   };
 
   btnB.onclick = () => {
     tempSelectedIdx = 1;
-    btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
-    btnA.style.borderColor = "#ddd";    btnA.style.background = "#fff";    btnA.style.color = "#333";
-    btnConfirm.disabled = false;        btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
+    btnB.style.borderColor = "#00cb75";
+    btnB.style.background = "#e6f9f1";
+    btnB.style.color = "#00cb75";
+    btnA.style.borderColor = "#ddd";
+    btnA.style.background = "#fff";
+    btnA.style.color = "#333";
+    btnConfirm.disabled = false;
+    btnConfirm.style.background = "#00cb75";
+    btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", {
+      roomCode: currentRoomCode,
+      selectedRouteIndex: 1,
+    });
   };
 
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true; // 確定ロック
-    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
+    socket.emit("confirmRouteSelection", {
+      roomCode: currentRoomCode,
+      chosenRouteIdx: tempSelectedIdx,
+    });
     const modalEl = document.getElementById("route-select-modal");
     if (modalEl) modalEl.remove();
   };
@@ -619,16 +696,22 @@ function checkBranchSquareOnTurnStart(syncData) {
 
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
-  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+  if (data.activePlayerIndex !== undefined)
+    activePlayerIndex = data.activePlayerIndex;
   updatePhoneStatusDisplay();
-  setTimeout(() => { if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data); }, 100);
+  setTimeout(() => {
+    if (typeof checkBranchSquareOnTurnStart === "function")
+      checkBranchSquareOnTurnStart(data);
+  }, 100);
 });
 
 // 🎯 完全修正：既存の通常移動関数を一切壊さず、卒業確定時専用の独立電波（showGraduateNextButton）で手元に「次へ」ボタンを1発で正常出現させます！
 if (typeof socket !== "undefined") {
   socket.on("showGraduateNextButton", () => {
-    console.log("[スマホ] 卒業ゴールに伴う手番終了を検知。交代ボタンを表示します。");
-    
+    console.log(
+      "[スマホ] 卒業ゴールに伴う手番終了を検知。交代ボタンを表示します。",
+    );
+
     // 💡 既存のルーレット待機画面を汚さず、手元の「次のプレイヤーへ」ボタンだけを最前面に1発で直接出現させる！
     const nextBtn = document.getElementById("btn-phone-next");
     if (nextBtn) {
@@ -636,7 +719,7 @@ if (typeof socket !== "undefined") {
       nextBtn.classList.remove("hidden");
       nextBtn.style.display = "block";
     }
-    
+
     const resultDisplay = document.getElementById("roulette-result-display");
     if (resultDisplay) {
       resultDisplay.textContent = "🎉 卒業確定！手元で手番を交代してね！";

@@ -560,9 +560,9 @@ socket.on("syncGameState", (data) => {
 });
 
 // ==========================================================================
-// 🍻 【完全手動進行版】場所自動スキャン型・一斉乾杯モーダルシステム
-// 自動消滅タイマーを完全全廃。大画面中央に特大乾杯モーダルを展開すると同時に、
-// 操作権を持つスマホ側の「次のプレイヤーへ」ボタンを即座にアクティブ点灯させます。
+// 🍻 【イベントモーダル仕様変更版】場所自動スキャン型・一斉乾杯演出
+// 勝手に消える自動消滅タイマーを完全全廃。大画面に特大モーダルを展開した瞬間、
+// スマホ子機側の「次のプレイヤーへ」ボタンを点灯（ロック解除）させる専用シグナルを送信します。
 // ==========================================================================
 function applySquareEffects(player, square) {
   // 1. お酒ペナルティの適用（元からある完璧な処理）
@@ -593,11 +593,11 @@ function applySquareEffects(player, square) {
     alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
   }
 
-  // 🎯 4. 【仕様変更】同じ場所にいる人での一斉乾杯＆スマホ手動進行システム
+  // 🎯 4. 同じ場所にいる人での一斉乾杯演出（ボタンが消えない影マスク連動仕様）
   const loc = square.location ? square.location.trim() : "";
   if (loc !== "" && loc !== "家" && loc !== "スタート前" && loc !== "-") {
     
-    // 現在同じ場所に滞在しているプレイヤー（サーバー同期済みの最新位置）を自動でスキャン
+    // 現在同じ場所に滞在している全プレイヤーを自動でスキャン
     const drinkingBuddies = players.filter(p => p && p.location && p.location.trim() === loc);
     
     // 自分を含めて2人以上がその場所に揃った場合、特大乾杯イベントを発動！
@@ -612,7 +612,7 @@ function applySquareEffects(player, square) {
         // モーダルのテーマをド派手なランクアップカラー（オレンジ）に強制着せ替え
         pcModal.className = "event-modal-overlay active theme-rankup";
 
-        // HTML要素を動的に書き換えて特大ポップアップを中央に生成！
+        // HTML要素を動的に書き換えて特大ポップアップを中央に生成
         const titleEl = document.getElementById("modal-event-title");
         const descEl = document.getElementById("modal-event-desc");
         if (titleEl) titleEl.textContent = "🍻 特大乾杯イベント発生！ 🍻";
@@ -626,7 +626,7 @@ function applySquareEffects(player, square) {
           `;
         }
 
-        // 🎯 巻き込まれた全員のお酒の杯数をプラス1杯（肝臓HPマイナス10）するペナルティ！
+        // 🎯 巻き込まれた全員のお酒の杯数をプラス1杯（肝臓HPマイナス10）するペナルティ
         drinkingBuddies.forEach(p => {
           if (!p.drinkCount) p.drinkCount = 0;
           p.drinkCount += 1;
@@ -643,19 +643,19 @@ function applySquareEffects(player, square) {
           }
         });
 
-        // 💡 変更の核心：勝手に消える setTimeout タイマーを完全に全廃！
-        // 乾杯演出が完了したこの瞬間に、サーバー経由でスマホへ「次のプレイヤーへ」ボタンを明るく点灯させろ！と通知を飛ばします。
-        // ※ サーバー側の playerAction (showGraduateNextButton) の仕組みを綺麗に再利用して、スマホのボタンロックを安全に解除させます。
+        // 💡 【仕様変更】勝手にもみ消して進めていた自動消滅タイマー（setTimeout）を完全撤去！
+        // 大画面に特大モーダルが出現したこの瞬間に、スマホ側へ「手元のボタンを点灯（影マスク解除）させろ！」という
+        // 100%独立した専用の活性化シグナルをサーバー経由で送信し、手動クリックを待機します。
         if (typeof socket !== "undefined") {
           socket.emit("playerAction", {
             roomCode: roomCode,
-            action: "showGraduateNextButton" // 👈 スマホ側に「次へ」ボタンを1発で強制出現させる既存の最強電波
+            action: "enableNextTurnButton" // 👈 🎯新規：スマホのボタンの影を解除して点灯させる専用の電波
           });
         }
 
         pcModal.style.display = "flex";
         
-        // 画面左カラムの数値を最新の杯数に即座に更新反映
+        // 画面の数値を最新の杯数に即座に更新反映
         updateCurrentPlayerDisplay();
       }
     }
@@ -963,3 +963,17 @@ function loadAndApplySquareComponent(squareId, callback) {
         triggerDelayedDisplay(resultNum, targetSquare);
       });
     }
+
+      // 💡 【仕様変更追加】スマホ側で手動で「次のプレイヤーへ」が押された電波をキャッチ！
+  // サーバーからターン更新（turnUpdated）の通知が降ってきた瞬間に、PC大画面の特大乾杯モーダルを綺麗にクローズします。
+  socket.on("applyPlayerAction", (data) => {
+    if (data && data.action === "turnUpdated") {
+      console.log("[大画面イベント手動終了] スマホからの交代操作を検知。一斉乾杯モーダルを閉じます。");
+      isPCEventMode = false;
+      const pcModal = document.getElementById("pc-event-modal");
+      if (pcModal) {
+        pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
+        pcModal.style.display = "none"; // 確実に大画面のポップアップを消去！
+      }
+    }
+  });
