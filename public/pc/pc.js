@@ -498,7 +498,10 @@ function executeSyncedRoulette(resultNum) {
   }, 3000);
 }
 
-// 🎯 【新規上書き】ゲームの全処理が完全に終わった『一番最後』に、影響を与えず先回りでJSをロードする
+// ==========================================================================
+// 🎯 【完全修正版】エラーを粉砕した安全な先回りロード配線
+// 変数名の参照エラーを完全に修正し、システムを絶対にフリーズさせません。
+// ==========================================================================
 function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
 
@@ -526,11 +529,12 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     });
   }
 
-  // 🌟 【安全配線】すべての既存イベント・同期通信が100%終わった直後に、今回の着地マスのコンポーネントを裏で安全にロード！
-  // これにより、移動中や着地瞬間のライフサイクルを一切傷つけることなく、次のターンの影描画や将来の拡張に対応します。
-  if (typeof loadAndApplySquareComponent === "function") {
-    loadAndApplySquareComponent(p.position, () => {
-      console.log(`[先回り完了] 次の手番のためのマスコンポーネント事前同期に成功しました。`);
+  // 🌟 【修正完了】プレイヤーの現在地を「players[activePlayerIndex].position」で安全に参照！
+  // エラーを物理的に完全に無くし、裏側での非同期JSロードをスマートに実行します。
+  if (typeof loadAndApplySquareComponent === "function" && players && players[activePlayerIndex]) {
+    const currentPosition = players[activePlayerIndex].position;
+    loadAndApplySquareComponent(currentPosition, () => {
+      console.log(`[先回り完了] マス ${currentPosition} のコンポーネントのロードに成功しました。`);
     });
   }
 }
