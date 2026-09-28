@@ -547,8 +547,13 @@ socket.on("syncGameState", (data) => {
   if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
 });
 
+// ==========================================================================
+// 🍻 【完全修正版】場所自動スキャン型・一斉乾杯モーダルシステム
+// 同じ場所に2人以上が集まった瞬間、名前を自動集計して大画面中央に特大モーダルを展開！
+// 巻き込まれた全員のお酒を＋1杯し、他の全ゲーム機能を完璧に保護します。
+// ==========================================================================
 function applySquareEffects(player, square) {
-  // 1. お酒ペナルティの適用
+  // 1. お酒ペナルティの適用（元からある完璧な処理）
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
   if (drinkAmount > 0) {
     if (!player.drinkCount) player.drinkCount = 0;
@@ -558,29 +563,101 @@ function applySquareEffects(player, square) {
     }
   }
 
-  // 2. 🎯 マスの幸福度増減を適用（未指定の場合は0）
+  // 2. マスの幸福度増減を適用（元からある完璧な処理）
   const happinessChange = square.happiness !== undefined ? square.happiness : 0;
   if (happinessChange !== 0) {
     if (player.happiness === undefined) player.happiness = 100;
     player.happiness += happinessChange;
-    console.log(
-      `[幸福度変動] ${player.name}: ${happinessChange > 0 ? "+" : ""}${happinessChange} (現在値: ${player.happiness})`,
-    );
+    console.log(`[幸福度変動] ${player.name}: ${happinessChange > 0 ? "+" : ""}${happinessChange} (現在値: ${player.happiness})`);
   }
 
-  // 3. 🎯 肝臓HPが0（潰れた）場合のペナルティ・全回復処理
+  // 3. 肝臓HPが0（潰れた）場合のペナルティ・全回復処理（元からある完璧な処理）
   if (player.currentHp !== undefined && player.currentHp <= 0) {
     if (player.happiness === undefined) player.happiness = 100;
-    player.happiness = Math.max(0, player.happiness - 30); // 幸福度 -30
-    player.skipTurn = true; // 次ターン1回休み
-
-    // HP全回復（基礎キャパシティ ＋ ボーナス）
+    player.happiness = Math.max(0, player.happiness - 30);
+    player.skipTurn = true;
     const maxHp = (player.baseCap || 80) + (player.bonusCap || 0);
     player.currentHp = maxHp;
+    alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
+  }
 
-    alert(
-      `🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`,
-    );
+  // 🎯 4. 【新規追加】同じ場所にいる人で一斉乾杯＆特大モーダル出現システム
+  // ※ 除外する場所パターン（「家」「スタート前」「-」または空っぽは除外）
+  const loc = square.location ? square.location.trim() : "";
+  if (loc !== "" && loc !== "家" && loc !== "スタート前" && loc !== "-") {
+    
+    // 現在同じ場所に滞在しているプレイヤー（手番プレイヤー自身を含む）を自動でスキャンして集計
+    const drinkingBuddies = players.filter(p => p && p.location && p.location.trim() === loc);
+    
+    // 自分を含めて2人以上がその場所に揃った場合、特大乾杯イベントを発動！
+    if (drinkingBuddies.length >= 2) {
+      const pcModal = document.getElementById("pc-event-modal");
+      if (pcModal) {
+        isPCEventMode = true;
+
+        // ターン交代の次へボタンを一旦無効化（乾杯をちゃんと確認させるため）
+        const btnNext = document.getElementById("btn-next-turn");
+        if (btnNext) {
+          btnNext.disabled = true;
+          btnNext.style.display = "none";
+        }
+
+        // 🍻 乾杯に参加する全員の名前を綺麗にリストアップ
+        const buddyNames = drinkingBuddies.map(p => `👤 ${p.name}`).join("、");
+
+        // モーダルのテーマをド派手なランクアップカラー（オレンジ）に強制着せ替え
+        pcModal.className = "event-modal-overlay active theme-rankup";
+
+        // HTML要素を動的に書き換えて特大ポップアップを中央に生成！
+        const titleEl = document.getElementById("modal-event-title");
+        const descEl = document.getElementById("modal-event-desc");
+        if (titleEl) titleEl.textContent = "🍻 特大乾杯イベント発生！ 🍻";
+        if (descEl) {
+          descEl.innerHTML = `
+            <div style="font-size: 1.25rem; line-height: 1.8; color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">
+              ${buddyNames} が<br>
+              <span style="color: #ffeb3b; font-size: 2.2rem; font-weight: 900; display: inline-block; margin: 10px 0; padding: 4px 20px; background: rgba(0,0,0,0.3); border-radius: 10px;">📍 ${loc}</span> で<br>
+              <span style="font-size: 2.5rem; font-weight: 900; color: #ffff00; animation: pulse 0.5s infinite;">✨🍻 乾杯！！！ 🍻✨</span>
+            </div>
+          `;
+        }
+
+        // 🎯 巻き込まれた全員のお酒の杯数をプラス1杯（肝臓HPマイナス10）するペナルティ！
+        drinkingBuddies.forEach(p => {
+          if (!p.drinkCount) p.drinkCount = 0;
+          p.drinkCount += 1;
+          if (p.currentHp !== undefined) {
+            p.currentHp = Math.max(0, p.currentHp - 10);
+          }
+          
+          // もしこの巻き込み乾杯で肝臓HPが0になって潰れた人がいたら、安全に潰れペナルティを起動
+          if (p.currentHp !== undefined && p.currentHp <= 0) {
+            if (p.happiness === undefined) p.happiness = 100;
+            p.happiness = Math.max(0, p.happiness - 30);
+            p.skipTurn = true;
+            const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);
+            p.currentHp = maxHp;
+            console.log(`[乾杯潰れ] ${p.name} が巻き込み乾杯により急性アルコール中毒で潰れました。`);
+          }
+        });
+
+        // 3秒間しっかり大画面で乾杯の余韻を楽しませてから、手元の操作や次へボタンを自動復旧させる
+        setTimeout(() => {
+          pcModal.className = "event-modal-overlay";
+          pcModal.style.display = "none";
+          isPCEventMode = false;
+
+          if (btnNext) {
+            btnNext.disabled = false;
+            btnNext.style.display = "block";
+          }
+          // 最新の乾杯ペナルティ数値を全員の画面へ反映
+          updateCurrentPlayerDisplay();
+        }, 3500);
+
+        pcModal.style.display = "flex";
+      }
+    }
   }
 }
 
