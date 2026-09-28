@@ -453,12 +453,15 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // 🎯 【完全復元】元の完璧な進路探索トレースロジック
+      // 🎯 【完全修正版】複数プレイヤー個別進路トレースロジック
+      // サーバーから同期されたプレイヤー個人が持つ chosenRouteIdx を100%信用して進みます。
       const nextIdArray = currentSquare.nextId;
       if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
-        const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
+        // プレイヤー自身が持っている確定ルートインデックスを最優先で参照
+        const routeIdx = (p.chosenRouteIdx !== undefined && p.chosenRouteIdx !== null) ? Number(p.chosenRouteIdx) : 0;
         p.position = Number(nextIdArray[routeIdx]); 
       } else {
+        // 分岐ではない通常マスは、そのまま単一の接続先へ進む
         p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
       }
       

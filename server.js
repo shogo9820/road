@@ -539,37 +539,22 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🎯 完全修正：ご指示いただいた最高のアイデア通り、選んだ瞬間に分岐マス（0番、49番）のnextId配列を「1本の数字」へ直接上書きして1本道化します！
+  // ==========================================================================
+  // 🧭 【完全修正版】複数プレイヤー対応・個別進路確定ロジック
+  // 大元のマップは一切破壊せず、プレイヤー個人のステータスとして進路を完全に保証します。
+  // ==========================================================================
   socket.on("confirmRouteSelection", (data) => {
     const room = rooms[data.roomCode || socket.roomCode];
     if (room && room.gamePlayers) {
       const p = room.gamePlayers[room.activePlayerIndex];
       if (p) {
-        console.log(
-          `[進路確定] ${p.name} 氏がルート ${data.chosenRouteIdx === 0 ? "A" : "B"} を選択。nextIdの書き換えを実行します`,
-        );
+        console.log(`[進路確定成功] ${p.name} 氏がルート ${data.chosenRouteIdx === 0 ? "A" : "B"} を選択。個人ステータスに保存します。`);
 
-        // 💡 プレイヤーの現在地に応じて、大元のマップ配列（MAP_SQUARES）の進路を上書き
-        if (p.position === 0) {
-          // 0番マスの次の進路：Aルートなら 1番マス、Bルートなら 8番マス
-          const chosenNextId = data.chosenRouteIdx === 0 ? 1 : 8;
-
-          // 🎯 追加：サーバー側が保持しているMAP_SQUARESの0番目のnextIdの配列を消して「数字」に直接上書き！
-          if (room.MAP_SQUARES && room.MAP_SQUARES[0]) {
-            room.MAP_SQUARES[0].nextId = chosenNextId;
-          }
-        } else if (p.position === 49) {
-          // 49番マスの次の進路：Aルートなら 50番マス、Bルートなら 59番マス
-          const chosenNextId = data.chosenRouteIdx === 0 ? 50 : 59;
-
-          // 🎯 追加：サーバー側が保持しているMAP_SQUARESの49番目のnextIdの配列を消して「数字」に直接上書き！
-          if (room.MAP_SQUARES && room.MAP_SQUARES[49]) {
-            room.MAP_SQUARES[49].nextId = chosenNextId;
-          }
-        }
+        // 🎯 重要：大元のMAP_SQUARESは1文字も触らず、プレイヤー個人に選択インデックスを確実に記憶させる！
+        p.chosenRouteIdx = Number(data.chosenRouteIdx); 
       }
 
-      // 書き換えた結果を、PC側が元々大得意として待っている「syncGameState」で丸ごと一斉同期！
+      // 最新の個人ルート情報が含まれた状態で、Room全員（PC・スマホ）へ一斉同期！
       io.to(data.roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
