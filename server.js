@@ -337,48 +337,39 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ゲーム状態の更新
+  // ==========================================================================
+  // 📍 【完全決定版】複数プレイヤー場所リセット巻き戻しバグ完全粉砕ロジック
+  // PC側から他人の location データが一時的に届かないタイミングであっても、
+  // サーバー側が保持している最新の滞在場所を絶対に破壊（リセット）せず完全に守り抜きます。
+  // ==========================================================================
   socket.on("updateGameState", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
       if (data.players) {
         data.players.forEach((updatedP) => {
           const target = rooms[roomCode].gamePlayers.find(
-            (p) => String(p.id) === String(updatedP.id),
+            (p) => String(p.id) === String(updatedP.id)
           );
           if (target) {
-            target.position =
-              updatedP.position !== undefined
-                ? updatedP.position
-                : target.position;
-            target.location =
-              updatedP.location !== undefined
-                ? updatedP.location
-                : target.location;
-            target.currentHp =
-              updatedP.currentHp !== undefined
-                ? updatedP.currentHp
-                : target.currentHp;
-            target.drinkCount =
-              updatedP.drinkCount !== undefined
-                ? updatedP.drinkCount
-                : target.drinkCount;
-            target.happiness =
-              updatedP.happiness !== undefined
-                ? updatedP.happiness
-                : target.happiness;
-            target.isLover =
-              updatedP.isLover !== undefined
-                ? updatedP.isLover
-                : target.isLover;
-            target.skipTurn =
-              updatedP.skipTurn !== undefined
-                ? updatedP.skipTurn
-                : target.skipTurn;
-            target.hasJob =
-              updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
-            target.jobId =
-              updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
+            target.position = updatedP.position !== undefined ? updatedP.position : target.position;
+            
+            // 🎯 【超重要修正】もし届いたデータが「スタート前」や「空っぽ」であっても、
+            // ターゲット（元々そこにいた他プレイヤー）がすでに居酒屋などの場所（家やスタート前以外）に滞在している場合は、
+            // 古いデータで上書き（リセット）せず、元々保持していた正しい場所を100%完全に保護・維持する！
+            if (updatedP.location && updatedP.location !== "スタート前" && updatedP.location !== "") {
+              target.location = updatedP.location;
+            } else {
+              // 届いたデータが空、かつサーバー側にもまだ場所が無い場合のみ初期値を適用
+              target.location = target.location ? target.location : "スタート前";
+            }
+
+            target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
+            target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
+            target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;
+            target.isLover = updatedP.isLover !== undefined ? updatedP.isLover : target.isLover;
+            target.skipTurn = updatedP.skipTurn !== undefined ? updatedP.skipTurn : target.skipTurn;
+            target.hasJob = updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
+            target.jobId = updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
             target.job = updatedP.job !== undefined ? updatedP.job : target.job;
           }
         });
@@ -387,6 +378,7 @@ io.on("connection", (socket) => {
         rooms[roomCode].activePlayerIndex = data.activePlayerIndex;
       }
 
+      // 完全に保護された状態のプレイヤーデータを全員（PC・スマホ）へ一斉同期！
       io.to(roomCode).emit("syncGameState", {
         players: rooms[roomCode].gamePlayers,
         activePlayerIndex: rooms[roomCode].activePlayerIndex,
