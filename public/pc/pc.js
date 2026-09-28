@@ -438,56 +438,47 @@ function executeSyncedRoulette(resultNum) {
 
     let stepsMoved = 0;
 
-    // 🎯 修正：コマが1歩目を進み始める前に、最終目的地のコンポーネントを【先回り】で安全にロードさせておく！
-    // これにより移動探索システム（setInterval）の内部ロジックは一切汚されず、選んだ進路へ完璧に進みます。
-    const finalExpectedPosition = p.position; // 移動前の現在地を起点にするロジックは変えない
-    
-    // コマが進み始める前に、裏側で目的地のJSだけをシュッと読み込ませるセーフティ
-    loadAndApplySquareComponent(finalExpectedPosition, () => {
-      // 💡 移動アニメーション自体は、今までの完璧だったコードを1文字も変えずに100%そのまま実行！
-      const moveTimer = setInterval(() => {
-        const currentSquare = MAP_SQUARES[p.position];
+    const moveTimer = setInterval(() => {
+      const currentSquare = MAP_SQUARES[p.position];
 
-        if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
-          clearInterval(moveTimer);
-          finalizeMovement();
-          return;
-        }
+      if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
+        clearInterval(moveTimer);
+        finalizeMovement();
+        return;
+      }
 
-        if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
-          clearInterval(moveTimer);
-          finalizeMovement();
-          return;
-        }
+      if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
+        clearInterval(moveTimer);
+        finalizeMovement();
+        return;
+      }
 
-        // 進路決定のトレース（元のバグなし完璧ロジックを完全保護）
-        const nextIdArray = currentSquare.nextId;
-        if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
-          const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
-          p.position = Number(nextIdArray[routeIdx]); 
-        } else {
-          p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
-        }
-        
-        stepsMoved++;
-        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-      }, 250);
-    });
+      // 🎯 【完全復元】元の完璧な進路探索トレースロジック
+      const nextIdArray = currentSquare.nextId;
+      if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
+        const routeIdx = p.chosenRouteIdx !== undefined ? p.chosenRouteIdx : 0;
+        p.position = Number(nextIdArray[routeIdx]); 
+      } else {
+        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
+      }
+      
+      stepsMoved++;
+      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+    }, 250);
 
-    // 5. コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動（元の綺麗な状態へ100%完全差し戻し）
+    // 🎯 【完全復元】着地瞬間のイベント起動ロジック
     function finalizeMovement() {
       let targetSquare = null;
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
         targetSquare = MAP_SQUARES[p.position];
         p.location = targetSquare.location || "";
-        applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
+        applySquareEffects(p, targetSquare); 
       }
 
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
       renderLocationPlayersList();
       updateCurrentPlayerDisplay();
 
-      // スマホ役職モーダル
       if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
         const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
         const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
@@ -495,19 +486,19 @@ function executeSyncedRoulette(resultNum) {
         socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
       }
 
-      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
+      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; 
 
-      // 強制ストップマスならPCモーダルを表示
       if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
         handleForceStopSquare(p, targetSquare);
       }
 
-      // 位置データと通常イベント通知をサーバーへ送信
+      // 💡 ここで着地完了通知をキックする（この中に新システムを逃がします）
       triggerDelayedDisplay(resultNum, targetSquare);
     }
   }, 3000);
 }
 
+// 🎯 【新規上書き】ゲームの全処理が完全に終わった『一番最後』に、影響を与えず先回りでJSをロードする
 function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
 
@@ -516,6 +507,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
   }
 
+  // サーバーへ位置データと通常イベント通知を送信（今までの完璧なコード）
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -531,6 +523,14 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       roomCode: roomCode,
       action: "squareEvent",
       targetSquare: targetSquare
+    });
+  }
+
+  // 🌟 【安全配線】すべての既存イベント・同期通信が100%終わった直後に、今回の着地マスのコンポーネントを裏で安全にロード！
+  // これにより、移動中や着地瞬間のライフサイクルを一切傷つけることなく、次のターンの影描画や将来の拡張に対応します。
+  if (typeof loadAndApplySquareComponent === "function") {
+    loadAndApplySquareComponent(p.position, () => {
+      console.log(`[先回り完了] 次の手番のためのマスコンポーネント事前同期に成功しました。`);
     });
   }
 }
