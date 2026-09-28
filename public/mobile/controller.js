@@ -127,14 +127,11 @@ window.addEventListener("DOMContentLoaded", () => {
       const spinBtn = document.getElementById("btn-phone-spin");
       if (spinBtn) spinBtn.disabled = false;
 
-      // 🎯 新しいターンが始まった瞬間：ボタンは消さずに常時表示！
-      // まだルーレットを回していない（触ってはいけない時）なので、半透明の影をかけるだけ
+      // 🎯 新ターン開始時：次のプレイヤーへボタンを disabled でロックするだけ
+      // (見た目の半透明の影は、CSS側が自動的に適用してくれます)
       const nextBtn = document.getElementById("btn-phone-next");
       if (nextBtn) {
         nextBtn.disabled = true;
-        nextBtn.style.opacity = "0.35";          // 💡 半透明の影をかける
-        nextBtn.style.pointerEvents = "none";    // 💡 物理的に触れなくする
-        nextBtn.style.filter = "grayscale(80%)"; // 💡 視覚的に影であることを強調
       }
 
       const resultDisplay = document.getElementById("roulette-result-display");
@@ -209,14 +206,13 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // 🎯 PC側の特大乾杯モーダル出現時：ボタンのロックを解除するだけ
+  // (見た目の点灯・影解除は、CSS側が自動的に処理してくれます)
   socket.on("enableNextTurnButton", () => {
     const btnNext = document.getElementById("btn-phone-next");
     if (btnNext) {
-      console.log("[スマホ一元制御] 影マスクを解除してボタンを点灯します。");
+      console.log("[スマホ一元制御] ボタンのロックを解除（活性化）します。");
       btnNext.disabled = false;
-      btnNext.style.opacity = "1.0";
-      btnNext.style.pointerEvents = "auto";
-      btnNext.style.filter = "none";
     }
   });
 });

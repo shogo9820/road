@@ -96,3 +96,25 @@ button:active { transform: scale(0.97); }
   padding: 10px;
   box-shadow: none;
 }
+
+/* ==========================================================================
+   📱 【仕様変更】「次のプレイヤーへ」ボタン 影マスク＆常時表示コントロール
+   ========================================================================== */
+#btn-phone-next {
+  display: block !important;  /* 🎯 命令を完全無視し、24時間100%絶対に常時表示させる */
+  transition: opacity 0.3s ease, filter 0.3s ease; /* 影の切り替えアニメーション */
+}
+
+/* 🔒 触ってはいけない時（disabled状態）は、自動で半透明の影マスクをかける */
+#btn-phone-next:disabled {
+  opacity: 0.35 !important;
+  pointer-events: none !important;
+  filter: grayscale(80%) !important;
+}
+
+/* ✨ 押すべき時（有効状態）は、本来の明るさに戻して点灯させる */
+#btn-phone-next:not(:disabled) {
+  opacity: 1.0 !important;
+  pointer-events: auto !important;
+  filter: none !important;
+}
