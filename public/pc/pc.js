@@ -762,78 +762,53 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
   if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
 }
 
-// 🎯 完全修復：HTMLに存在しないIDエラーによるフリーズを完全粉砕！お指示の通り、99番(GOAL)着地時は元々ある完璧な着地処理(triggerDelayedDisplay)へ100%綺麗に流し込みます！
+// ==========================================================================
+// 🎓 【最終決定版】強制ストップマス・コンポーネント完全連動エンジン
+// 41番や99番などの古い直書きcaseを完全全廃・パージ！
+// すでにJSコンポーネント（sq_30やsq_49など）がメモリに読み込まれているマスは
+// 自動スキップを100%完全に停止させ、手元のスマホの手動操作を死守します。
+// ==========================================================================
 function handleForceStopSquare(player, square) {
+  if (!square) return;
+  
   // 💡 完璧だった元の仕様：89番マス着地時は何もせず静かにピンを止めます
-  if (square && square.id === 89) {
+  if (Number(square.id) === 89) {
     console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
     return;
   }
 
-  switch (square.id) {
-    case 41:
-      console.log(`${player.name} がカップル成立マスで停止しました。イベント開始！`);
-      openPCEventModal("カップル", player.name, player.id);
-      socket.emit("triggerCoupleEvent", {
-        roomCode: roomCode,
-        playerId: player.id,
-        playerName: player.name,
-      });
-      break;
-
-    // 💡【大修正】勝手なIDテキスト書き換えは全て消去！
-    // 99番(GOAL)にピンが着地した瞬間に、元からある正しい着地処理(triggerDelayedDisplay)をキックして画面を100%綺麗に連動させます！
-    case 99:
-      console.log(`[ゴールマスイベント起動] ${player.name} 氏が99番GOALマスへ着地しました。`);
-      
-      // 💡 あなたが元から一番最初に作ってくれていた、正しいHTMLのIDを自動で書き換える関数をそのまま通過させる！
-      if (typeof triggerDelayedDisplay === "function") {
-        triggerDelayedDisplay(1, square);
-      }
-
-      // スマホ（手元）側へ向けて「➡ 次のプレイヤーへ」ボタンだけを出せと独立電波を送信！
-      socket.emit("playerAction", {
-        roomCode: roomCode,
-        action: "showGraduateNextButton"
-      });
-      break;
-
-    case 18: // 入学式
-    case 49: // ランクアップ
-    case 80: // 引退/ギャンブル
-    default:
-      console.log(`[開発デバッグ] マスID: ${square.id} は仕様未定のため、自動でスキップ処理を行います。`);
-
-      const eventName =
-        square.id === 18
-          ? "入学式"
-            : square.id === 49
-              ? "ランクアップ"
-              : "引退";
-      openPCEventModal(eventName, player.name, player.id);
-
-      setTimeout(() => {
-        console.log(`[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`);
-        socket.emit("playerAction", {
-          roomCode: roomCode,
-          action: "nextTurn",
-        });
-
-        const pcModal = document.getElementById("pc-event-modal");
-        if (pcModal) {
-          pcModal.classList.remove(
-            "active",
-            "theme-couple",
-            "theme-entrance",
-            "theme-rankup",
-            "theme-retirement",
-          );
-          pcModal.style.display = "none";
-        }
-        isPCEventMode = false;
-      }, 300);
-      break;
+  // 🎯 【核心の防壁】今着地したマスのコンポーネント（JS）がすでに読み込まれている場合、
+  // または30番マスの場合は、AIや古いタイマーが勝手にnextTurnを進めるのをここで100%「緊急停止」させる！
+  let currentMode = "normal";
+  if (typeof roomCode !== "undefined" && typeof rooms !== "undefined" && rooms[roomCode]) {
+    currentMode = rooms[roomCode].mode || "normal";
   }
+  
+  const isComponentLoaded = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
+  
+  if (Number(square.id) === 30 || isComponentLoaded) {
+    console.log(`[コンポーネント連動] マスID: ${square.id} の専用演出を起動中。自動スキップを完全停止し、手動操作を待機します。`);
+    return; // 🔓 自動スキップを完全スルーして、手動操作を永久に待ち受ける！
+  }
+
+  // 💡 【古いcaseはすべて全廃】
+  // まだJSファイルを作っていない、本当の「仕様未定マス」の時だけ、これまで通り0.3秒でサクサク自動進行させる
+  console.log(`[開発デバッグ] マスID: ${square.id} はコンポーネント未作成のため、自動でスキップ処理を行います。`);
+  
+  setTimeout(() => {
+    console.log(`[開発デバッグ] 自動でモーダルをクローズして次の番へ進めます。`);
+    socket.emit("playerAction", {
+      roomCode: roomCode,
+      action: "nextTurn",
+    });
+
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.className = "event-modal-overlay";
+      pcModal.style.display = "none";
+    }
+    isPCEventMode = false;
+  }, 300);
 }
 
 // 🎯 2箇所目：pc.js の【ファイルの本当の一番最後（最下部）】へ、以下の独立アンテナコードを丸ごとそのまま追記！
