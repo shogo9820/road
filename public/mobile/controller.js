@@ -207,7 +207,6 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // 🎯 PC側の特大乾杯モーダル出現時：ボタンのロックを解除するだけ
-  // (見た目の点灯・影解除は、CSS側が自動的に処理してくれます)
   socket.on("enableNextTurnButton", () => {
     const btnNext = document.getElementById("btn-phone-next");
     if (btnNext) {
@@ -217,12 +216,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================================================
-// 🛡️ 【生命保険システム】スマホ側 制御・同期通信ロジック
-// ==========================================================================
-if (typeof socket !== "undefined") {
-
+  // 🛡️ 【生命保険システム・完全合流版】スマホ側 制御・同期通信ロジック
+  // 巨大な DOMContentLoaded の箱の内部へ完璧に配線し、PC側からの電波を100%直撃させます。
+  // ==========================================================================
   // 🌟 A. データ同期（syncGameState）が走るたびに、保険ボタンの影ロックを自動判別
-  // 自分が1枚以上持っている自分のターン中だけ、ボタンの影マスクを解除してピカッと点灯させます！
   socket.on("syncGameState", (data) => {
     const currentIdx = data && data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const currentPlayers = data && data.players ? data.players : players;
@@ -232,7 +229,7 @@ if (typeof socket !== "undefined") {
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
     
     if (insuranceBtn && p) {
-      // 💡 1枚以上所持、かつ他人のターンではない時のみ 🔓 ロック解除！
+      // 1枚以上所持、かつ他人のターンではない時のみ 🔓 ロック解除して点灯！
       if ((p.insurance !== undefined ? p.insurance : 0) > 0) {
         insuranceBtn.disabled = false;
         insuranceBtn.textContent = `🛡️ 生命保険を利用する (${p.insurance}枚所持)`;
@@ -246,7 +243,7 @@ if (typeof socket !== "undefined") {
 
   // 🌟 B. 30番マス（生命保険ショップ）着地時の0〜3枚選択ポップアップダイアログ生成
   socket.on("triggerInsuranceShop", (data) => {
-    console.log("[スマホ] 生命保険ショップ電波を受信。0〜3枚の選択肢を表示します。");
+    console.log("[スマホ] 30番マスの生命保険ショップ電波を受信。0〜3枚の選択肢を表示します。");
 
     let shopHtml = `
       <div id="insurance-shop-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
@@ -268,38 +265,27 @@ if (typeof socket !== "undefined") {
     if (oldShop) oldShop.remove();
     playScreen.insertAdjacentHTML("beforeend", shopHtml);
 
-    // 各購入ボタンがタップされた瞬間の決定・送信処理
     playScreen.querySelectorAll(".btn-shop-select").forEach(btn => {
       btn.onclick = (e) => {
         const buyCount = parseInt(e.target.getAttribute("data-count"), 10);
         const p = players[activePlayerIndex];
         if (p) {
           if (!p.insurance) p.insurance = 0;
-          p.insurance += buyCount; // 選択された枚数をプレイヤーデータに加算
+          p.insurance += buyCount;
           
-          console.log(`[生命保険ショップ] ${p.name} が ${buyCount}枚 購入。サーバーへ同期します。`);
-          
-          // 1. 最新のゲームデータをサーバーへ送信してルーム全員に同期させる
-          socket.emit("updateGameState", {
-            roomCode: currentRoomCode,
-            activePlayerIndex: activePlayerIndex,
-            players: players
-          });
-
-          // 2. ショップモーダルを画面からパージして消去
+          socket.emit("updateGameState", { roomCode: currentRoomCode, activePlayerIndex: activePlayerIndex, players: players });
           document.getElementById("insurance-shop-modal")?.remove();
 
-          // 3. 【しかるべき時】購入が完全に決着したこの瞬間に、次のプレイヤーへボタンのロックを安全に解除！
           const nextBtn = document.getElementById("btn-phone-next");
           if (nextBtn) {
-            nextBtn.disabled = false; // 🔓 点灯して手動進行を許可！
+            nextBtn.disabled = false; // 🔓 購入確定で次へボタンを点灯
           }
         }
       };
     });
   });
 
-  // 🌟 C. スマホ画面で「🛡️ 生命保険を利用する」が手動タップされた時の「はい/いいえ」モーダル起動
+  // 🌟 C. スマホ画面で「🛡️ 生命保険を利用する」がタップされた時の確認モーダル
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("#btn-phone-use-insurance");
     if (!btn || btn.disabled) return;
@@ -308,7 +294,6 @@ if (typeof socket !== "undefined") {
     const p = players[activePlayerIndex];
     if (!p || !p.insurance || p.insurance <= 0) return;
 
-    // 役職選択でおなじみの綺麗な「はい/いいえ」確認モーダルを動的に生成！
     let confirmHtml = `
       <div id="insurance-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
         <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
@@ -326,34 +311,17 @@ if (typeof socket !== "undefined") {
     document.getElementById("insurance-confirm-modal")?.remove();
     playScreen.insertAdjacentHTML("beforeend", confirmHtml);
 
-    // 「はい」が押された瞬間：保険を1枚減らしてお酒を打ち消す電波を即時発射！
     document.getElementById("btn-insurance-yes").onclick = () => {
-      p.insurance -= 1; // 1枚消費
-      
-      // 1. 大画面とサーバーに「保険発動！」の独立通知を送信（お酒をゼロにするトリガー）
-      socket.emit("updateGameState", {
-        roomCode: currentRoomCode,
-        activePlayerIndex: activePlayerIndex,
-        players: players
-      });
-
-      socket.emit("playerAction", {
-        roomCode: currentRoomCode,
-        action: "insuranceUsed",
-        playerId: p.id,
-        nextInsuranceCount: p.insurance
-      });
-
+      p.insurance -= 1;
+      socket.emit("updateGameState", { roomCode: currentRoomCode, activePlayerIndex: activePlayerIndex, players: players });
+      socket.emit("playerAction", { roomCode: currentRoomCode, action: "insuranceUsed", playerId: p.id, nextInsuranceCount: p.insurance });
       document.getElementById("insurance-confirm-modal")?.remove();
     };
 
-    // 「いいえ」が押された瞬間：ダイアログを静かに閉じるだけ
     document.getElementById("btn-insurance-no").onclick = () => {
       document.getElementById("insurance-confirm-modal")?.remove();
     };
   });
-}
-
 });
 
 function joinRoom() {
