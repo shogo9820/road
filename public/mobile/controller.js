@@ -5,12 +5,6 @@ let players = [];
 let isSpinning = false;
 let currentRotation = 0;
 
-let coupleEventState = {
-  active: false,
-  step: 1,
-  targetPlayerId: null
-};
-
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get("room");
@@ -19,308 +13,126 @@ window.addEventListener("DOMContentLoaded", () => {
     const inputEl = document.getElementById("input-room-code");
     if (inputEl) inputEl.value = roomParam;
     currentRoomCode = String(roomParam).trim();
-
-    const doJoin = () => {
-      socket.emit("joinRoom", { roomCode: currentRoomCode });
-    };
-
-    if (socket.connected) {
-      doJoin();
-    } else {
-      socket.once("connect", doJoin);
-    }
+    const doJoin = () => { socket.emit("joinRoom", { roomCode: currentRoomCode }); };
+    if (socket.connected) doJoin(); else socket.once("connect", doJoin);
   }
 
   const btnJoin = document.getElementById("btn-join-room");
-  if (btnJoin) {
-    btnJoin.addEventListener("click", (e) => {
-      e.preventDefault();
-      joinRoom();
-    });
-  }
+  if (btnJoin) btnJoin.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
 
-  document.getElementById("btn-phone-add-player")?.addEventListener("click", addPlayerRow);
-  document.getElementById("btn-phone-start")?.addEventListener("click", sendStartGame);
-  document.getElementById("btn-phone-spin")?.addEventListener("click", requestSpin);
-  document.getElementById("btn-phone-next")?.addEventListener("click", sendNextTurn);
+  if (document.getElementById("btn-phone-add-player")) document.getElementById("btn-phone-add-player").addEventListener("click", addPlayerRow);
+  if (document.getElementById("btn-phone-start")) document.getElementById("btn-phone-start").addEventListener("click", sendStartGame);
+  if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").addEventListener("click", requestSpin);
+  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").addEventListener("click", sendNextTurn);
 
-  document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
-    radio.addEventListener("change", (e) => {
-      e.target.checked = true;
-      syncSettingsToServer();
-    });
-  });
+  document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => { radio.addEventListener("change", (e) => { e.target.checked = true; syncSettingsToServer(); }); });
 
-  socket.on("joinedSuccess", (data) => {
-    currentRoomCode = data.roomCode;
-    showScreen("phone-screen-setup");
-    renderPlayerInputs();
-    syncSettingsToServer();
-  });
-
-  socket.on("errorMsg", (data) => {
-    alert("エラー: " + data.message);
-  });
+  socket.on("joinedSuccess", (data) => { currentRoomCode = data.roomCode; showScreen("phone-screen-setup"); renderPlayerInputs(); syncSettingsToServer(); });
+  socket.on("errorMsg", (data) => { alert("エラー: " + data.message); });
+  
   socket.on("applySettings", (data) => {
     if (data.players && Array.isArray(data.players) && data.players.length > 0) {
-      const activeEl = document.activeElement;
-      const isUserTyping = activeEl && activeEl.tagName === "INPUT" && activeEl.closest("#phone-player-list");
-      if (!isUserTyping) {
-        players = data.players;
-        renderPlayerInputs();
-      } else {
-        players = data.players;
-      }
+      if (!(document.activeElement && document.activeElement.tagName === "INPUT" && document.activeElement.closest("#phone-player-list"))) {
+        players = data.players; renderPlayerInputs();
+      } else { players = data.players; }
     }
-
     const targetMode = data.mode || data.gameMode;
-    if (targetMode) {
-      const targetRadio = document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`);
-      if (targetRadio) targetRadio.checked = true;
-    }
+    if (targetMode && document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`)) document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`).checked = true;
   });
-
   socket.on("spinRoulette", (data) => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
 
+    // 🎯 【システム同期】スマホ画面の物理的なルーレットの1〜10の出目ストップ角度
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-    const stopAngle = targetDegrees[resultNum - 1];
-    const currentMod = currentRotation % 360;
-    currentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
+    currentRotation += 1800 + ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
 
     isSpinning = true;
     playMobileRouletteAnimation(resultNum, currentRotation, (finalSteps) => {
       isSpinning = false;
-
-      if (coupleEventState.active) {
-        const p = players[activePlayerIndex];
-        if (p) {
-          if (coupleEventState.step === 1) {
-            socket.emit("coupleRouletteResult", { roomCode: currentRoomCode, playerId: p.id, result: finalSteps });
-          } else if (coupleEventState.step === 2) {
-            socket.emit("coupleSecondRouletteResult", { roomCode: currentRoomCode, playerId: p.id, result: finalSteps });
-          }
-        }
-      } 
-      else if (players[activePlayerIndex] && players[activePlayerIndex].position === 89 && players[activePlayerIndex].graduateChecked !== true) {
-        const p = players[activePlayerIndex];
-        socket.emit("playerAction", { roomCode: currentRoomCode, action: "graduateRouletteResult", playerId: p.id, result: finalSteps });
-      } else {
-        handleRouletteStop(finalSteps);
-      }
+      handleRouletteStop(finalSteps);
     });
   });
 
-  // 🎯 【完全修正版】display/hiddenの切り替えを1文字残さず完全撤去・全廃
-  // ボタンは100%永久に常時表示。影（opacity）と触れるか（disabled）だけで完璧に制御します。
+  // 🎯 新ターン開始時の影マスク一括制御（display/hiddenは完全廃止、disabledのオンオフ一本化）
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
-
       activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
-      const activeName = data.activePlayerName || `プレイヤー`;
 
-      const banner = document.getElementById("current-player-banner");
-      if (banner) banner.textContent = `TURN: ${activeName}`;
-
-      const spinBtn = document.getElementById("btn-phone-spin");
-      if (spinBtn) spinBtn.disabled = false;
-
-      // 🎯 新ターン開始時：次のプレイヤーへボタンを disabled でロックするだけ
-      // (見た目の半透明の影は、CSS側が自動的に適用してくれます)
-      const nextBtn = document.getElementById("btn-phone-next");
-      if (nextBtn) {
-        nextBtn.disabled = true;
-      }
-
-      const resultDisplay = document.getElementById("roulette-result-display");
-      if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
+      if (document.getElementById("current-player-banner")) document.getElementById("current-player-banner").textContent = `TURN: ${data.activePlayerName || "プレイヤー"}`;
+      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
+      if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 初期ロック
+      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
       isSpinning = false;
     }
   });
 
-  // 役職選択ダイアログ受取
-  socket.on("showJobChoice", (data) => {
-    showJobChoiceDialog(data.jobId, data.jobName, data.playerId);
-  });
+  socket.on("showJobChoice", (data) => { showJobChoiceDialog(data.jobId, data.jobName, data.playerId); });
 
-  // カップルイベント受取
-  socket.on("showCoupleEvent", (data) => {
-    coupleEventState = { active: true, step: 1, targetPlayerId: null };
-
-    document.body.classList.add("theme-couple");
-    document.querySelector(".phone-screen .card")?.classList.add("theme-couple");
-    document.querySelector(".phone-card")?.classList.add("theme-couple");
-
-    const resultDisplay = document.getElementById("roulette-result-display");
-    if (resultDisplay) {
-      resultDisplay.innerHTML = `<span style="color: #d81b60; font-weight: bold; font-size: 1.1rem;">💖 カップルチャンス（1回目）<br>偶数を出して告白に進め！</span>`;
-    }
-  });
-
-  socket.on("startCoupleSecondRoulette", (data) => {
-    coupleEventState = { active: true, step: 2, targetPlayerId: data.targetPlayerId };
+  // 🎯 【完全汎用化】マスのJS（sq_41など）から届く2段階ルーレット展開指示をスマホがダイレクトに受信！
+  socket.on("startCustomEventSecondSpin", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) {
       const descEl = modal.querySelector(".couple-desc");
-      if (descEl) {
-        descEl.innerHTML = `💕 偶数が出た！告白チャンス発動！<br>もう一度ルーレットを回して【割り振られたプレイヤー】に当たればカップル成立！`;
-      }
-      const btn = document.getElementById("btn-couple-spin");
-      if (btn) btn.style.display = "block";
+      if (descEl) descEl.innerHTML = `💕 1回目クリア！運命の ${data.nextStepEventName || "判定"} スピンへ！<br>もう一度ルーレットを回して、止まった数字で最終決着！`;
+      if (document.getElementById("btn-couple-spin")) document.getElementById("btn-couple-spin").style.display = "block";
       modal.style.display = "flex";
     }
   });
 
-  socket.on("coupleEventFinished", (data) => {
+  // 🎯 【完全汎用化】演出が決着したことをアラートで綺麗にポップ表示
+  socket.on("customEventFinished", (data) => {
     alert(data.message);
-    coupleEventState.active = false;
-    coupleEventState.step = 1;
-
-    document.body.classList.remove("theme-couple");
-    document.querySelector(".phone-screen .card")?.classList.remove("theme-couple");
-    document.querySelector(".phone-card")?.classList.remove("theme-couple");
-
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
-
-    const resultDisplay = document.getElementById("roulette-result-display");
-    if (resultDisplay) resultDisplay.textContent = "🎯 タップして回そう！";
-
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) {
-      nextBtn.disabled = false;
-      nextBtn.style.opacity = "1.0";
-      nextBtn.style.pointerEvents = "auto";
-      nextBtn.style.filter = "none";
-    }
+    if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
   });
-
   socket.on("syncGameState", (data) => {
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
-    if (typeof checkBranchSquareOnTurnStart === "function") {
-      checkBranchSquareOnTurnStart();
+
+    // 🎯 【本質：共通化】今自分が止まったマス（30や41番など）のJSコンポーネントを、スマホ自身でもダイレクトにロードする！
+    const p = players[activePlayerIndex];
+    if (p && typeof loadAndApplySquareComponent === "function") {
+      loadAndApplySquareComponent(p.position, () => {
+        let currentMode = "normal";
+        const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
+        
+        // 🚀 ロードが完了した瞬間、スマホ画面用の event 処理をその場でダイレクト爆発（実行）！
+        if (targetModule && typeof targetModule.event === "function") {
+          targetModule.event(p, targetModule);
+        }
+      });
     }
+
+    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
   });
 
-  // 🎯 PC側の特大乾杯モーダル出現時：ボタンのロックを解除するだけ
+  // 🎯 サーバーの新ルーティン（WAIT_NEXTフェーズ）から、次へ進めてよい合図を受け取ってロック解除！
   socket.on("enableNextTurnButton", () => {
     const btnNext = document.getElementById("btn-phone-next");
     if (btnNext) {
-      console.log("[スマホ一元制御] ボタンのロックを解除（活性化）します。");
+      console.log("[スマホ一元制御] PHASE_WAIT_NEXT。ボタンのロックを安全に解除（点灯）します。");
       btnNext.disabled = false;
     }
   });
 
-  // ==========================================================================
-  // 🛡️ 【生命保険システム・完全合流版】スマホ側 制御・同期通信ロジック
-  // 巨大な DOMContentLoaded の箱の内部へ完璧に配線し、PC側からの電波を100%直撃させます。
-  // ==========================================================================
-  // 🌟 A. データ同期（syncGameState）が走るたびに、保険ボタンの影ロックを自動判別
+  // 🌟 生命保険の枚数判定（syncGameState連動）
   socket.on("syncGameState", (data) => {
     const currentIdx = data && data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const currentPlayers = data && data.players ? data.players : players;
     if (!currentPlayers || currentPlayers.length === 0) return;
-
     const p = currentPlayers[currentIdx];
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
-    
     if (insuranceBtn && p) {
-      // 1枚以上所持、かつ他人のターンではない時のみ 🔓 ロック解除して点灯！
       if ((p.insurance !== undefined ? p.insurance : 0) > 0) {
-        insuranceBtn.disabled = false;
-        insuranceBtn.textContent = `🛡️ 生命保険を利用する (${p.insurance}枚所持)`;
+        insuranceBtn.disabled = false; insuranceBtn.textContent = `🛡️ 生命保険を利用する (${p.insurance}枚所持)`;
       } else {
-        // 0枚の時は自動で 🔒 半透明の影マスクロック状態へ戻る
-        insuranceBtn.disabled = true;
-        insuranceBtn.textContent = "🛡️ 生命保険を利用する (0枚)";
+        insuranceBtn.disabled = true; insuranceBtn.textContent = "🛡️ 生命保険を利用する (0枚)";
       }
     }
-  });
-
-  // 🌟 B. 30番マス（生命保険ショップ）着地時の0〜3枚選択ポップアップダイアログ生成
-  socket.on("triggerInsuranceShop", (data) => {
-    console.log("[スマホ] 30番マスの生命保険ショップ電波を受信。0〜3枚の選択肢を表示します。");
-
-    let shopHtml = `
-      <div id="insurance-shop-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
-        <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
-          <h3 style="margin-top:0; color:#9c27b0; font-size:1.3rem; font-weight:bold;">🛡️ 生命保険の加入（購入）</h3>
-          <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">今後の飲酒を完全無効化できる命の盾です。<br>何枚購入しますか？</p>
-          <div style="display:flex; flex-direction:column; gap:10px;">
-            <button class="btn-shop-select" data-count="0" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer;">0枚（購入しない）</button>
-            <button class="btn-shop-select" data-count="1" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer;">1枚購入</button>
-            <button class="btn-shop-select" data-count="2" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer;">2枚購入</button>
-            <button class="btn-shop-select" data-count="3" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer;">3枚購入（最大）</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const playScreen = document.getElementById("phone-screen-play") || document.body;
-    const oldShop = document.getElementById("insurance-shop-modal");
-    if (oldShop) oldShop.remove();
-    playScreen.insertAdjacentHTML("beforeend", shopHtml);
-
-    playScreen.querySelectorAll(".btn-shop-select").forEach(btn => {
-      btn.onclick = (e) => {
-        const buyCount = parseInt(e.target.getAttribute("data-count"), 10);
-        const p = players[activePlayerIndex];
-        if (p) {
-          if (!p.insurance) p.insurance = 0;
-          p.insurance += buyCount;
-          
-          socket.emit("updateGameState", { roomCode: currentRoomCode, activePlayerIndex: activePlayerIndex, players: players });
-          document.getElementById("insurance-shop-modal")?.remove();
-
-          const nextBtn = document.getElementById("btn-phone-next");
-          if (nextBtn) {
-            nextBtn.disabled = false; // 🔓 購入確定で次へボタンを点灯
-          }
-        }
-      };
-    });
-  });
-
-  // 🌟 C. スマホ画面で「🛡️ 生命保険を利用する」がタップされた時の確認モーダル
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#btn-phone-use-insurance");
-    if (!btn || btn.disabled) return;
-    e.preventDefault();
-
-    const p = players[activePlayerIndex];
-    if (!p || !p.insurance || p.insurance <= 0) return;
-
-    let confirmHtml = `
-      <div id="insurance-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
-        <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
-          <h3 style="margin-top:0; color:#9c27b0; font-size:1.2rem; font-weight:bold;">🛡️ 生命保険の発動確認</h3>
-          <p style="font-size:0.85rem; color:#333; margin-bottom:20px; line-height:1.5;">生命保険を1枚消費して、このターンの飲酒ペナルティを完全に無効化しますか？<br><span style="color:#666;">(現在所持: ${p.insurance}枚)</span></p>
-          <div style="display:flex; gap:10px;">
-            <button id="btn-insurance-yes" style="flex:1; padding:12px; font-weight:bold; background:#9c27b0; color:#fff; border:none; border-radius:10px; cursor:pointer;">はい（発動）</button>
-            <button id="btn-insurance-no" style="flex:1; padding:12px; font-weight:bold; background:#eee; color:#333; border:none; border-radius:10px; cursor:pointer;">いいえ</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const playScreen = document.getElementById("phone-screen-play") || document.body;
-    document.getElementById("insurance-confirm-modal")?.remove();
-    playScreen.insertAdjacentHTML("beforeend", confirmHtml);
-
-    document.getElementById("btn-insurance-yes").onclick = () => {
-      p.insurance -= 1;
-      socket.emit("updateGameState", { roomCode: currentRoomCode, activePlayerIndex: activePlayerIndex, players: players });
-      socket.emit("playerAction", { roomCode: currentRoomCode, action: "insuranceUsed", playerId: p.id, nextInsuranceCount: p.insurance });
-      document.getElementById("insurance-confirm-modal")?.remove();
-    };
-
-    document.getElementById("btn-insurance-no").onclick = () => {
-      document.getElementById("insurance-confirm-modal")?.remove();
-    };
   });
 });
 
@@ -328,10 +140,7 @@ function joinRoom() {
   const inputEl = document.getElementById("input-room-code");
   if (!inputEl) return;
   const codeInput = inputEl.value.trim();
-  if (!codeInput) {
-    alert("ルームコードを入力してください");
-    return;
-  }
+  if (!codeInput) { alert("ルームコードを入力してください"); return; }
   currentRoomCode = String(codeInput);
   socket.emit("joinRoom", { roomCode: currentRoomCode });
 }
@@ -341,13 +150,7 @@ function showScreen(targetId) {
   screens.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      if (id === targetId) {
-        el.style.display = "block";
-        el.classList.add("active");
-      } else {
-        el.style.display = "none";
-        el.classList.remove("active");
-      }
+      if (id === targetId) { el.style.display = "block"; el.classList.add("active"); } else { el.style.display = "none"; el.classList.remove("active"); }
     }
   });
 }
@@ -355,55 +158,20 @@ function renderPlayerInputs() {
   const container = document.getElementById("phone-player-list");
   if (!container) return;
   container.innerHTML = "";
-
   players.forEach((p, idx) => {
-    const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.gap = "8px";
-    row.style.marginBottom = "8px";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = p.name;
-    input.style.flex = "1";
-    input.style.padding = "10px";
-    input.style.borderRadius = "6px";
-    input.style.border = "1px solid #ccc";
-
-    input.addEventListener("input", (e) => {
-      players[idx].name = e.target.value;
-      syncSettingsToServer();
-    });
-
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.textContent = "❌";
-    delBtn.style.padding = "8px 12px";
-    delBtn.style.background = "#d9534f";
-    delBtn.style.color = "#fff";
-    delBtn.style.border = "none";
-    delBtn.style.borderRadius = "6px";
-    delBtn.onclick = () => {
-      if (players.length <= 1) {
-        alert("最低1人必要です");
-        return;
-      }
-      players.splice(idx, 1);
-      renderPlayerInputs();
-      syncSettingsToServer();
-    };
-
-    row.appendChild(input);
-    row.appendChild(delBtn);
-    container.appendChild(row);
+    const row = document.createElement("div"); row.style.display = "flex"; row.style.gap = "8px"; row.style.marginBottom = "8px";
+    const input = document.createElement("input"); input.type = "text"; input.value = p.name; input.style.flex = "1"; input.style.padding = "10px"; input.style.borderRadius = "6px"; input.style.border = "1px solid #ccc";
+    input.addEventListener("input", (e) => { players[idx].name = e.target.value; syncSettingsToServer(); });
+    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "❌"; delBtn.style.padding = "8px 12px"; delBtn.style.background = "#d9534f"; delBtn.style.color = "#fff"; delBtn.style.border = "none"; delBtn.style.borderRadius = "6px";
+    delBtn.onclick = () => { if (players.length <= 1) { alert("最低1人必要です"); return; } players.splice(idx, 1); renderPlayerInputs(); syncSettingsToServer(); };
+    row.appendChild(input); row.appendChild(delBtn); container.appendChild(row);
   });
 }
 
 function addPlayerRow() {
   const newId = "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   players.push({ id: newId, name: `プレイヤー${players.length + 1}` });
-  renderPlayerInputs();
-  syncSettingsToServer();
+  renderPlayerInputs(); syncSettingsToServer();
 }
 
 function syncSettingsToServer() {
@@ -411,181 +179,114 @@ function syncSettingsToServer() {
   const selectedMode = document.querySelector('input[name="phone-mode"]:checked')?.value || "normal";
   socket.emit("updateSettings", { roomCode: currentRoomCode, players: players, mode: selectedMode, gameMode: selectedMode });
 }
+
 function sendStartGame() {
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
   activePlayerIndex = 0;
-  setTimeout(() => {
-    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(null);
-  }, 150);
 }
 
 function requestSpin() {
   if (isSpinning) return;
-  const spinBtn = document.getElementById("btn-phone-spin");
-  if (spinBtn) spinBtn.disabled = true;
-  const modal = document.getElementById("mobile-couple-event-modal");
-  if (modal) modal.style.display = "none";
+  if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
+  if (document.getElementById("mobile-couple-event-modal")) document.getElementById("mobile-couple-event-modal").style.display = "none";
   socket.emit("requestSpinRoulette", { roomCode: currentRoomCode });
 }
 
-// 🎯 ルーレットが回り始めた瞬間（通常・デバッグ共通）のボタン常時表示ロック
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
-  const nextBtn = document.getElementById("btn-phone-next");
-
-  // 🎯 ルーレット回転中：ボタンは1ミリも消さずに常時表示！
-  // まだ移動が終わっていない（触ってはいけない時）なので、半透明の影マスク状態をガチッとキープ
-  if (nextBtn) {
-    nextBtn.disabled = true;
-    nextBtn.style.opacity = "0.35";
-    nextBtn.style.pointerEvents = "none";
-  }
-  
+  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 回転中ロック
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
-
-  if (wheel) {
-    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
-    wheel.style.transform = `rotate(${targetRotation}deg)`;
-  }
-
+  if (wheel) { wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)"; wheel.style.transform = `rotate(${targetRotation}deg)`; }
   setTimeout(() => {
     if (resultDisplay) resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
     if (typeof callback === "function") callback(finalSteps);
   }, 3000);
 }
 
-// 🎯 【タイミング①：通常マスの移動完了時】
-// 止まったマスが分岐(0,49)でも役職マス(1〜17)でもない場合のみ、移動完了で即時点灯させます。
+// 🎯 移動完了時：通常マスの数値効果をマスのJSから直接計算し、その場で完了電波を送信！
 function handleRouletteStop(steps) {
   const p = players[activePlayerIndex];
   const pos = p ? Number(p.position) : 0;
 
-  // 分岐マスと役職マス(1〜17)は、スマホ側で選択を確定するまで絶対にボタンを点灯させない！
   if (pos !== 0 && pos !== 49 && !(pos >= 1 && pos <= 17)) {
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) {
-      console.log("[進行精査] 通常マスの移動完了を確認。次のプレイヤーへボタンを開放します。");
-      nextBtn.disabled = false; // 🔓 点灯
+    let currentMode = "normal";
+    const targetModule = window.SQ_MODULES && window.SQ_MODULES[pos] && window.SQ_MODULES[pos][currentMode];
+    
+    if (!targetModule || typeof targetModule.event !== "function") {
+      console.log("[通常マス自動処理] 演出のない通常マスのため、数値計算を確定させてサーバーへ一斉同期を通知します。");
+      
+      // 🚀 【行程⑤】何もないので、手元プレイヤーの最新データを添えてサーバーへ squareEventFinished を叩く！
+      socket.emit("playerAction", {
+        roomCode: currentRoomCode,
+        action: "squareEventFinished",
+        updatedPlayer: p
+      });
     }
   }
 }
-
 function updatePhoneStatusDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
-
-  const nameEl = document.getElementById("phone-current-name");
-  if (nameEl) nameEl.textContent = p.name;
-
-  const jobEl = document.getElementById("phone-current-job");
-  if (jobEl) jobEl.textContent = p.job || "モブ";
-
-  const hpEl = document.getElementById("phone-current-hp");
-  if (hpEl) hpEl.textContent = `${p.currentHp} / ${p.baseCap || 100}`;
-
-  const happinessEl = document.getElementById("phone-current-happiness");
-  if (happinessEl) {
-    happinessEl.textContent = `${p.happiness !== undefined ? p.happiness : 100} pt`;
-  }
+  if (document.getElementById("phone-current-name")) document.getElementById("phone-current-name").textContent = p.name;
+  if (document.getElementById("phone-current-job")) document.getElementById("phone-current-job").textContent = p.job || "モブ";
+  if (document.getElementById("phone-current-hp")) document.getElementById("phone-current-hp").textContent = `${p.currentHp} / ${p.baseCap || 100}`;
+  if (document.getElementById("phone-current-happiness")) document.getElementById("phone-current-happiness").textContent = `${p.happiness !== undefined ? p.happiness : 100} pt`;
 }
+
 function showJobChoiceDialog(jobId, jobName, playerId) {
   const overlay = document.getElementById("job-modal-overlay");
   const descEl = document.getElementById("job-modal-desc");
-  const btnYes = document.getElementById("btn-job-yes");
-  const btnNo = document.getElementById("btn-job-no");
-
   if (!overlay || !descEl) return;
 
-  descEl.textContent = `新しい役職「${jobName}」に就職しますか？\n（※一度就職すると、今後このイベントは発生しません）`;
+  descEl.textContent = `新しい役職「${jobName}」に就職しますか？`;
+  const newBtnYes = document.getElementById("btn-job-yes").cloneNode(true);
+  const newBtnNo = document.getElementById("btn-job-no").cloneNode(true);
+  document.getElementById("btn-job-yes").parentNode.replaceChild(newBtnYes, document.getElementById("btn-job-yes"));
+  document.getElementById("btn-job-no").parentNode.replaceChild(newBtnNo, document.getElementById("btn-job-no"));
 
-  const newBtnYes = btnYes.cloneNode(true);
-  const newBtnNo = btnNo.cloneNode(true);
-  btnYes.parentNode.replaceChild(newBtnYes, btnYes);
-  btnNo.parentNode.replaceChild(newBtnNo, btnNo);
-
-  // 🎯 【タイミング②：役職の選択完了時】
-  // 「はい」を押して就職処理が完了した瞬間に、ボタンのロックを安全に解除！
   newBtnYes.addEventListener("click", () => {
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "yes", jobId: jobId, jobName: jobName, playerId: playerId });
+    const p = players[activePlayerIndex]; p.jobId = jobId; p.job = jobName; p.hasJob = true;
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
     overlay.style.display = "none";
-    
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) nextBtn.disabled = false; // 🔓 点灯
   });
-
-  // 「いいえ」を押して辞退した瞬間に、ボタンのロックを安全に解除！
   newBtnNo.addEventListener("click", () => {
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "chooseJob", choice: "no", playerId: playerId });
+    const p = players[activePlayerIndex]; p.hasJob = false;
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
     overlay.style.display = "none";
-    
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) nextBtn.disabled = false; // 🔓 点灯
   });
-
   overlay.style.display = "flex";
 }
 
-// 🎯 次のプレイヤーへ手動クリック時
-// ※元の display: none 命令を完全抹消！タップされた瞬間は即座に半透明の影マスクロックに戻します
 function sendNextTurn() {
   socket.emit("playerAction", { roomCode: currentRoomCode, action: "nextTurn" });
-
-  const nextBtn = document.getElementById("btn-phone-next");
-  if (nextBtn) {
-    nextBtn.disabled = true;
-    nextBtn.style.opacity = "0.35";
-    nextBtn.style.pointerEvents = "none";
-    nextBtn.style.filter = "grayscale(80%)";
-  }
+  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 再ロック
 }
 
-// 🛠 開発用デバッグワープ
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
-
   e.preventDefault();
-  const inputDebugSquare = document.getElementById("input-debug-square");
-  if (!inputDebugSquare) return;
-
-  const targetVal = inputDebugSquare.value.trim();
-  if (targetVal === "") {
-    alert("ワープ先のマス番号を入力してください");
-    return;
-  }
-
+  const targetVal = document.getElementById("input-debug-square")?.value.trim();
   const targetSquareId = parseInt(targetVal, 10);
-  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
-    alert("0〜99の範囲で数値を入力してください");
-    return;
-  }
-
-  const roomCodeToSend = currentRoomCode || new URLSearchParams(window.location.search).get("room") || "";
-  socket.emit("debugWarp", { roomCode: roomCodeToSend, targetSquareId: targetSquareId });
+  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) return;
+  socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
   if (document.getElementById("route-select-modal")) return;
-
   const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = syncData && syncData.players ? syncData.players : players;
-
   if (!currentPlayers || currentPlayers.length === 0) return;
   const p = currentPlayers[currentIdx];
-  if (!p) return;
-
-  if (window.hasConfirmedThisTurn === true) return;
-
-  const playerPos = p.position !== undefined && p.position !== null ? Number(p.position) : 0;
-  if (playerPos !== 0 && playerPos !== 49) return;
+  if (!p || window.hasConfirmedThisTurn === true || (Number(p.position) !== 0 && Number(p.position) !== 49)) return;
 
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
-      <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+      <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
         <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
-        <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップすると、PC大画面のマップ上で選ばれなかった道に影が落ちます。</p>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップしてください。</p>
         <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
           <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルート（通常進路）</button>
           <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルート（特殊進路）</button>
@@ -594,67 +295,36 @@ function checkBranchSquareOnTurnStart(syncData) {
       </div>
     </div>
   `;
-
   const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
-  const oldModal = document.getElementById("route-select-modal");
-  if (oldModal) oldModal.remove();
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
 
   let tempSelectedIdx = null;
-  const btnA = document.getElementById("btn-route-a");
-  const btnB = document.getElementById("btn-route-b");
-  const btnConfirm = document.getElementById("btn-route-confirm");
+  const btnA = document.getElementById("btn-route-a"); const btnB = document.getElementById("btn-route-b"); const btnConfirm = document.getElementById("btn-route-confirm");
 
   btnA.onclick = () => {
-    tempSelectedIdx = 0;
-    btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75";
-    btnB.style.borderColor = "#ddd"; btnB.style.background = "#fff"; btnB.style.color = "#333";
+    tempSelectedIdx = 0; btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75"; btnB.style.borderColor = "#ddd"; btnB.style.background = "#fff"; btnB.style.color = "#333";
     btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
   };
-
   btnB.onclick = () => {
-    tempSelectedIdx = 1;
-    btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75";
-    btnA.style.borderColor = "#ddd"; btnA.style.background = "#fff"; btnA.style.color = "#333";
+    tempSelectedIdx = 1; btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75"; btnA.style.borderColor = "#ddd"; btnA.style.background = "#fff"; btnA.style.color = "#333";
     btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
     socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
   };
-
-  // 🎯 【タイミング③：進路のルート確定時】
-  // スマホ画面でAまたはBルートの確定ボタンが押されたまさにその瞬間に、ボタンのロックを安全に解除！
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
-    const modalEl = document.getElementById("route-select-modal");
-    if (modalEl) modalEl.remove();
-    
-    const nextBtn = document.getElementById("btn-phone-next");
-    if (nextBtn) {
-      console.log("[進行精査] 進路確定を確認。次のプレイヤーへボタンを開放します。");
-      nextBtn.disabled = false; // 🔓 点灯
-    }
+    document.getElementById("route-select-modal")?.remove();
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
   };
 }
 
-socket.on("syncGameState", (data) => {
-  if (data.players && Array.isArray(data.players)) players = data.players;
-  if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
-  updatePhoneStatusDisplay();
-  setTimeout(() => {
-    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
-  }, 100);
-});
-
-socket.on("showGraduateNextButton", () => {
-  const nextBtn = document.getElementById("btn-phone-next");
-  if (nextBtn) {
-    nextBtn.disabled = false;
-    nextBtn.style.opacity = "1.0";
-    nextBtn.style.pointerEvents = "auto";
-    nextBtn.style.filter = "none";
-  }
-  const resultDisplay = document.getElementById("roulette-result-display");
-  if (resultDisplay) resultDisplay.textContent = "🎉 卒業確定！交代してね！";
-});
+function loadAndApplySquareComponent(squareId, callback) {
+  let currentMode = "normal";
+  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) { if (typeof callback === "function") callback(); return; }
+  const script = document.createElement("script"); script.src = `/squares/sq_${squareId}.js`;
+  script.onload = () => { if (typeof callback === "function") callback(); };
+  script.onerror = () => { if (typeof callback === "function") callback(); };
+  document.head.appendChild(script);
+}

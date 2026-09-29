@@ -30,8 +30,7 @@ function initEventListeners() {
 function handleCreateRoom(e) {
   if (e) e.preventDefault();
   const hostNameInput = document.getElementById("pc-host-name");
-  const hostName =
-    hostNameInput && hostNameInput.value ? hostNameInput.value : "やじま";
+  const hostName = hostNameInput && hostNameInput.value ? hostNameInput.value : "やじま";
   socket.emit("createRoom", { hostName });
 }
 
@@ -53,7 +52,6 @@ function initSocketListeners() {
     const roomCodeEl = document.getElementById("display-room-code");
     if (roomCodeEl) roomCodeEl.textContent = roomCode;
 
-    // 🎯 修正：サーバー側で自前生成された画像データURLをそのまま<img>にセットする
     const qrImgEl = document.getElementById("qrcode-img");
     if (qrImgEl && data.qrCodeDataUrl) {
       qrImgEl.src = data.qrCodeDataUrl;
@@ -81,11 +79,8 @@ function initSocketListeners() {
     }
   });
 
-  // 🎯 完全修正：間違って混入したshowScreenを、元の正しいswitchScreenへ完全修復し、画面崩壊を100%解決します！
   socket.on("gameStarted", (data) => {
     if (data && data.players) players = data.players;
-    
-    // 💡 壊れていた部分を、PC側の正しい画面切り替え関数に完全修復！
     switchScreen("screen-game"); 
 
     if (window.boardManager) {
@@ -96,23 +91,15 @@ function initSocketListeners() {
     renderLocationPlayersList();
   });
 }
-// 🎯 注意：initSocketListeners関数が途中で途切れないよう、既存の関数にイベントを後から安全に継承・追加します
 function appendSocketListeners() {
   socket.on("spinRoulette", (data) => {
     if (data) {
-      if (data.activePlayerIndex !== undefined) {
-        activePlayerIndex = data.activePlayerIndex;
-      }
+      if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
       const resultNum = data.result !== undefined ? data.result : 1;
       executeSyncedRoulette(resultNum);
     }
   });
 
-  // ==========================================================================
-  // 🛠️ 【完全修正版】デバッグワープ非同期ロード完全同期化エンジン
-  // ワープ先のマス（30番など）のJSファイルのロードが「100%完了したコールバックの中」で
-  // 初めてマスのイベント（handleForceStopSquare）を起動させ、すれ違いスキップを完全根絶します！
-  // ==========================================================================
   socket.on("executeDebugWarp", (data) => {
     if (data.players) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
@@ -120,25 +107,18 @@ function appendSocketListeners() {
     const p = players[activePlayerIndex];
     if (!p) return;
 
-    if (window.boardManager) {
-      window.boardManager.draw(players, activePlayerIndex);
-    }
+    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     updateCurrentPlayerDisplay();
 
-    // 🎯 【バグの根源を粉砕】裏側での動的ロードが「完全に終わった瞬間」に、安全にバトンを渡す！
     if (typeof loadAndApplySquareComponent === "function") {
       loadAndApplySquareComponent(data.targetSquareId, () => {
-        
         const targetSquare = typeof MAP_SQUARES !== "undefined" ? MAP_SQUARES[data.targetSquareId] : null;
         if (!targetSquare) return;
 
         p.location = targetSquare.location || "";
-        
-        // 1. ファイル（sq_30.js）が100%結合された状態で、お酒計算（一斉乾杯チェック）を起動！
         applySquareEffects(p, targetSquare); 
         updateCurrentPlayerDisplay();
 
-        // 2. マス説明文の更新
         const tileDescEl = document.getElementById("current-tile-desc");
         if (tileDescEl) {
           let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯</span>` : "";
@@ -146,9 +126,7 @@ function appendSocketListeners() {
           tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
         }
 
-        // 🎯 3. 【核心の修正】ファイルが100%結合された状態なので、
-        // 内部に書かれた自前 event 関数が100%確実に検知され、自動スキップをパツンとせき止めます！
-        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
+        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "insurance_shop") {
           handleForceStopSquare(p, targetSquare);
         } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
           const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
@@ -159,30 +137,24 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 1回目偶数達成時：新設ボックスに成功を表示し、右側を表（告白相手）へ切り替え
-  socket.on("startCoupleSecondRoulette", (data) => {
+  // 🎯 【完全汎用化】マスのJSから届いた設定に従い、大画面に2回目の運命対応表を美しく動的生成！
+  socket.on("startCustomEventSecondSpin", (data) => {
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.className = "event-result-box success";
-      modalResultBox.innerHTML = "🔥 偶数達成！<br>運命の告白チャンス突入！";
+      modalResultBox.innerHTML = `🔥 1回目達成！<br>運命の ${data.nextStepEventName || "チャンス"} 突入！`;
       modalResultBox.style.display = "block";
     }
 
-    const dynamicTableZone = document.getElementById(
-      "pc-event-table-dynamic-zone",
-    );
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
-      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
-
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 運命の決定対応表</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
-        let targetText =
-          '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
-
+        let targetText = '<span style="color:#aaa;">（誰もなし：失敗）</span>';
         if (target) {
-          targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に告白！ (成立)</span>`;
+          targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に決定！</span>`;
         }
-
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
@@ -190,38 +162,25 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 2回目決着時：新設ボックスに最終結果を表示し、余韻を持たせてからモーダルを閉じる
-  socket.on("coupleEventFinished", (data) => {
+  // 🎯 【完全汎用化】2段階イベントが決着した瞬間の汎用クローズ余韻演出
+  socket.on("customEventFinished", (data) => {
     isPCEventMode = false;
-
-    // 3秒のルーレット回転完了を待ってから結果テキストをモーダル内に表示
     setTimeout(() => {
       const modalResultBox = document.getElementById("modal-event-result-box");
       if (modalResultBox) {
         modalResultBox.style.display = "block";
-        if (data.success) {
-          modalResultBox.className = "event-result-box success";
-          modalResultBox.innerHTML = `💕 カップル成立！！ 💕<br><span style="font-size:0.95rem;">${data.message || ""}</span>`;
-        } else {
-          modalResultBox.className = "event-result-box failure";
-          modalResultBox.innerHTML =
-            '💦 告白失敗... 💦<br><span style="font-size:0.95rem;">運命の人は別にいるさ！ドンマイ！</span>';
-        }
+        modalResultBox.className = data.success ? "event-result-box success" : "event-result-box failure";
+        modalResultBox.innerHTML = data.message || "";
       }
 
-      // 結果をしっかり確認できるよう、さらに3秒間余韻を持たせてからモーダルを自動クローズ
       setTimeout(() => {
         const targetModalEl = document.getElementById("pc-event-modal");
         if (targetModalEl) {
           targetModalEl.className = "event-modal-overlay";
           targetModalEl.style.display = "none";
         }
-
         const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) {
-          btnNext.disabled = false;
-          btnNext.style.display = "block";
-        }
+        if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
       }, 3000);
     }, 3000);
   });
@@ -230,22 +189,14 @@ function appendSocketListeners() {
 document.addEventListener("DOMContentLoaded", () => {
   appendSocketListeners();
 });
-
 function switchScreen(targetId) {
   const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
   screenIds.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) {
-      el.style.display = "none";
-      el.classList.remove("active");
-    }
+    if (el) { el.style.display = "none"; el.classList.remove("active"); }
   });
-
   const target = document.getElementById(targetId);
-  if (target) {
-    target.style.display = "";
-    target.classList.add("active");
-  }
+  if (target) { target.style.display = ""; target.classList.add("active"); }
 }
 
 function renderPlayerWaitingList() {
@@ -262,97 +213,63 @@ function renderPlayerWaitingList() {
 function renderLocationPlayersList() {
   const container = document.getElementById("location-players-list");
   if (!container) return;
-
   const locationMap = {};
   players.forEach((p) => {
-    const loc =
-      p.location && p.location.trim() !== "" ? p.location : "スタート前";
+    const loc = p.location && p.location.trim() !== "" ? p.location : "スタート前";
     if (!locationMap[loc]) locationMap[loc] = [];
     locationMap[loc].push(p.name);
   });
-
   let html = "";
   for (const [loc, names] of Object.entries(locationMap)) {
     html += `<div style="margin-bottom: 4px;"><strong>${loc}：</strong> ${names.join("、")}</div>`;
   }
-  container.innerHTML =
-    html ||
-    '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
+  container.innerHTML = html || '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
 }
 
-// ==========================================================================
-// 🎯 【完全修正版】複数交際（2股対応）プレイヤーカード表示アップデート
-// 恋人が何人いても、すべての恋人の名前を「、」で繋いでリアルタイムに全員分表示します。
-// ==========================================================================
 function updateCurrentPlayerDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  const jobMaster =
-    typeof JOBS !== "undefined"
-      ? JOBS.find(
-          (j) => j.id === p.jobId || j.label === p.job || j.title === p.job,
-        )
-      : null;
-
+  const jobMaster = typeof JOBS !== "undefined" ? JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job) : null;
   const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 100;
-  const bonusCap = p.bonusCap || 0;
-  const maxHp = baseCap + bonusCap;
+  const maxHp = baseCap + (p.bonusCap || 0);
 
   if (p.currentHp === undefined) p.currentHp = maxHp;
   const currentHp = Math.max(0, p.currentHp);
-  const drunkPercent = Math.min(
-    100,
-    Math.round(((maxHp - currentHp) / maxHp) * 100),
-  );
+  const drunkPercent = Math.min(100, Math.round(((maxHp - currentHp) / maxHp) * 100));
 
   const nameEl = document.getElementById("current-player-name");
   const jobEl = document.getElementById("current-player-job");
   if (nameEl) nameEl.textContent = p.name;
   if (jobEl) jobEl.textContent = jobMaster ? jobMaster.label : p.job || "モブ";
 
-  const playerColors = [
-    "#f44336", "#2196f3", "#4caf50", "#ff9800",
-    "#9c27b0", "#00bcd4", "#e91e63", "#795548"
-  ];
-
+  const playerColors = ["#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4", "#e91e63", "#795548"];
   const playerCardEl = document.querySelector(".current-player-card");
   if (playerCardEl) {
     const playerColor = p.color || playerColors[activePlayerIndex % playerColors.length];
     playerCardEl.style.background = `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`;
   }
 
-  // 💕 【2股・複数交際対応表示システム】
   const loverIconEl = document.getElementById("current-player-lover-icon");
   if (loverIconEl) {
     if (p.isLover && p.lovers && p.lovers.length > 0) {
-      // 💡 恋人たちの名前を「、」で綺麗に結合して、人数に関わらず全員分大画面に表示！
-      const loversListText = p.lovers.join("、");
-      loverIconEl.innerHTML = `<span style="font-size: 0.95rem; font-weight: bold; color: #ffeb3b; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 20px;">💕 恋人: ${loversListText}</span>`;
+      loverIconEl.innerHTML = `<span style="font-size: 0.95rem; font-weight: bold; color: #ffeb3b; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 20px;">💕 恋人: ${p.lovers.join("、")}</span>`;
       loverIconEl.style.display = "inline-block";
     } else if (p.isLover) {
-      // 万が一名前データが無い場合の古い仕様へのフォールバック（ハートアイコン点灯）
-      loverIconEl.innerHTML = "❤️";
-      loverIconEl.style.display = "inline-block";
+      loverIconEl.innerHTML = "❤️"; loverIconEl.style.display = "inline-block";
     } else {
       loverIconEl.style.display = "none";
     }
   }
 
-  const hpTextEl = document.getElementById("current-player-hp");
-  const hpBarEl = document.getElementById("current-player-drunk");
-  const drunkPercentEl = document.getElementById("current-player-drunk-percent");
-
-  if (hpTextEl) hpTextEl.textContent = `${currentHp} / ${maxHp}`;
-  if (hpBarEl) {
+  if (document.getElementById("current-player-hp")) document.getElementById("current-player-hp").textContent = `${currentHp} / ${maxHp}`;
+  if (document.getElementById("current-player-drunk")) {
     const hpRate = Math.max(0, (currentHp / maxHp) * 100);
-    hpBarEl.style.width = `${hpRate}%`;
-    hpBarEl.style.backgroundColor = hpRate > 50 ? "#4caf50" : hpRate > 20 ? "#ff9800" : "#f44336";
+    document.getElementById("current-player-drunk").style.width = `${hpRate}%`;
+    document.getElementById("current-player-drunk").style.backgroundColor = hpRate > 50 ? "#4caf50" : hpRate > 20 ? "#ff9800" : "#f44336";
   }
-  if (drunkPercentEl) drunkPercentEl.textContent = `${drunkPercent}%`;
-
-  const drinksEl = document.getElementById("current-player-drinks");
-  if (drinksEl) drinksEl.textContent = `${p.drinkCount || 0} 杯`;
+  if (document.getElementById("current-player-drunk-percent")) document.getElementById("current-player-drunk-percent").textContent = `${drunkPercent}%`;
+  if (document.getElementById("current-player-drinks")) document.getElementById("current-player-drinks").textContent = `${p.drinkCount || 0} 杯`;
 
   const happinessEl = document.getElementById("current-player-happiness");
   if (happinessEl) {
@@ -360,16 +277,12 @@ function updateCurrentPlayerDisplay() {
     happinessEl.textContent = `${hpVal} pt`;
     if (hpVal >= 100) happinessEl.style.color = "#ffeb3b";
     else if (hpVal >= 50) happinessEl.style.color = "#ffffff";
-    else hospitalityEl.style.color = "#ff8a80";
+    else happinessEl.style.color = "#ff8a80";
   }
 
-  const locationEl = document.getElementById("current-player-location");
-  if (locationEl) locationEl.textContent = p.location ? p.location : "-";
-
+  if (document.getElementById("current-player-location")) document.getElementById("current-player-location").textContent = p.location ? p.location : "-";
   renderLocationPlayersList();
 }
-
-// ─── pc.js : 選択ルートを自動判別して1歩ずつ進む移動探索システム ───
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -383,157 +296,81 @@ function executeSyncedRoulette(resultNum) {
 
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
+  if (document.getElementById("event-text")) document.getElementById("event-text").innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
 
-  const eventBox = document.getElementById("event-text");
-  if (eventBox) {
-    eventBox.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
-  }
-
+  // 🎯 【システム同期】1〜10の出目に対応する、大画面の物理的な盤面ストップ角度（度数）
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
-  const currentMod = pcCurrentRotation % 360;
-  pcCurrentRotation += 1800 + ((stopAngle - currentMod + 360) % 360);
+  pcCurrentRotation += 1800 + ((stopAngle - (pcCurrentRotation % 360) + 360) % 360);
 
-  let wheel;
-  if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
-    wheel = document.querySelector("#pc-event-modal .event-roulette-wheel") || 
-            document.querySelector("#pc-couple-event-modal .event-roulette-wheel") ||
-            document.querySelector("#pc-couple-event-modal .couple-wheel");
-  } else {
-    wheel = document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel");
-  }
+  let wheel = isPCEventMode ? (document.querySelector("#pc-event-modal .event-roulette-wheel") || document.querySelector("#pc-couple-event-modal .event-roulette-wheel")) : (document.getElementById("controller-roulette-wheel") || document.getElementById("pc-roulette-wheel"));
+  if (wheel) { wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)"; wheel.style.transform = `rotate(${pcCurrentRotation}deg)`; }
 
-  if (wheel) {
-    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
-    wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
-  }
-
-  if (typeof isPCEventMode !== "undefined" && isPCEventMode) {
-    triggerDelayedDisplay(resultNum, null);
-    return;
-  }
+  if (isPCEventMode) { triggerDelayedDisplay(resultNum, null); return; }
 
   setTimeout(() => {
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
-
     let stepsMoved = 0;
 
     const moveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
-
-      if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup")) {
-        clearInterval(moveTimer);
-        finalizeMovement();
-        return;
+      if (stepsMoved > 0 && currentSquare && (currentSquare.type === "force_stop" || currentSquare.type === "force_stop_rankup" || currentSquare.type === "insurance_shop")) {
+        clearInterval(moveTimer); finalizeMovement(); return;
       }
-
       if (stepsMoved >= resultNum || !currentSquare || !currentSquare.nextId || currentSquare.nextId.length === 0) {
-        clearInterval(moveTimer);
-        finalizeMovement();
-        return;
+        clearInterval(moveTimer); finalizeMovement(); return;
       }
 
-      // 🎯 【完全修正版】複数プレイヤー個別進路トレースロジック
-      // サーバーから同期されたプレイヤー個人が持つ chosenRouteIdx を100%信用して進みます。
       const nextIdArray = currentSquare.nextId;
       if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
-        // プレイヤー自身が持っている確定ルートインデックスを最優先で参照
-        const routeIdx = (p.chosenRouteIdx !== undefined && p.chosenRouteIdx !== null) ? Number(p.chosenRouteIdx) : 0;
-        p.position = Number(nextIdArray[routeIdx]); 
+        p.position = Number(nextIdArray[(p.chosenRouteIdx !== undefined && p.chosenRouteIdx !== null) ? Number(p.chosenRouteIdx) : 0]);
       } else {
-        // 分岐ではない通常マスは、そのまま単一の接続先へ進む
-        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray);
+        p.position = Number(Array.isArray(nextIdArray) ? nextIdArray : nextIdArray);
       }
-      
       stepsMoved++;
       if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // 🎯 【完全復元】着地瞬間のイベント起動ロジック
     function finalizeMovement() {
-      let targetSquare = null;
-      if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
-        targetSquare = MAP_SQUARES[p.position];
-        p.location = targetSquare.location || "";
-        applySquareEffects(p, targetSquare); 
-      }
+      loadAndApplySquareComponent(p.position, () => {
+        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        if (targetSquare) { p.location = targetSquare.location || ""; applySquareEffects(p, targetSquare); }
 
-      if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-      renderLocationPlayersList();
-      updateCurrentPlayerDisplay();
+        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+        renderLocationPlayersList(); updateCurrentPlayerDisplay();
 
-      if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
-        const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-        console.log(`[役職マス通常着地] スマホへ直接役職モーダル出現を指示します: ${jobName}`);
-        socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
-      }
+        if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
+          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+          socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
+        }
+        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
-      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; 
-
-      if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
-        handleForceStopSquare(p, targetSquare);
-      }
-
-      // 💡 ここで着地完了通知をキックする（この中に新システムを逃がします）
-      triggerDelayedDisplay(resultNum, targetSquare);
+        if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "insurance_shop")) {
+          handleForceStopSquare(p, targetSquare);
+        }
+        triggerDelayedDisplay(resultNum, targetSquare);
+      });
     }
   }, 3000);
 }
-
-// ==========================================================================
-// 🎯 【最終決定版】複数プレイヤー位置巻き戻しバグ完全粉砕コード
-// 手番プレイヤー本人の最新データのみをピンポイントでサーバーへ報告し、
-// 他のプレイヤーの位置や滞在場所が「0（スタート前）」にリセットされるのを物理的に100%防ぎます。
-// ==========================================================================
 function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
-
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  const eventBox = document.getElementById("event-text");
-  if (eventBox) {
-    eventBox.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
-  }
+  if (document.getElementById("event-text")) document.getElementById("event-text").innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
 
-  // 🎯 【超重要修正】他人のデータを汚す map ループを完全に撤去！
-  // 現在の手番プレイヤー（本人）の最新の位置と場所データだけを、サーバーへ安全に報告！
   socket.emit("updateGameState", {
-    roomCode: roomCode,
-    activePlayerIndex: activePlayerIndex,
-    players: [{
-      id: p.id,
-      position: p.position,
-      location: targetSquare.location ? targetSquare.location : "スタート前",
-      currentHp: p.currentHp,
-      drinkCount: p.drinkCount,
-      happiness: p.happiness !== undefined ? p.happiness : 100,
-      isLover: p.isLover,
-      skipTurn: p.skipTurn,
-      hasJob: p.hasJob !== undefined ? p.hasJob : false,
-      jobId: p.jobId || null,
-      job: p.job || "モブ"
-    }]
+    roomCode: roomCode, activePlayerIndex: activePlayerIndex,
+    players: [{ id: p.id, position: p.position, location: targetSquare.location ? targetSquare.location : "スタート前", currentHp: p.currentHp, drinkCount: p.drinkCount, happiness: p.happiness !== undefined ? p.happiness : 100, isLover: p.isLover, skipTurn: p.skipTurn, hasJob: p.hasJob !== undefined ? p.hasJob : false, jobId: p.jobId || null, job: p.job || "モブ" }]
   });
 
-  if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "jobChallenge") {
-    socket.emit("playerAction", {
-      roomCode: roomCode,
-      action: "squareEvent",
-      targetSquare: targetSquare
-    });
-  }
-
-  // 裏側での先回り非同期ロード（安全な既存システム）
-  if (typeof loadAndApplySquareComponent === "function") {
-    loadAndApplySquareComponent(p.position, () => {
-      console.log(`[先回り完了] マス ${p.position} のコンポーネントのロードに成功しました。`);
-    });
+  if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "insurance_shop" || targetSquare.type === "jobChallenge") {
+    socket.emit("playerAction", { roomCode: roomCode, action: "squareEvent", targetSquare: targetSquare });
   }
 }
 
-// 🎯 1箇所目：pc.js の112行目付近の syncGameState を、余計な割り込みを消して元の綺麗な状態に完全修復！
 socket.on("syncGameState", (data) => {
   if (data.players && Array.isArray(data.players)) players = data.players;
   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
@@ -542,262 +379,78 @@ socket.on("syncGameState", (data) => {
 });
 
 // ==========================================================================
-// 🛡️ 【完全お掃除・役割分離版】マスの共通効果（計算・一斉乾杯）エンジン
-// 30番マスの固有イベント処理は、すべて sq_30.js 側へ100%完全移行・パージしました。
-// ここは、純粋にお酒ペナルティ、幸福度変動、そして同じ場所に2人揃った時の一斉乾杯チェックだけを行う
-// システム共通の堅牢な土台になります。
-// ==========================================================================
-function applySquareEffects(player, square) {
-  if (!square) return;
-
-  // 1. 通常のお酒ペナルティの適用（元からある完璧な処理）
-  const drinkAmount = square.drink !== undefined ? square.drink : 0;
-  if (drinkAmount > 0) {
-    if (!player.drinkCount) player.drinkCount = 0;
-    player.drinkCount += drinkAmount;
-    if (player.currentHp !== undefined) {
-      player.currentHp = Math.max(0, player.currentHp - drinkAmount * 10);
-    }
-  }
-
-  // 2. マスの幸福度増減を適用（元からある完璧な処理）
-  const happinessChange = square.happiness !== undefined ? square.happiness : 0;
-  if (happinessChange !== 0) {
-    if (player.happiness === undefined) player.happiness = 100;
-    player.happiness += happinessChange;
-    console.log(`[幸福度変動] ${player.name}: ${happinessChange > 0 ? "+" : ""}${happinessChange} (現在値: ${player.happiness})`);
-  }
-
-  // 3. 肝臓HPが0（潰れた）場合のペナルティ・全回復処理（元からある完璧な処理）
-  if (player.currentHp !== undefined && player.currentHp <= 0) {
-    if (player.happiness === undefined) player.happiness = 100;
-    player.happiness = Math.max(0, player.happiness - 30);
-    player.skipTurn = true;
-    const maxHp = (player.baseCap || 80) + (player.bonusCap || 0);
-    player.currentHp = maxHp;
-    alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
-  }
-
-  // 4. 同じ場所にいる人での一斉乾杯演出（専用UI連動仕様）
-  const loc = square.location ? square.location.trim() : "";
-  if (loc !== "" && loc !== "家" && loc !== "スタート前" && loc !== "-") {
-    const drinkingBuddies = players.filter(p => p && p.location && p.location.trim() === loc);
-    
-    if (drinkingBuddies.length >= 2) {
-      const kanpaiModal = document.getElementById("pc-kanpai-modal");
-      if (kanpaiModal) {
-        isPCEventMode = true;
-        const buddyNames = drinkingBuddies.map(p => `👤 ${p.name}`).join("、");
-
-        document.getElementById("pc-kanpai-members").textContent = buddyNames;
-        document.getElementById("pc-kanpai-location").textContent = `📍 ${loc}`;
-
-        drinkingBuddies.forEach(p => {
-          if (!p.drinkCount) p.drinkCount = 0;
-          p.drinkCount += 1;
-          if (p.currentHp !== undefined) p.currentHp = Math.max(0, p.currentHp - 10);
-          if (p.currentHp !== undefined && p.currentHp <= 0) {
-            if (p.happiness === undefined) p.happiness = 100;
-            p.happiness = Math.max(0, p.happiness - 30);
-            p.skipTurn = true;
-            p.currentHp = (p.baseCap || 80) + (p.bonusCap || 0);
-          }
-        });
-
-        if (typeof socket !== "undefined") {
-          socket.emit("playerAction", { roomCode: roomCode, action: "enableNextTurnButton" });
-        }
-
-        kanpaiModal.style.display = "flex";
-        updateCurrentPlayerDisplay();
-      }
-    }
-  }
-}
-
-// ==========================================================================
-// 🧭 【完全コンポーネント化】仕様未定マス＆卒業専用・限定テキスト定義
-// カップルマスのテキストやデザイン設定は、すべて sq_41.js 側へ完全移行・パージしました。
+// 🧭 【完全お掃除版】仕様未定マス専用・限定テキスト定義（カップル全廃）
 // ==========================================================================
 const GAME_EVENTS = {
-  入学式: {
-    class: "theme-entrance",
-    title: "🌸 入学式 🌸",
-    desc: (name) => `${name} さんの大学生活がスタート！最初の新歓イベントに向けてルーレットを回そう！`,
-  },
-  ランクアップ: {
-    class: "theme-rankup",
-    title: "🔥 ランクアップチャンス 🔥",
-    desc: (name) => `${name} さんの実力が試される時！ルーレットで【4以上】を出して上位役職へ這い上がれ！`,
-  },
-  引退: {
-    class: "theme-retirement",
-    title: "🎓 サークル引退式 🎓",
-    desc: (name) => `${name} さん、これまでの思い出を胸に引退！最後の特大乾杯イベントが始まる...！`,
-  },
-  卒業判定: {
-    class: "theme-retirement",
-    title: "🎓 運命の卒業判定チャンス 🎓",
-    desc: (name) => `${name} さんの卒業を決める運命のルーレット！【6単位以上】取れたら卒業！`
-  }
+  入学式: { class: "theme-entrance", title: "🌸 入学式 🌸", desc: (name) => `${name} さんの大学生活がスタート！` },
+  ランクアップ: { class: "theme-rankup", title: "🔥 ランクアップチャンス 🔥", desc: (name) => `${name} さんの実力が試される時！` },
+  引退: { class: "theme-retirement", title: "🎓 サークル引退式 🎓", desc: (name) => `${name} さん、これまでの思い出を胸に引退！` },
+  卒業判定: { class: "theme-retirement", title: "🎓 運命の卒業判定チャンス 🎓", desc: (name) => `${name} さんの運命のルーレット！` }
 };
 
-function generateCoupleTargetTable(activePlayerId) {
-  const otherPlayers = players.filter(
-    (p) => String(p.id) !== String(activePlayerId),
-  );
-
-  let html = `<div class="event-title" style="font-size:1.4rem; color:#d81b60; margin-bottom:10px;">💖 告白相手の決定対応表</div><ul class="event-table-list">`;
-
-  for (let i = 1; i <= 10; i++) {
-    let targetText = '<span style="color:#aaa;">（誰もなし：告白失敗）</span>';
-
-    if (i % 2 === 1 && otherPlayers.length > 0) {
-      const idx = Math.floor((i - 1) / 2) % otherPlayers.length;
-      targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${otherPlayers[idx].name} に告白！ (カップル成立)</span>`;
-    }
-
-    html += `<li class="event-table-item"><div class="event-table-num-badge">${i}</div><div>${targetText}</div></li>`;
-  }
-  html += `</ul>`;
-  return html;
-}
-
-// ==========================================================================
-// 🎓 【完全お掃除版】汎用イベントモーダル展開システム
-// カップルマスの条件表生成（eventType === "カップル"）は、すべて sq_41.js へ完全移譲・全廃。
-// ここは仕様未定マス（入学式、ランクアップ、引退）と卒業判定のみを司る純粋な土台になります。
-// ==========================================================================
 function openPCEventModal(eventType, playerName, activePlayerId) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
 
-  const btnNext = document.getElementById("btn-next-turn");
-  if (btnNext) {
-    btnNext.disabled = true;
-    btnNext.style.display = "none";
-  }
-
+  if (document.getElementById("btn-next-turn")) { document.getElementById("btn-next-turn").disabled = true; document.getElementById("btn-next-turn").style.display = "none"; }
   const config = GAME_EVENTS[eventType];
-  if (!config) return; // 定義がない場合は安全に終了
+  if (!config) return;
 
-  // モーダルのテーマクラスとテキストの反映（元からある完璧な処理）
-  pcModal.className = "event-modal-overlay";
-  pcModal.classList.add("active", config.class);
-
-  const titleEl = document.getElementById("modal-event-title");
-  const descEl = document.getElementById("modal-event-desc");
-  if (titleEl) titleEl.textContent = config.title;
-  if (descEl) descEl.textContent = config.desc(playerName);
-
-  const resultBox = document.getElementById("modal-event-result-box");
-  if (resultBox) {
-    resultBox.style.display = "none";
-    resultBox.className = "event-result-box";
-    resultBox.textContent = "";
-  }
-
-  let tableHTML = "";
-
-  // 🎓 【追加：卒業判定の条件表】1〜10の条件リストの見た目を100%維持して流し込む
-  if (eventType === "卒業判定") {
-    tableHTML = `
-      <div class="event-table-title" style="font-size:1.3rem; color:#e65100; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff9800; padding-bottom:4px;">
-        🎓 卒業判定：運命の単位数対応表
-      </div>
-      <ul class="event-table-list">`;
-    for (let i = 1; i <= 10; i++) {
-      const isPass = i >= 6;
-      const badgeBg = isPass ? "#4caf50" : "#f44336";
-      const text = isPass
-        ? '<span style="color:#2e7d32; font-weight:bold;">🎓 6以上：【卒業】</span>'
-        : '<span style="color:#c62828; font-weight:bold;">🚨 5以下：【留年】</span>';
-      tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${text}</div></li>`;
-    }
-    tableHTML += `</ul>`;
-  } else {
-    tableHTML = `<div class="event-table-title">👥 判定条件</div><p>イベントの準備中...</p>`;
-  }
-
-  const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
-  if (dynamicTableZone) {
-    dynamicTableZone.innerHTML = tableHTML;
-  }
-
-  const modalResEl = document.getElementById("modal-roulette-result-display");
-  if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の卒業スピンを回してね！";
+  pcModal.className = "event-modal-overlay active " + config.class;
+  if (document.getElementById("modal-event-title")) document.getElementById("modal-event-title").textContent = config.title;
+  if (document.getElementById("modal-event-desc")) document.getElementById("modal-event-desc").textContent = config.desc(playerName);
+  if (document.getElementById("modal-event-result-box")) document.getElementById("modal-event-result-box").style.display = "none";
+  if (document.getElementById("pc-event-table-dynamic-zone")) document.getElementById("pc-event-table-dynamic-zone").innerHTML = `<p>イベント待機中...</p>`;
 }
 
 // ==========================================================================
-// 🎓 【完全修復・最終決定版】コンポーネント自動連動型ハブエンジン
-// 直書きcaseやGAME_EVENTSの残骸を完全一掃した、純粋なハブ土台です。
-// window.SQ_MODULES[square.id][currentMode] の正しい引き出しからマスの自前event関数を
-// 100%確実に呼び出し、ファイルがまだ無い古い仕様未定マスだけを300msで自動スキップさせます。
+// 🎯 【真のコンポーネント起動エンジン】
 // ==========================================================================
 function handleForceStopSquare(player, square) {
   if (!square) return;
-
-  // 💡 完璧だった元の仕様：89番マス着地時は何もせず静かにピンを止めます
-  if (Number(square.id) === 89) {
-    console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
-    return;
-  }
+  if (Number(square.id) === 89) return;
 
   let currentMode = "normal";
   if (typeof roomCode !== "undefined" && typeof rooms !== "undefined" && rooms[roomCode]) {
     currentMode = rooms[roomCode].mode || "normal";
   }
 
-  // 🎯 【核心の配線修正】0番マスの本物の規格（window.SQ_MODULES[id][mode]）から、正確にモジュールをロードする！
+  // 🎯 読み込まれたマスのJS（sq_30 や sq_41）に直書きされた自前の event 関数を1行で爆発させる！
   const targetModule = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
-  
-  // 🚀 マスのファイル（sq_30 や sq_41）に直書きされた自前のイベント関数があれば、100%ダイレクトに実行！
   if (targetModule && typeof targetModule.event === "function") {
-    console.log(`[コンポーネント完全連動] sq_\${square.id}.js の直書きイベント関数を実行します。`);
+    console.log(`[コンポーネント自動連動] sq_${square.id}.js の直書きイベントを実行します。`);
     targetModule.event(player, square);
-    return; // 🔓 自前処理が動くため、下の自動スキップタイマーを完全に停止させます！
+    return; // 🔓 100%自動スキップタイマーをせき止めて手動操作を待つ！
   }
 
-  // 💡 まだJSファイルを作っていない、本当の「仕様未定マス（18番など）」の時だけ、これまで通り0.3秒でサウザク自動進行
-  console.log(`[開発デバッグ] マスID: \${square.id} はイベント未定義（ファイル未作成）のため、自動進行します。`);
-  
-  if (typeof openPCEventModal === "function") {
-    let fallbackType = "入学式";
-    if (Number(square.id) === 49) fallbackType = "ランクアップ";
-    if (Number(square.id) === 80) fallbackType = "引退";
-    openPCEventModal(fallbackType, player.name, player.id);
-  }
+  console.log(`[開発デバッグ] マスID: ${square.id} はイベント処理未定義のため自動進行。`);
+  let fallbackType = square.id === 18 ? "入学式" : square.id === 49 ? "ランクアップ" : "引退";
+  openPCEventModal(fallbackType, player.name, player.id);
 
   setTimeout(() => {
     socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
-    const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal) {
-      pcModal.className = "event-modal-overlay";
-      pcModal.style.display = "none";
-    }
+    if (document.getElementById("pc-event-modal")) document.getElementById("pc-event-modal").style.display = "none";
     isPCEventMode = false;
   }, 300);
 }
 
-// 🎯 2箇所目：pc.js の【ファイルの本当の一番最後（最下部）】へ、以下の独立アンテナコードを丸ごとそのまま追記！
-if (typeof socket !== "undefined") {
-  // 💡 サーバーからの独立指示を受け取って、大画面モーダルを100%確実に強制展開させる！
-  socket.on("showGraduateEvent", (data) => {
-    console.log(`[大画面イベント強制起動] サーバーからの独立信号を受信しました。手番: ${data.playerName}`);
-    if (typeof openPCEventModal === "function" && data) {
-      openPCEventModal("卒業判定", data.playerName, data.playerId);
-    }
-  });
-
-  // 💡 スマホでルーレットが止まった瞬間、大画面のイベントモーダルを100%確実に直接消去する！
-  socket.on("closeGraduateModal", (data) => {
-    console.log("[大画面イベント終了] 卒業判定モーダルをクローズします。");
-    isPCEventMode = false;
-    const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal) {
-      pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
-      pcModal.style.display = "none"; // 確実に非表示消去！
-    }
-  });
+function loadAndApplySquareComponent(squareId, callback) {
+  let currentMode = "normal";
+  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) {
+    if (typeof callback === "function") callback(); return;
+  }
+  const script = document.createElement("script");
+  script.src = `/squares/sq_${squareId}.js`;
+  script.onload = () => { if (typeof callback === "function") callback(); };
+  script.onerror = () => { if (typeof callback === "function") callback(); };
+  document.head.appendChild(script);
 }
+
+socket.on("applyPlayerAction", (data) => {
+  if (data && data.action === "turnUpdated") {
+    isPCEventMode = false;
+    if (document.getElementById("pc-kanpai-modal")) document.getElementById("pc-kanpai-modal").style.display = "none";
+    if (document.getElementById("pc-event-modal")) document.getElementById("pc-event-modal").style.display = "none";
+  }
+});
