@@ -542,28 +542,13 @@ socket.on("syncGameState", (data) => {
 });
 
 // ==========================================================================
-// 🛡️ 【最終決定版】生命保険購入ショップ（30番マス）絶対発動システム
-// マスのロード遅れや古いマスターデータのタイプに関係なく、マスのID（30番）を
-// 物理的に直接検知して、操作権を持つスマホ側へ100%確実に購入ダイアログを強制出現させます。
+// 🛡️ 【完全お掃除・役割分離版】マスの共通効果（計算・一斉乾杯）エンジン
+// 30番マスの固有イベント処理は、すべて sq_30.js 側へ100%完全移行・パージしました。
+// ここは、純粋にお酒ペナルティ、幸福度変動、そして同じ場所に2人揃った時の一斉乾杯チェックだけを行う
+// システム共通の堅牢な土台になります。
 // ==========================================================================
 function applySquareEffects(player, square) {
-  // 🎯 【超重要修正】古いデータの干渉を完全全廃！
-  // マスのIDが「30」だった場合は、何が何でも最優先で生命保険ショップイベントを起動させる！
-  if (square && (Number(square.id) === 30 || square.type === "insurance_shop")) {
-    isPCEventMode = true; // 大画面を一時イベントモードに固定
-    console.log(`[生命保険ショップ発動] ${player.name} が30番マスに到着。スマホへ購入ダイアログを送信します。`);
-    
-    // 操作権を持つスマホ側に「0〜3枚の購入モーダル」を出すための専用電波を発射！
-    if (typeof socket !== "undefined") {
-      socket.emit("playerAction", {
-        roomCode: roomCode,
-        action: "triggerInsuranceShop",
-        playerId: player.id,
-        playerName: player.name
-      });
-    }
-    return; // スマホ側で枚数が確定するまで、以降の通常処理（次へボタン点灯など）をここで安全に完全ストップ！
-  }
+  if (!square) return;
 
   // 1. 通常のお酒ペナルティの適用（元からある完璧な処理）
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
@@ -820,123 +805,3 @@ if (typeof socket !== "undefined") {
     }
   });
 }
-
-// ==========================================================================
-// 🎯 【新規追記】マスコンポーネント自動実行ハブエンジン
-// 既存のシステムや通信タイミングを1ミリも壊さずに、裏側でJSファイルを動的ロードします。
-// ==========================================================================
-function loadAndApplySquareComponent(squareId, callback) {
-  // 現在のゲームモード（"normal", "short" 等）を取得（なければデフォルトは "normal"）
-  let currentMode = "normal";
-  if (typeof roomCode !== "undefined" && typeof rooms !== "undefined" && rooms[roomCode]) {
-    currentMode = rooms[roomCode].mode || "normal";
-  }
-
-  // すでにブラウザがそのマスのJSをロード済みなら、そのまま即座に次の処理へ
-  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) {
-    if (typeof callback === "function") callback();
-    return;
-  }
-
-  // まだ読み込まれていない場合は、非同期で public/squares/ フォルダからJSスクリプトを動的生成してロード
-  const script = document.createElement("script");
-  script.src = `/squares/sq_${squareId}.js`;
-  
-  script.onload = () => {
-    console.log(`[コンポーネント読込成功] sq_${squareId}.js がシステムに結合されました (Mode: ${currentMode})`);
-    // ロードが完了したら、バトンを既存の処理（callback）へ戻して完全に同じタイミングで実行
-    if (typeof callback === "function") callback();
-  };
-
-  script.onerror = () => {
-    // 万が一、ファイルがまだ空っぽだったり、読み込みエラーが起きてもゲームを絶対にフリーズさせない最強の防壁
-    console.warn(`[ℹ️通知] sq_${squareId}.js がまだ未作成かロードできません。既存のマスターデータで進行します。`);
-    if (typeof callback === "function") callback();
-  };
-
-  document.head.appendChild(script);
-}
-    // 5. コマが目的のマスに着地した瞬間に、ラグなしで同期と各種イベントを起動
-    function finalizeMovement() {
-      // 🎯 【新規配線】着地したマスのコンポーネントJSファイルを裏側で安全に動的ロードさせる！
-      loadAndApplySquareComponent(p.position, () => {
-        
-        // 💡 ロード完了後に、元々あった完璧な着地処理を100%全く同じタイミングで実行します
-        let targetSquare = null;
-        if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
-          targetSquare = MAP_SQUARES[p.position];
-          p.location = targetSquare.location || "";
-          applySquareEffects(p, targetSquare); // お酒や幸福度の効果計算
-        }
-
-        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-        renderLocationPlayersList();
-        updateCurrentPlayerDisplay();
-
-        // スマホ役職モーダル大復活
-        if (targetSquare && (targetSquare.type === "jobChallenge" || targetSquare.jobId)) {
-          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          console.log(`[役職マス通常着地] スマホへ直接役職モーダル出現を指示します: ${jobName}`);
-          socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
-        }
-
-        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx; // プレビューリセット
-
-        // 強制ストップマスならPCモーダルを表示
-        if (targetSquare && (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup")) {
-          handleForceStopSquare(p, targetSquare);
-        }
-
-        // 位置データと通常イベント通知をサーバーへ送信
-        triggerDelayedDisplay(resultNum, targetSquare);
-      });
-    }
-
-  // 💡 スマホ側で手動で「次のプレイヤーへ」が押された電波をキャッチ！
-  socket.on("applyPlayerAction", (data) => {
-    if (data && data.action === "turnUpdated") {
-      console.log("[専用UI手動終了] ターン更新を確認。一斉乾杯専用モーダルを完全に閉じます。");
-      isPCEventMode = false;
-      
-      // 🎯 新設した乾杯専用モーダルをノータイムで非表示（none）にリセット！
-      const kanpaiModal = document.getElementById("pc-kanpai-modal");
-      if (kanpaiModal) {
-        kanpaiModal.style.display = "none";
-      }
-
-      // 既存の汎用モーダルのクローズガード（残しておきます）
-      const pcModal = document.getElementById("pc-event-modal");
-      if (pcModal) {
-        pcModal.classList.remove("active", "theme-couple", "theme-entrance", "theme-rankup", "theme-retirement");
-        pcModal.style.display = "none";
-      }
-    }
-
-        // 🛡️ 【新規追加】スマホで「生命保険発動！」が手動クリックされた電波をキャッチ！
-    if (data && data.action === "insuranceUsed") {
-      const p = players.find(pl => String(pl.id) === String(data.playerId));
-      if (p) {
-        console.log(`[生命保険発動 🛡️] ${p.name} が保険を利用しました。今ターンの飲酒を無効化します。`);
-        
-        // 1. サーバーから送られてきた最新の保険枚数（-1された状態）を完全同期
-        p.insurance = data.nextInsuranceCount;
-        
-        // 2. 【核心】大画面の下部にあるテキスト欄を、ド派手なガード演出にその場で書き換える！
-        const eventBox = document.getElementById("event-text");
-        if (eventBox) {
-          eventBox.innerHTML = `
-            <p class="event-msg" style="color: #9c27b0; font-weight: bold; font-size: 1.3rem; animation: pulse 0.5s infinite;">
-              🛡️ 生命保険発動！！！ 🛡️<br>
-              ${p.name} は保険を1枚消費し、このターンの飲酒ペナルティを完全に無効化した！<br>
-              <span style="font-size: 0.9rem; color: #666;">(残り保険枚数: ${p.insurance}枚)</span>
-            </p>
-          `;
-        }
-        
-        // 大画面の左カラムステータスを最新の保険枚数・HP状態で更新
-        updateCurrentPlayerDisplay();
-      }
-    }
-
-  });
