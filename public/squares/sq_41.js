@@ -9,7 +9,7 @@
 window.SQ_MODULES = window.SQ_MODULES || {};
 
 window.SQ_MODULES[41] = { // 🎯 【核心の修正】41番の引き出しを正しく挟む！
-  // 🌸 現行：サークル生活モード
+  // 🌸 現行：学生モード
   normal: {
     id: 41,
     type: "force_stop",
