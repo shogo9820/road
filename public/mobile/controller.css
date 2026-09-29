@@ -118,3 +118,31 @@ button:active { transform: scale(0.97); }
   pointer-events: auto !important;
   filter: none !important;
 }
+
+/* ==========================================================================
+   🛡️ 【生命保険システム】スマホ操作画面ボタン UIデザイン（常時表示・影マスク）
+   ========================================================================== */
+#btn-phone-use-insurance {
+  display: block !important; /* 🎯 プログラムから消されるのを100%防ぎ、永久に常時表示 */
+  background-color: #9c27b0 !important; /* 高級感と安心感のあるパープルカラー */
+  color: #ffffff !important;
+  margin: 10px auto;
+  border-radius: 12px;
+  font-weight: 900;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* 🔒 残り枚数が0枚の時、または他人のターン時は自動で半透明の影マスクをかけてロック */
+#btn-phone-use-insurance:disabled {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+  filter: grayscale(100%) !important;
+}
+
+/* ✨ 保険を1枚以上持っている自分のターン中は、影マスクがシュッと解除されてピカッと点灯！ */
+#btn-phone-use-insurance:not(:disabled) {
+  opacity: 1.0 !important;
+  pointer-events: auto !important;
+  filter: none !important;
+  box-shadow: 0 0 12px rgba(156, 39, 176, 0.6);
+}

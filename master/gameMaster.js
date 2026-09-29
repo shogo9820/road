@@ -143,7 +143,7 @@ const MAP_SQUARES = [
 ];
 
 
-// 🎯 プレイヤーオブジェクトの雛形（唯一の定義元）
+// 🎯 【生命保険対応版】プレイヤーオブジェクトの雛形（唯一の定義元）
 function createPlayer(id, name) {
   return {
     id: id || "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
@@ -154,9 +154,10 @@ function createPlayer(id, name) {
     bonusCap: 0,
     currentHp: 80,
     drinkCount: 0,
-    happiness: 100, // 👈 幸福度の初期値をここで一元管理
+    happiness: 100, // 👈 幸福度の一元管理
     position: 0,
     location: "スタート前",
+    insurance: 0,   // 🛡️ 【新規新設】生命保険の所持枚数（初期値は0枚）
     isLover: false,
     skipTurn: false,
     hasJob: false

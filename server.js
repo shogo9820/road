@@ -381,6 +381,7 @@ io.on("connection", (socket) => {
             target.hasJob = updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
             target.jobId = updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
             target.job = updatedP.job !== undefined ? updatedP.job : target.job;
+            target.insurance = updatedP.insurance !== undefined ? updatedP.insurance : (target.insurance || 0);
           }
         });
       }

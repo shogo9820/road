@@ -551,6 +551,23 @@ socket.on("syncGameState", (data) => {
 // スマホ子機側の「次のプレイヤーへ」ボタンを点灯（ロック解除）させる専用シグナルを送信します。
 // ==========================================================================
 function applySquareEffects(player, square) {
+    // 🛡️ 【新規追加】30番マス（生命保険購入ショップ）に着地した瞬間のイベント起動
+  if (square && (square.type === "insurance_shop" || square.id === 30)) {
+    isPCEventMode = true; // 大画面を一時イベントモードにする
+    console.log(`[生命保険ショップ] ${player.name} が生命保険購入マスに到着。スマホへ3択ダイアログを送信します。`);
+    
+    // 🎯 操作権を持つスマホ側に「0〜3枚の購入ダイアログ」を出すための専用電波を送信！
+    if (typeof socket !== "undefined") {
+      socket.emit("playerAction", {
+        roomCode: roomCode,
+        action: "triggerInsuranceShop",
+        playerId: player.id,
+        playerName: player.name
+      });
+    }
+    return; // 購入枚数がスマホで確定するまで、以降の通常マス処理（次へボタン点灯など）をここでストップ
+  }
+
   // 1. お酒ペナルティの適用（元からある完璧な処理）
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
   if (drinkAmount > 0) {
@@ -943,4 +960,31 @@ function loadAndApplySquareComponent(squareId, callback) {
         pcModal.style.display = "none";
       }
     }
+
+        // 🛡️ 【新規追加】スマホで「生命保険発動！」が手動クリックされた電波をキャッチ！
+    if (data && data.action === "insuranceUsed") {
+      const p = players.find(pl => String(pl.id) === String(data.playerId));
+      if (p) {
+        console.log(`[生命保険発動 🛡️] ${p.name} が保険を利用しました。今ターンの飲酒を無効化します。`);
+        
+        // 1. サーバーから送られてきた最新の保険枚数（-1された状態）を完全同期
+        p.insurance = data.nextInsuranceCount;
+        
+        // 2. 【核心】大画面の下部にあるテキスト欄を、ド派手なガード演出にその場で書き換える！
+        const eventBox = document.getElementById("event-text");
+        if (eventBox) {
+          eventBox.innerHTML = `
+            <p class="event-msg" style="color: #9c27b0; font-weight: bold; font-size: 1.3rem; animation: pulse 0.5s infinite;">
+              🛡️ 生命保険発動！！！ 🛡️<br>
+              ${p.name} は保険を1枚消費し、このターンの飲酒ペナルティを完全に無効化した！<br>
+              <span style="font-size: 0.9rem; color: #666;">(残り保険枚数: ${p.insurance}枚)</span>
+            </p>
+          `;
+        }
+        
+        // 大画面の左カラムステータスを最新の保険枚数・HP状態で更新
+        updateCurrentPlayerDisplay();
+      }
+    }
+
   });
