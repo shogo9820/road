@@ -546,17 +546,18 @@ socket.on("syncGameState", (data) => {
 });
 
 // ==========================================================================
-// 🍻 【イベントモーダル仕様変更版】場所自動スキャン型・一斉乾杯演出
-// 勝手に消える自動消滅タイマーを完全全廃。大画面に特大モーダルを展開した瞬間、
-// スマホ子機側の「次のプレイヤーへ」ボタンを点灯（ロック解除）させる専用シグナルを送信します。
+// 🛡️ 【最終決定版】生命保険購入ショップ（30番マス）絶対発動システム
+// マスのロード遅れや古いマスターデータのタイプに関係なく、マスのID（30番）を
+// 物理的に直接検知して、操作権を持つスマホ側へ100%確実に購入ダイアログを強制出現させます。
 // ==========================================================================
 function applySquareEffects(player, square) {
-    // 🛡️ 【新規追加】30番マス（生命保険購入ショップ）に着地した瞬間のイベント起動
-  if (square && (square.type === "insurance_shop" || square.id === 30)) {
-    isPCEventMode = true; // 大画面を一時イベントモードにする
-    console.log(`[生命保険ショップ] ${player.name} が生命保険購入マスに到着。スマホへ3択ダイアログを送信します。`);
+  // 🎯 【超重要修正】古いデータの干渉を完全全廃！
+  // マスのIDが「30」だった場合は、何が何でも最優先で生命保険ショップイベントを起動させる！
+  if (square && (Number(square.id) === 30 || square.type === "insurance_shop")) {
+    isPCEventMode = true; // 大画面を一時イベントモードに固定
+    console.log(`[生命保険ショップ発動] ${player.name} が30番マスに到着。スマホへ購入ダイアログを送信します。`);
     
-    // 🎯 操作権を持つスマホ側に「0〜3枚の購入ダイアログ」を出すための専用電波を送信！
+    // 操作権を持つスマホ側に「0〜3枚の購入モーダル」を出すための専用電波を発射！
     if (typeof socket !== "undefined") {
       socket.emit("playerAction", {
         roomCode: roomCode,
@@ -565,10 +566,10 @@ function applySquareEffects(player, square) {
         playerName: player.name
       });
     }
-    return; // 購入枚数がスマホで確定するまで、以降の通常マス処理（次へボタン点灯など）をここでストップ
+    return; // スマホ側で枚数が確定するまで、以降の通常処理（次へボタン点灯など）をここで安全に完全ストップ！
   }
 
-  // 1. お酒ペナルティの適用（元からある完璧な処理）
+  // 1. 通常のお酒ペナルティの適用（元からある完璧な処理）
   const drinkAmount = square.drink !== undefined ? square.drink : 0;
   if (drinkAmount > 0) {
     if (!player.drinkCount) player.drinkCount = 0;
@@ -596,7 +597,7 @@ function applySquareEffects(player, square) {
     alert(`🚨 【急性アルコール中毒！？】\n${player.name} は飲みすぎて潰れてしまった！\n・幸福度 -30\n・次のターンは1回休み（介抱）\n・肝臓HPが全回復しました。`);
   }
 
-  // 🎯 【乾杯専用UI版】同じ場所にいる人で一斉乾杯演出システム
+  // 4. 同じ場所にいる人での一斉乾杯演出（専用UI連動仕様）
   const loc = square.location ? square.location.trim() : "";
   if (loc !== "" && loc !== "家" && loc !== "スタート前" && loc !== "-") {
     const drinkingBuddies = players.filter(p => p && p.location && p.location.trim() === loc);
@@ -605,15 +606,11 @@ function applySquareEffects(player, square) {
       const kanpaiModal = document.getElementById("pc-kanpai-modal");
       if (kanpaiModal) {
         isPCEventMode = true;
-
-        // 🍻 参加メンバーの名前を綺麗にリストアップ
         const buddyNames = drinkingBuddies.map(p => `👤 ${p.name}`).join("、");
 
-        // 専用のHTML要素に、名前と場所をダイレクトにはめ込む！
         document.getElementById("pc-kanpai-members").textContent = buddyNames;
         document.getElementById("pc-kanpai-location").textContent = `📍 ${loc}`;
 
-        // 🎯 巻き込まれた全員のお酒の杯数をプラス1杯（完璧な既存ロジック）
         drinkingBuddies.forEach(p => {
           if (!p.drinkCount) p.drinkCount = 0;
           p.drinkCount += 1;
@@ -626,12 +623,10 @@ function applySquareEffects(player, square) {
           }
         });
 
-        // スマホ子機側の「次のプレイヤーへ」ボタンを明るく点灯させる
         if (typeof socket !== "undefined") {
           socket.emit("playerAction", { roomCode: roomCode, action: "enableNextTurnButton" });
         }
 
-        // 🍻 雛形は使わず、乾杯専用の特大モーダルを flex で一発強制出現！
         kanpaiModal.style.display = "flex";
         updateCurrentPlayerDisplay();
       }
