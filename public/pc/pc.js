@@ -109,9 +109,9 @@ function appendSocketListeners() {
   });
 
   // ==========================================================================
-  // 🛠️ 【完全修正版】デバッグワープ自動スキップバグ完全粉砕ロジック
-  // 30番マスなどの未確定扱いによる「自動次へタイマー」を1文字残さず完全パージ。
-  // スマホ側の生命保険購入モーダルを勝手にもみ消さず、100%確実に引き出します！
+  // 🛠️ 【完全修正版】デバッグワープ非同期ロード完全同期化エンジン
+  // ワープ先のマス（30番など）のJSファイルのロードが「100%完了したコールバックの中」で
+  // 初めてマスのイベント（handleForceStopSquare）を起動させ、すれ違いスキップを完全根絶します！
   // ==========================================================================
   socket.on("executeDebugWarp", (data) => {
     if (data.players) players = data.players;
@@ -125,18 +125,20 @@ function appendSocketListeners() {
     }
     updateCurrentPlayerDisplay();
 
+    // 🎯 【バグの根源を粉砕】裏側での動的ロードが「完全に終わった瞬間」に、安全にバトンを渡す！
     if (typeof loadAndApplySquareComponent === "function") {
       loadAndApplySquareComponent(data.targetSquareId, () => {
+        
         const targetSquare = typeof MAP_SQUARES !== "undefined" ? MAP_SQUARES[data.targetSquareId] : null;
         if (!targetSquare) return;
 
         p.location = targetSquare.location || "";
         
-        // 🎯 この内部で30番マスが絶対検知され、スマホへ購入モーダルが飛びます！
+        // 1. ファイル（sq_30.js）が100%結合された状態で、お酒計算（一斉乾杯チェック）を起動！
         applySquareEffects(p, targetSquare); 
         updateCurrentPlayerDisplay();
 
-        // マス説明文の更新
+        // 2. マス説明文の更新
         const tileDescEl = document.getElementById("current-tile-desc");
         if (tileDescEl) {
           let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯</span>` : "";
@@ -144,7 +146,8 @@ function appendSocketListeners() {
           tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
         }
 
-        // 既存の強制ストップや役職マスの起動
+        // 🎯 3. 【核心の修正】ファイルが100%結合された状態なので、
+        // 内部に書かれた自前 event 関数が100%確実に検知され、自動スキップをパツンとせき止めます！
         if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup") {
           handleForceStopSquare(p, targetSquare);
         } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
@@ -152,10 +155,6 @@ function appendSocketListeners() {
           const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
           socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
         }
-
-        // ❌ 【バグの根源を完全抹消！】
-        // ここに元々居座っていた、300ms後に勝手にnextTurnを送信してモーダルを強制もみ消しにしていた
-        // 古い「setTimeout(..., 300)」の自動クローズブロックを1文字残さず完全に削除・全廃しました！
       });
     }
   });
