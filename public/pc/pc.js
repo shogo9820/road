@@ -799,7 +799,6 @@ function handleForceStopSquare(player, square) {
       break;
 
     case 18: // 入学式
-    case 30: // 生命保険
     case 49: // ランクアップ
     case 80: // 引退/ギャンブル
     default:
