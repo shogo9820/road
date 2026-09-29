@@ -763,45 +763,40 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
 }
 
 // ==========================================================================
-// 🎓 【最終決定版】強制ストップマス・コンポーネント完全連動エンジン
-// 41番や99番などの古い直書きcaseを完全全廃・パージ！
-// すでにJSコンポーネント（sq_30やsq_49など）がメモリに読み込まれているマスは
-// 自動スキップを100%完全に停止させ、手元のスマホの手動操作を死守します。
+// 🎯 【真のコンポーネント連動版】強制ストップ・イベントハブエンジン
+// 泥臭い直書き case をすべてゴミ箱に完全全廃！
+// 着地したマスのファイル（sq_X.js）側にイベント処理（event）が定義されていれば
+// それを最優先で実行し、定義されていない古い仕様未定マスだけを自動スキップさせます。
 // ==========================================================================
 function handleForceStopSquare(player, square) {
   if (!square) return;
-  
+
   // 💡 完璧だった元の仕様：89番マス着地時は何もせず静かにピンを止めます
   if (Number(square.id) === 89) {
     console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
     return;
   }
 
-  // 🎯 【核心の防壁】今着地したマスのコンポーネント（JS）がすでに読み込まれている場合、
-  // または30番マスの場合は、AIや古いタイマーが勝手にnextTurnを進めるのをここで100%「緊急停止」させる！
   let currentMode = "normal";
   if (typeof roomCode !== "undefined" && typeof rooms !== "undefined" && rooms[roomCode]) {
     currentMode = rooms[roomCode].mode || "normal";
   }
+
+  // 🎯 【核心の配線】着地したマスのファイル内に「event」という関数が直書きされているかチェック！
+  const targetModule = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
   
-  const isComponentLoaded = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
-  
-  if (Number(square.id) === 30 || isComponentLoaded) {
-    console.log(`[コンポーネント連動] マスID: ${square.id} の専用演出を起動中。自動スキップを完全停止し、手動操作を待機します。`);
-    return; // 🔓 自動スキップを完全スルーして、手動操作を永久に待ち受ける！
+  if (targetModule && typeof targetModule.event === "function") {
+    console.log(`[コンポーネントイベント起動] sq_${square.id}.js の直書きイベントを実行します。`);
+    
+    // 🚀 マスのファイルに直書きされている本物の処理を、ここで1行で直接爆発（実行）させる！
+    targetModule.event(player, square);
+    return; // 🔓 マス自体に処理があるため、下の自動スキップタイマーを100%完全に停止させます！
   }
 
-  // 💡 【古いcaseはすべて全廃】
-  // まだJSファイルを作っていない、本当の「仕様未定マス」の時だけ、これまで通り0.3秒でサクサク自動進行させる
-  console.log(`[開発デバッグ] マスID: ${square.id} はコンポーネント未作成のため、自動でスキップ処理を行います。`);
-  
+  // 💡 まだJSファイルを作っていない、本当の「仕様未定マス」の時だけ、これまで通りサクサク自動進行させる
+  console.log(`[開発デバッグ] マスID: ${square.id} はイベント処理未定義のため、自動で進行します。`);
   setTimeout(() => {
-    console.log(`[開発デバッグ] 自動でモーダルをクローズして次の番へ進めます。`);
-    socket.emit("playerAction", {
-      roomCode: roomCode,
-      action: "nextTurn",
-    });
-
+    socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.className = "event-modal-overlay";
