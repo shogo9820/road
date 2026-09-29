@@ -808,8 +808,6 @@ function handleForceStopSquare(player, square) {
       const eventName =
         square.id === 18
           ? "入学式"
-          : square.id === 30
-            ? "生命保険"
             : square.id === 49
               ? "ランクアップ"
               : "引退";
