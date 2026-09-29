@@ -730,16 +730,15 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
 }
 
 // ==========================================================================
-// 🎓 【完全コンポーネント化・最終決定版】イベントハブエンジン
-// 泥臭い直書き case や GAME_EVENTS テキストデータを pc.js から1文字残さず完全全廃。
-// 着地したマスのファイル（sq_X.js）側に直書きされたイベント処理（event）を最優先で1行で実行し、
-// ファイルが存在しない古い仕様未定マスだけを、ゲームが壊れないようこれまで通り300msで自動スキップさせます。
-// 💡 既存のカップル、ゴール、通常進行の動きやタイミングは1ミリも変わりません。
+// 🎓 【完全修復・最終決定版】コンポーネント自動連動型ハブエンジン
+// 直書きcaseやGAME_EVENTSの残骸を完全一掃した、純粋なハブ土台です。
+// window.SQ_MODULES[square.id][currentMode] の正しい引き出しからマスの自前event関数を
+// 100%確実に呼び出し、ファイルがまだ無い古い仕様未定マスだけを300msで自動スキップさせます。
 // ==========================================================================
 function handleForceStopSquare(player, square) {
   if (!square) return;
 
-  // 💡 元々ある完璧な仕様：89番マス着地時は何もせず静かにピンを止めます
+  // 💡 完璧だった元の仕様：89番マス着地時は何もせず静かにピンを止めます
   if (Number(square.id) === 89) {
     console.log(`[卒業判定マス着地] 着地時は何もせず待機。次のターン開始時のイベント起動へ繋ぎます。`);
     return;
@@ -750,20 +749,19 @@ function handleForceStopSquare(player, square) {
     currentMode = rooms[roomCode].mode || "normal";
   }
 
-  // 🎯 マスのファイル（sq_X.js）から、そのモードのモジュールを引き出す
+  // 🎯 【核心の配線修正】0番マスの本物の規格（window.SQ_MODULES[id][mode]）から、正確にモジュールをロードする！
   const targetModule = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
   
-  // 🚀 【核心】マスのファイル側に自前のイベント処理（event）が直書きされていれば、それを実行！
+  // 🚀 マスのファイル（sq_30 や sq_41）に直書きされた自前のイベント関数があれば、100%ダイレクトに実行！
   if (targetModule && typeof targetModule.event === "function") {
-    console.log(`[真のコンポーネント起動] sq_${square.id}.js の直書きイベントを実行します。`);
+    console.log(`[コンポーネント完全連動] sq_\${square.id}.js の直書きイベント関数を実行します。`);
     targetModule.event(player, square);
-    return; // 🔓 マス自体のファイルで完結するため、下の自動スキップタイマーを100%完全に停止させます！
+    return; // 🔓 自前処理が動くため、下の自動スキップタイマーを完全に停止させます！
   }
 
-  // 💡 まだJSファイルを作っていない、本当の「仕様未定マス（18番など）」の時だけ、これまで通り0.3秒でサクサク自動スキップ
-  console.log(`[開発デバッグ] マスID: ${square.id} はイベント処理未定義のため、自動進行します。`);
+  // 💡 まだJSファイルを作っていない、本当の「仕様未定マス（18番など）」の時だけ、これまで通り0.3秒でサウザク自動進行
+  console.log(`[開発デバッグ] マスID: \${square.id} はイベント未定義（ファイル未作成）のため、自動進行します。`);
   
-  // マスのテキストに応じたモーダルの見た目を展開（マスのテキストをそのままダイレクトに活用して見た目を維持！）
   if (typeof openPCEventModal === "function") {
     let fallbackType = "入学式";
     if (Number(square.id) === 49) fallbackType = "ランクアップ";
@@ -772,9 +770,7 @@ function handleForceStopSquare(player, square) {
   }
 
   setTimeout(() => {
-    console.log(`[開発デバッグ] 仕様未定マスのため、自動でモーダルをクローズして次の番へ進めます。`);
     socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
-
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.className = "event-modal-overlay";

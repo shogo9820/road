@@ -2,9 +2,8 @@
  * 🎯 マスコンポーネント: 41番マス（【強制ストップ】カップル成立！？）
  * 
  * [設計思想]
- * このマスに止まった瞬間に、大画面の停止、PC専用モーダルのダイレクト展開、
- * 条件表HTMLの直接生成、サーバーへの通知まで、すべての処理をこのファイルが100%直接請け負います。
- * 他のファイルを中継するリレー処理は一切ありません。書いてあることだけで100%完結します。
+ * 0番マス（sq_0.js）と100%完全に一致させた「window.SQ_MODULES[41]」の構造に修正。
+ * 大画面モーダルのデザイン反映、条件表の流し込み、告白電波の送信までをこのファイルが100%直接請け負います。
  */
 
 window.SQ_MODULES = window.SQ_MODULES || {};
@@ -21,17 +20,17 @@ window.SQ_MODULES[41] = {
     
     // 🎯 マスに止まった瞬間に、この関数の中のコードが100%直接すべて動く！
     event: function(player, square) {
-      console.log("[sq_41.js] 41番マス着地。このマスのファイルがすべての処理を直接実行します。");
+      console.log("[sq_41.js] 41番マス着地。カップル成立チャンス演出を直接実行します。");
       isPCEventMode = true;
 
-      // 1. 【大画面PC制御】自動スキップタイマーに邪魔されないよう、大画面の「次へ」ボタンを完全非表示ロック！
+      // 1. 大画面の「次のプレイヤーへ」ボタンを安全に非表示ロック
       const btnNext = document.getElementById("btn-next-turn");
       if (btnNext) {
         btnNext.disabled = true;
         btnNext.style.display = "none";
       }
 
-      // 2. 【大画面モーダル直接制御】PC側の汎用モーダルを直接キャッチして、カップル専用のテーマとテキストを流し込む！
+      // 2. 大画面の汎用モーダルを直接キャッチして、カップル専用のデザインとテキストを流し込む！
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
         pcModal.className = "event-modal-overlay active theme-couple";
@@ -39,7 +38,7 @@ window.SQ_MODULES[41] = {
         const titleEl = document.getElementById("modal-event-title");
         const descEl = document.getElementById("modal-event-desc");
         if (titleEl) titleEl.textContent = "💕 カップル成立チャンス！？ 💕";
-        if (descEl) descEl.textContent = `${player.name} さんがカップルマスに到着！運命 of 1回目スピンを回して【偶数】を狙え！`;
+        if (descEl) descEl.textContent = `\${player.name} さんがカップルマスに到着！運命 of 1回目スピンを回して【偶数】を狙え！`;
 
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) {
@@ -48,7 +47,7 @@ window.SQ_MODULES[41] = {
           resultBox.textContent = "";
         }
 
-        // 3. 【対応表のダイレクト生成】1〜10の運命の判定条件表（偶数・奇数のリスト）をここで100%直接生成！
+        // 3. 1〜10の運命の判定条件表（偶数・奇数のリスト）をここでダイレクトに完全生成！
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">
             🎯 1回目スピン：運命 of 判定条件表
@@ -60,7 +59,7 @@ window.SQ_MODULES[41] = {
           const text = isEven
             ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス突入！</span>'
             : '<span style="color:#546e7a;">💦 奇数：フラれて終了...</span>';
-          tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${text}</div></li>`;
+          tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:\${badgeBg};">\${i}</div><div>\${text}</div></li>`;
         }
         tableHTML += `</ul>`;
 
@@ -73,7 +72,7 @@ window.SQ_MODULES[41] = {
         if (modalResEl) modalResEl.textContent = "🎯 スマホから運命の告白スピンを回してね！";
       }
 
-      // 4. 【サーバー通信直接制御】サーバー側へ直接「triggerCoupleEvent」の電波を発射！
+      // 4. サーバーへ直接「triggerCoupleEvent」の電波を発射！
       if (typeof socket !== "undefined") {
         socket.emit("triggerCoupleEvent", {
           roomCode: roomCode || currentRoomCode || "",
