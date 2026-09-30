@@ -105,36 +105,37 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🧭 【最終決定版】基本ルーティン番号管理（フェーズID）エンジン
-  // あなたの敷いた完璧な1ターンの基本ルーティン（全6行程）に厳密な番号を定義し、
-  // ルーム全員（PC・スマホ）へ「いま第何ステップを走っているか」の番号を配電します。
+  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始始動エンジン
+  // あなたの教えてくれた「全プレイヤーを0マスに更新 ➔ ルーティン1から始めるだけ」
+  // という大原則を100%体現！開始した瞬間に全員を0マスに特別指定し、
+  // そこから通常の手動ターン交代と200%完全に同じ電波（turnUpdated）をその場で発射！
+  // 手元のボタンをガチッとロックさせ、一本道のレールで0番の進路選択を展開させます。
   // ==========================================================================
-
-  // 🏁 【リレー始動：特別指定】ゲーム開始トリガー
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
+      // 1. 【特別指定】全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に初期化！
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0,        // 🎯 0番マス（スタート）に特別指定
+          position: 0,        // 全員の初期位置を確実に0マスに更新
           location: "スタート前",
           lovers: []
         };
       });
-      room.activePlayerIndex = 0;
       
-      // ➔ サーバーのフェーズに「1.新ターン開始 ➔ 2.開始時確認」の番号を持たせる
-      room.currentPhase = "1-2.START_CHECK"; 
+      room.activePlayerIndex = 0;
+      room.currentPhase = "1-2.START_CHECK"; // フェーズを開始時イベント確認にセット
 
       console.log(`\n=========================================`);
-      console.log(`🚨 [SERVER] ➔ 1. 新ターン開始 (位置:0番マス特別指定)`);
-      console.log(`📡 [SERVER] ➔ 2. 開始時イベント確認電波を一斉配電します。フェーズ: ${room.currentPhase}`);
+      console.log(`🚨 [SERVER ROUTINE] ➔ 1. ゲーム開始により、全プレイヤーを0マスに更新完了！`);
+      console.log(`📡 [SERVER ROUTINE] ➔ ここから基本ルーティンを1から全く同じように始動させます。`);
       console.log(`=========================================\n`);
 
+      // PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース合図
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -143,8 +144,17 @@ io.on("connection", (socket) => {
         currentPhase: room.currentPhase
       });
 
-      // 🚀 【フライング電波全廃パージ】古い turnUpdated 二重電波は完全に消去・抹消しました！
+      // 🚀 【核心の配線：リレー行程①を始動】
+      // 次のプレイヤーへ進む時と200%完全に同じ「新ターン開始（turnUpdated）」のバトン電波を発射！
+      // これによりスマホ側の applyPlayerAction が即座に起動し、手元のボタンに完璧に初期ロックをかけます。
+      io.to(roomCode).emit("applyPlayerAction", {
+        action: "turnUpdated",
+        activePlayerIndex: room.activePlayerIndex,
+        activePlayerName: room.gamePlayers[room.activePlayerIndex].name,
+        activePlayerId: room.gamePlayers[room.activePlayerIndex].id
+      });
 
+      // ルーム全員のステータス画面を一斉更新
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
