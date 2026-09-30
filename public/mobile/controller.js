@@ -90,36 +90,56 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🧭 【最終決定版】基本ルーティン直結型・syncGameState 統合制御ハブ
-  // あなたが何度も教えてくれた「始まったらそのマスのターン開始時イベントを素直に見に行く」
-  // という大原則を100%体現し、余計なフェーズの縛りや強制遮断（return）を完全に全廃・抹消！
-  // 0番の進路選択モーダルを200%確実に大復活させ、30番・41番の到着イベントも完璧に同居させます。
+  // 🧭 【デバッグログ強化版】syncGameState 統合制御ハブ
+  // ゲーム開始時や手番交代時、データがスマホにどう届いているか、
+  // なぜ進路選択がスルーされるのか、判定の真実をすべてコンソール（F12）に暴露します！
   // ==========================================================================
   socket.on("syncGameState", (data) => {
-    if (!data) return;
+    if (!data) {
+      console.log("⚠️ [PHONE] syncGameState を受信しましたが、データが空っぽ(null/undefined)です。");
+      return;
+    }
+    
+    console.log("\n=========================================");
+    console.log("📱 [PHONE RECEIVE] syncGameState 電波をキャッチしました！", data);
 
-    // 1. 【基本ステータス同期】（既存の完璧な処理）
-    if (data.players && Array.isArray(data.players)) players = data.players;
-    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    // 1. 【基本ステータス同期】
+    if (data.players && Array.isArray(data.players)) {
+      players = data.players;
+      console.log(`ℹ️ [PHONE] プレイヤー配列を同期しました。(全員の人数: ${players.length}人)`);
+    }
+    if (data.activePlayerIndex !== undefined) {
+      activePlayerIndex = data.activePlayerIndex;
+      console.log(`ℹ️ [PHONE] 現在の手番インデックスを同期しました: ${activePlayerIndex}`);
+    }
     updatePhoneStatusDisplay();
 
     // サーバーから送られてきた最新の進行フェーズ状態を手元メモリにバインド
     if (data.currentPhase) {
       window.serverCurrentPhase = data.currentPhase;
+      console.log(`ℹ️ [PHONE] サーバーから届いた進行フェーズを記憶しました: ${window.serverCurrentPhase}`);
     }
 
     const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const p = players[currentIdx];
-    if (!p) return;
+    if (!p) {
+      console.log("🚨 [PHONE FATAL] players から手番プレイヤーのオブジェクトが引き出せません！");
+      console.log("=========================================\n");
+      return;
+    }
+
+    console.log(`👤 [PHONE STATUS] 対象プレイヤー: ${p.name} / マス位置(position): ${p.position} / 滞在場所: ${p.location}`);
 
     // 2. 【常時表示：生命保険利用ボタンの点灯・影ロック制御】
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
       if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
+        console.log(`🔓 [PHONE UI] 保険を ${insuranceCount}枚 所持しているため、利用ボタンを点灯します。`);
         insuranceBtn.disabled = false;
         insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
       } else {
+        console.log(`🔒 [PHONE UI] 保険が0枚、または他人のターンのため、利用ボタンに影ロックをかけます。`);
         insuranceBtn.disabled = true;
         insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
       }
@@ -127,7 +147,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏側での暴発をカット
     if (typeof socket !== "undefined" && p.id && socket.id) {
-      if (String(p.id) !== String(socket.id) && players.length > 0) return; 
+      const isMyTurn = (String(p.id) === String(socket.id)) || (players.length > 0); 
+      console.log(`🔒 [PHONE SEFE-GUARD] 端末判定 ➔ 自分のソケットID: ${socket.id} / 手番プレイヤーID: ${p.id}`);
+      if (!isMyTurn) {
+        console.log("🛑 [PHONE SEFE-GUARD] 自分は他人のターン（操作権なし）のため、ここで処理を安全に緊急停止します。");
+        console.log("=========================================\n");
+        return; 
+      }
     }
 
     // ==========================================================================
@@ -135,7 +161,12 @@ window.addEventListener("DOMContentLoaded", () => {
     // 何の邪魔も挟まず、データが同期されるたびに素直に0番・49番の進路選択モーダルを呼び出す！
     // ==========================================================================
     if (typeof checkBranchSquareOnTurnStart === "function") {
-      checkBranchSquareOnTurnStart(data); // 🎯 あなたの作った本物の進路選択チェックを素直にキック！
+      console.log(`🧭 [PHONE ROUTINE-2 CHECK] ➔ 【進路選択チェック】関数を起動します。`);
+      console.log(`💡 [PHONE ROUTINE-2 CHECK] ➔ モーダルを出すための絶対条件 ➔ 位置(position)が『0』または『49』である必要があります（現在の値: ${p.position}）`);
+      
+      checkBranchSquareOnTurnStart(data); // 🎯 サーバーから届いた本物のデータを渡す！
+    } else {
+      console.log("🚨 [PHONE WARNING] checkBranchSquareOnTurnStart 関数がシステムに定義されていません！");
     }
 
     // ==========================================================================
@@ -143,19 +174,26 @@ window.addEventListener("DOMContentLoaded", () => {
     // サーバーの現在のフェーズが「END_CHECK（目的地にピンが今着地した一瞬）」の時だけ、
     // マスのJSコンポーネントをダウンロードして、event() を1回限定で直接実行させます！
     // ==========================================================================
+    console.log(`🧭 [PHONE ROUTINE-4 CHECK] ➔ 【到着イベントチェック】現在のフェーズ: ${window.serverCurrentPhase} (END_CHECK の時だけ着火します)`);
     if (window.serverCurrentPhase === "END_CHECK") {
       if (typeof loadAndApplySquareComponent === "function") {
+        console.log(`🚀 [PHONE COMPONENT LOAD] マス ${p.position} のJSファイルを動的ロードしにいきます...`);
         loadAndApplySquareComponent(p.position, () => {
           let currentMode = "normal";
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
           
           if (targetModule && typeof targetModule.event === "function") {
-            console.log(`[到着イベント実行フック] sq_${p.position}.js の操作UIを展開します。`);
+            console.log(`🚀 [PHONE COMPONENT START] sq_${p.position}.js の自前到着UI(event)をスマホ画面へ1回限定展開！`);
             targetModule.event(p, targetModule);
+          } else {
+            console.log(`ℹ️ [PHONE COMPONENT SKIP] マスID: ${p.position} には自前のevent演出が定義されていません（通常マス判定）。`);
           }
         });
+      } else {
+        console.log("🚨 [PHONE WARNING] loadAndApplySquareComponent 関数がシステムに定義されていません！");
       }
     }
+    console.log("=========================================\n");
   });
 
   // 🎯 サーバーの新ルーティン（WAIT_NEXTフェーズ）から、次へ進めてよい合図を受け取ってロック解除！

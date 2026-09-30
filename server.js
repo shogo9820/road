@@ -114,27 +114,25 @@ io.on("connection", (socket) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      // 1. 【特別指定】全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に初期化！
+      console.log(`\n=========================================`);
+      console.log(`🚨 [SERVER START_GAME] ゲーム開始命令を受信しました`);
+      
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0,        // 🎯 0番マスにいるよ、と最初に特別に持たせる
+          position: 0, 
           location: "スタート前",
           lovers: []
         };
       });
       
-      // 🎯 【超重要：本物のルーティン交代】
-      // 最初のプレイヤー（インデックス0）をセットした上で、サーバー内部で
-      // 「新ターン開始（nextTurn）」が今カチッと手動で押された時と全く同じ処理を擬似的に実行！
       room.activePlayerIndex = 0;
-      room.currentPhase = "START_CHECK"; // フェーズを開始時イベント確認にセット
+      room.currentPhase = "START_CHECK";
 
-      console.log(`[ルーティン直結開始] ルーム ${roomCode}: プレイヤー1を0番マスに特別指定。ここから通常の新ターン開始レールへ合流させます。`);
-
-      // PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース電波（既存の完璧な処理）
+      console.log(`ℹ️ [SERVER] プレイヤー1を 0番マス(スタート前) に特別指定完了`);
+      console.log(`📡 [SERVER -> ROOM] ① gameStarted 電波を発射します...`);
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -143,9 +141,7 @@ io.on("connection", (socket) => {
         currentPhase: room.currentPhase
       });
 
-      // 🚀 【核心】手動で「次のプレイヤーへ」が押された時と200%完全に同じ電波（turnUpdated）を一斉発射！
-      // これにより、スマホ側の共通アンテナ（syncGameStateやapplyPlayerAction）が一斉に起動し、
-      // 0番マスにいるデータを見て、進路選択モーダルが100%完全に自動で出現します！
+      console.log(`📡 [SERVER -> ROOM] ② applyPlayerAction (turnUpdated) 電波を発射します...`);
       io.to(roomCode).emit("applyPlayerAction", {
         action: "turnUpdated",
         activePlayerIndex: room.activePlayerIndex,
@@ -153,12 +149,13 @@ io.on("connection", (socket) => {
         activePlayerId: room.gamePlayers[room.activePlayerIndex].id
       });
 
-      // ルーム全員のステータス画面を一斉更新
+      console.log(`📡 [SERVER -> ROOM] ③ syncGameState 電波を発射します...`);
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase
       });
+      console.log(`=========================================\n`);
     }
   });
 

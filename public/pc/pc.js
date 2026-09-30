@@ -80,7 +80,12 @@ function initSocketListeners() {
   });
 
   socket.on("gameStarted", (data) => {
+    console.log(`\n=========================================`);
+    console.log(`💻 [PC RECEIVE] gameStarted 電波をキャッチしました！`, data);
+    
     if (data && data.players) players = data.players;
+    if (data && data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    
     switchScreen("screen-game"); 
 
     if (window.boardManager) {
@@ -89,6 +94,23 @@ function initSocketListeners() {
     }
     updateCurrentPlayerDisplay();
     renderLocationPlayersList();
+
+    const p = players[activePlayerIndex];
+    console.log(`💻 [PC POSITION CHECK] 現在のアクティブプレイヤーの位置: ${p ? p.position : "存在しない"}`);
+
+    if (p && typeof loadAndApplySquareComponent === "function") {
+      console.log(`💻 [PC LOAD START] マス ${p.position} のコンポーネントをロードしにいきます...`);
+      loadAndApplySquareComponent(p.position, () => {
+        console.log(`💻 [PC LOAD SUCCESS] マス ${p.position} のロードが完了しました。イベント判定へ。`);
+        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        if (targetSquare) {
+          handleForceStopSquare(p, targetSquare);
+        } else {
+          console.log(`💻 [PC WARNING] MAP_SQUARES[${p.position}] が見つかりません。`);
+        }
+      });
+    }
+    console.log(`=========================================\n`);
   });
 }
 function appendSocketListeners() {
