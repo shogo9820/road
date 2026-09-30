@@ -57,8 +57,14 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
-      window.isLandedThisTurn = false; // 👈 🎯 これを追加！
+      window.isLandedThisTurn = false;
+      
+      // 🎯 ターン開始時のマス位置を記憶（移動前の誤着火を完全防止）
+      const curP = players[data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex];
+      window.turnStartPosition = curP ? Number(curP.position) : null;
+
       activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+      // （以下、既存の処理）
       console.log(`\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`);
 
       if (document.getElementById("current-player-banner")) {
@@ -139,14 +145,20 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）- 着地時1回限定ガード仕様
+    // 🧭 行程④：到着イベント（END_CHECK）
     // ------------------------------------------------------------------------
     if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
-      // 🎯 手番プレイヤー本人でなければ絶対に開かない
       if (currentIdx !== activePlayerIndex) return;
 
-      window.isLandedThisTurn = true; // 🎯 着地時1回限定フラグを立てる（次の周の開始時誤爆を防止）
       const currentPos = Number(p.position);
+
+      // 🎯 【重要】まだルーレット移動前のマス（0番マスなど開始位置）にいる間のフライング電波は無視する！
+      if (window.turnStartPosition !== null && currentPos === window.turnStartPosition) {
+        console.log(`📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`);
+        return;
+      }
+
+      window.isLandedThisTurn = true; // 🎯 実際にマスを移動した後の着地時のみ消費！
       console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
 
       if (typeof loadAndApplySquareComponent === "function") {
@@ -167,7 +179,7 @@ window.addEventListener("DOMContentLoaded", () => {
               showJobChoiceDialog(targetModule.jobId, jobName, p.id);
             }
           } 
-          // 🚀 特殊マスの場合（30番、41番など）
+          // 🚀 特殊マスの場合
           else if (typeof targetModule.event === "function") {
             console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
             targetModule.event(p, targetModule);
