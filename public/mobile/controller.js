@@ -143,7 +143,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // ==========================================================================
     // 🧭 【基本ルーティン：行程④：目的地への到着イベントの確認（6.WAIT_NEXT）】
-    // 順序：4.0 サーバー着地配信 ➔ 4.1 PC大画面ロード ➔ 4.2 スマホが手元UI展開 ★
+    // 順序：4.0 サーバー着地配信 ➔ 4.1 PC大画面ロード ➔ 4.2 スマホが手元UI展開
     // ==========================================================================
     if (window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") {
       const currentPos = Number(p.position);
