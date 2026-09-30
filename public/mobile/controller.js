@@ -138,23 +138,45 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）
+    // 🧭 行程④：到着イベント（END_CHECK）- コンポーネント完全直結仕様
     // ------------------------------------------------------------------------
     if (window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") {
-      let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[pos]) ? MAP_SQUARES[pos] : null;
-      if (targetSquare) {
-        if (targetSquare.type === "jobChallenge" && targetSquare.jobId && typeof showJobChoiceDialog === "function") {
-          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          showJobChoiceDialog(targetSquare.jobId, jobName, p.id);
-        } else if (typeof loadAndApplySquareComponent === "function") {
-          loadAndApplySquareComponent(pos, () => {
-            let currentMode = "normal";
-            const targetModule = window.SQ_MODULES && window.SQ_MODULES[pos] && window.SQ_MODULES[pos][currentMode];
-            if (targetModule && typeof targetModule.event === "function") {
-              targetModule.event(p, targetModule);
+      const currentPos = Number(p.position);
+      console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
+
+      if (typeof loadAndApplySquareComponent === "function") {
+        loadAndApplySquareComponent(currentPos, () => {
+          let currentMode = "normal";
+          // 🎯 読み込まれた sq_X.js から直接データを取得
+          const targetModule = window.SQ_MODULES && window.SQ_MODULES[currentPos] && window.SQ_MODULES[currentPos][currentMode];
+          console.log(`📱 [4.1 ロード完了] targetModule:`, targetModule);
+
+          if (!targetModule) {
+            console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`);
+            return;
+          }
+
+          // 🚀 【役職マス】type が "jobChallenge" の場合
+          if (targetModule.type === "jobChallenge" && targetModule.jobId) {
+            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+            console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
+            
+            if (typeof showJobChoiceDialog === "function") {
+              showJobChoiceDialog(targetModule.jobId, jobName, p.id);
+            } else {
+              console.error("🚨 showJobChoiceDialog が未定義です！");
             }
-          });
-        }
+          } 
+          // 🚀 【特殊マス】固有の event 関数を持つ場合（30番、41番など）
+          else if (typeof targetModule.event === "function") {
+            console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
+            targetModule.event(p, targetModule);
+          } 
+          // 🚀 【通常マス】特別なイベントがない場合
+          else {
+            console.log(`📱 [4.2 通常マス] イベント無しのマスです。`);
+          }
+        });
       }
     }
   });
