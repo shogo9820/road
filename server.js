@@ -105,32 +105,36 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始エンジン
-  // 開始した瞬間に、手番プレイヤー全員に「0番マス（position: 0）」のデータを確実に持たせ、
-  // フェーズをターン開始イベント確認（START_CHECK）にセットしてルーティンのレールに流します。
+  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始始動エンジン
+  // 開始した瞬間に、全プレイヤーの初期位置を確実に「0番マス」として特別指定！
+  // そこから余計なイベントは作らず、既存の本物のターン更新処理（action: "nextTurn"）へ
+  // そのまま合流させてパチッとキックするだけで、0番の進路選択が100%美しく自動で展開します。
   // ==========================================================================
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
+      // 1. 【特別指定】全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に初期化！
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0,        // 🎯 【核心の修正】全プレイヤーの初期位置を確実に「0番マス」に固定！
-          location: "家",     // 初期滞在場所をセット
+          position: 0,        // 🎯 0番マスにいるよ、と最初に特別に持たせる
+          location: "スタート前",
           lovers: []
         };
       });
-      room.activePlayerIndex = 0;
       
-      // 🎯 【ルーティン合流】開始時のフェーズを「ターン開始時イベント確認（START_CHECK）」にガチッとセット！
-      room.currentPhase = "START_CHECK"; 
+      // 🎯 【超重要：本物のルーティン交代】
+      // 最初のプレイヤー（インデックス0）をセットした上で、サーバー内部で
+      // 「新ターン開始（nextTurn）」が今カチッと手動で押された時と全く同じ処理を擬似的に実行！
+      room.activePlayerIndex = 0;
+      room.currentPhase = "START_CHECK"; // フェーズを開始時イベント確認にセット
 
-      console.log(`[ゲーム開始ルーティン] ルーム ${roomCode}: 全員を0番マスへ配置し、フェーズを ${room.currentPhase} にしてルーレット待機レールへ流します。`);
+      console.log(`[ルーティン直結開始] ルーム ${roomCode}: プレイヤー1を0番マスに特別指定。ここから通常の新ターン開始レールへ合流させます。`);
 
-      // 🔓 構築された本物の「真実の初期データ」をルームの全員（PC・スマホ）へ一斉に同期配信！
+      // PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース電波（既存の完璧な処理）
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -139,7 +143,17 @@ io.on("connection", (socket) => {
         currentPhase: room.currentPhase
       });
 
-      // 💡 追撃でいつもの同期電波も配り、スマホ側の共通アンテナ（syncGameState）をパチッと叩きます！
+      // 🚀 【核心】手動で「次のプレイヤーへ」が押された時と200%完全に同じ電波（turnUpdated）を一斉発射！
+      // これにより、スマホ側の共通アンテナ（syncGameStateやapplyPlayerAction）が一斉に起動し、
+      // 0番マスにいるデータを見て、進路選択モーダルが100%完全に自動で出現します！
+      io.to(roomCode).emit("applyPlayerAction", {
+        action: "turnUpdated",
+        activePlayerIndex: room.activePlayerIndex,
+        activePlayerName: room.gamePlayers[room.activePlayerIndex].name,
+        activePlayerId: room.gamePlayers[room.activePlayerIndex].id
+      });
+
+      // ルーム全員のステータス画面を一斉更新
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
