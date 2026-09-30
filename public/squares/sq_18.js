@@ -8,21 +8,82 @@
 
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES = {
-  // 🌸 現行：サークル生活モード
+window.SQ_MODULES[18] = {
   normal: {
     id: 18,
-    type: "force_stop",              // 🎯 システムに「私は強制ストップマスです」と伝える型
-    text: "【強制ストップマス】入学式",
-    location: "家",
-    drink: 0,
-    happiness: 0,
-    
-    // 🖥️ PCのモーダル雛形に流し込む値
-    modalConfig: {
-      title: "🌸 入学式 🌸",
-      desc: "大学生活がスタート！最初の新歓イベントに向けてルーレットを回そう！",
-      eventClass: "theme-entrance"    // pc.cssに定義されている青桜テーマのクラス
+    type: "force_stop",
+    text: "【強制ストップ】サークル入学式！",
+    location: "大学キャンパス",
+    event: function (player, moduleData) {
+      console.log(`🌸 [18番マス: 入学式] ${player.name} のイベント開始`);
+
+      // ======================================================================
+      // 🌸 パターン1: 美人（bijin）の場合 ➔ 乾杯モーダル流用
+      // ======================================================================
+      if (player.jobId === "bijin") {
+        // 1. 本人以外の全プレイヤーの飲酒数を +1
+        if (typeof players !== "undefined" && Array.isArray(players)) {
+          players.forEach((p) => {
+            if (p.id !== player.id) {
+              p.drinkCount = (p.drinkCount || 0) + 1;
+            }
+          });
+        }
+
+        // 2. PC大画面の乾杯モーダル (#pc-kanpai-modal) のテキストを差し替え表示
+        const pcModal = document.getElementById("pc-kanpai-modal");
+        if (pcModal) {
+          const titleEl = pcModal.querySelector(".kanpai-header");
+          const membersEl = document.getElementById("pc-kanpai-members");
+          const locationEl = document.getElementById("pc-kanpai-location");
+
+          if (titleEl) titleEl.textContent = "🌸 ミス龍大（美人）入学歓迎！ 🌸";
+          if (membersEl) membersEl.textContent = `👤 ${player.name} を囲むサークル員一同`;
+          if (locationEl) locationEl.textContent = "美人にモテたいの";
+
+          pcModal.style.display = "flex";
+        }
+
+        // 3. スマホ側に完了ダイアログを表示し、次へ進める
+        alert("✨ ミス龍大（美人）の入学！周囲が色めき立ち全員で歓迎の乾杯！（他プレイヤー全員 +1杯）");
+        
+        if (typeof socket !== "undefined") {
+          socket.emit("playerAction", {
+            roomCode: currentRoomCode,
+            action: "squareEventFinished",
+            updatedPlayer: player
+          });
+        }
+        return;
+      }
+
+      // ======================================================================
+      // 🎲 パターン2: 美人以外の場合 ➔ 41番マスの汎用ルーレット機構流用
+      // ======================================================================
+      // 出目対応表: 8〜10は回避(0杯)、4〜7は1杯、1〜3は2杯
+      const entranceMapping = {
+        1: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
+        2: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
+        3: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
+        4: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
+        5: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
+        6: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
+        7: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
+        8: { name: "見事回避！ (0杯)", drinks: 0 },
+        9: { name: "見事回避！ (0杯)", drinks: 0 },
+        10: { name: "見事回避！ (0杯)", drinks: 0 }
+      };
+
+      // 41番と同様にサーバーへ第2スピン要求を送信
+      if (typeof socket !== "undefined") {
+        socket.emit("customEventFirstSpinResult", {
+          roomCode: currentRoomCode,
+          playerId: player.id,
+          result: 1,
+          mapping: entranceMapping,
+          nextStepEventName: "入学式の洗礼回避チャレンジ"
+        });
+      }
     }
   },
 
