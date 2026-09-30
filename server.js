@@ -131,29 +131,38 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 【デバッグワープ】
+  // ==========================================================================
+  // 🛠️ 【完全汎用化】基本ルーティン直結型・デバッグワープエンジン
+  // ワープ専用の裏ルート通信は全廃。指定されたマス番号をセットし、
+  // 「〇〇番マスに到着したぞ！（END_CHECK）」という信号フェーズに書き換えて、
+  // ルーム全員（PC・スマホ）へいつもの syncGameState を一斉配電するだけの神設計です。
+  // ==========================================================================
   socket.on("debugWarp", (data) => {
     const { roomCode, targetSquareId } = data;
     const room = rooms[roomCode];
     if (room && room.gamePlayers && room.gamePlayers[room.activePlayerIndex]) {
       const p = room.gamePlayers[room.activePlayerIndex];
+      
+      // 1. 通常ルーレットを無視して、指定されたマス番号をダイレクトに上書き
       p.position = Number(targetSquareId);
 
+      // 2. 【マスターデータ自動検索】移動先のマスに対応する正しい滞在場所（location）を自動保存
       if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
         p.location = MAP_SQUARES[p.position].location ? MAP_SQUARES[p.position].location : "スタート前";
       } else {
         p.location = "スタート前";
       }
 
+      // 3. 【核心：ルーティン合流】サーバーの進行フェーズを「到着イベント確認（END_CHECK）」にセット！
       room.currentPhase = "END_CHECK";
+      console.log(`[デバッグワープ信号] ${p.name} が ${p.position} 番マスに到着しました。フェーズを ${room.currentPhase} へ強制合流させます。`);
 
-      io.to(roomCode).emit("executeDebugWarp", {
-        activePlayerIndex: room.activePlayerIndex,
-        targetSquareId: p.position,
+      // 4. あとは本物の進行レールに乗せるため、真実のデータを Room 全員へ一斉に配電するだけ！
+      io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase
       });
-      console.log(`[デバッグワープ成功] ${p.name} が ${p.position} 番マスへ。フェーズ: ${room.currentPhase}`);
     }
   });
 

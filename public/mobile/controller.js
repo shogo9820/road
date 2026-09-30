@@ -264,14 +264,25 @@ function sendNextTurn() {
   if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 再ロック
 }
 
+// 🛠️ 【基本ルーティン直結型】スマホ側 デバッグワープ送信トリガー
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
   e.preventDefault();
+
   const targetVal = document.getElementById("input-debug-square")?.value.trim();
   const targetSquareId = parseInt(targetVal, 10);
-  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) return;
-  socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
+  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
+    alert("0〜99の範囲で入力してください");
+    return;
+  }
+
+  // 🎯 余計な位置補正などはせず、「〇〇番にワープしたい」という純粋な信号だけをサーバーへ送信！
+  console.log(`[スマホデバッグ] マスID: ${targetSquareId} へのワープ信号をサーバーへ直撃させます。`);
+  socket.emit("debugWarp", { 
+    roomCode: currentRoomCode, 
+    targetSquareId: targetSquareId 
+  });
 });
 
 function checkBranchSquareOnTurnStart(syncData) {

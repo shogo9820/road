@@ -100,42 +100,42 @@ function appendSocketListeners() {
     }
   });
 
-  socket.on("executeDebugWarp", (data) => {
-    if (data.players) players = data.players;
-    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+  // socket.on("executeDebugWarp", (data) => {
+  //   if (data.players) players = data.players;
+  //   if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
 
-    const p = players[activePlayerIndex];
-    if (!p) return;
+  //   const p = players[activePlayerIndex];
+  //   if (!p) return;
 
-    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-    updateCurrentPlayerDisplay();
+  //   if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+  //   updateCurrentPlayerDisplay();
 
-    if (typeof loadAndApplySquareComponent === "function") {
-      loadAndApplySquareComponent(data.targetSquareId, () => {
-        const targetSquare = typeof MAP_SQUARES !== "undefined" ? MAP_SQUARES[data.targetSquareId] : null;
-        if (!targetSquare) return;
+  //   if (typeof loadAndApplySquareComponent === "function") {
+  //     loadAndApplySquareComponent(data.targetSquareId, () => {
+  //       const targetSquare = typeof MAP_SQUARES !== "undefined" ? MAP_SQUARES[data.targetSquareId] : null;
+  //       if (!targetSquare) return;
 
-        p.location = targetSquare.location || "";
-        applySquareEffects(p, targetSquare); 
-        updateCurrentPlayerDisplay();
+  //       p.location = targetSquare.location || "";
+  //       applySquareEffects(p, targetSquare); 
+  //       updateCurrentPlayerDisplay();
 
-        const tileDescEl = document.getElementById("current-tile-desc");
-        if (tileDescEl) {
-          let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯</span>` : "";
-          let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
-          tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
-        }
+  //       const tileDescEl = document.getElementById("current-tile-desc");
+  //       if (tileDescEl) {
+  //         let drinkInfo = targetSquare.drink ? `<br><span style="color:#e74c3c; font-weight:bold;">🍺 飲酒ペナルティ: ${targetSquare.drink} 杯</span>` : "";
+  //         let locInfo = targetSquare.location ? `<br>📍 場所: ${targetSquare.location}` : "";
+  //         tileDescEl.innerHTML = `<strong>${targetSquare.text || "何もないマスです。"}</strong>${drinkInfo}${locInfo}`;
+  //       }
 
-        if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "insurance_shop") {
-          handleForceStopSquare(p, targetSquare);
-        } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
-          const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
-          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
-        }
-      });
-    }
-  });
+  //       if (targetSquare.type === "force_stop" || targetSquare.type === "force_stop_rankup" || targetSquare.type === "insurance_shop") {
+  //         handleForceStopSquare(p, targetSquare);
+  //       } else if (targetSquare.type === "jobChallenge" || targetSquare.jobId) {
+  //         const jobId = targetSquare.jobId || targetSquare.type || "unknown_job";
+  //         const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+  //         socket.emit("triggerJobChoice", { roomCode: roomCode, playerId: p.id, jobId, jobName });
+  //       }
+  //     });
+  //   }
+  // });
 
   // 🎯 【完全汎用化】マスのJSから届いた設定に従い、大画面に2回目の運命対応表を美しく動的生成！
   socket.on("startCustomEventSecondSpin", (data) => {
