@@ -171,14 +171,25 @@ window.addEventListener("DOMContentLoaded", () => {
             return;
           }
 
-          // 🚀 役職マスの場合
+          // 🚀 【役職マス】type が "jobChallenge" の場合
           if (targetModule.type === "jobChallenge" && targetModule.jobId) {
+            // 🎯 既に役職を持っている場合は何もしない（スルー）
+            if (p.hasJob === true) {
+              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのため、役職マスをスルーします。`);
+              socket.emit("playerAction", {
+                roomCode: currentRoomCode,
+                action: "squareEventFinished",
+                updatedPlayer: p
+              });
+              return;
+            }
+
             const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
             console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
             if (typeof showJobChoiceDialog === "function") {
               showJobChoiceDialog(targetModule.jobId, jobName, p.id);
             }
-          } 
+          }
           // 🚀 特殊マスの場合
           else if (typeof targetModule.event === "function") {
             console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);

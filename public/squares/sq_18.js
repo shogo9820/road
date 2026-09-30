@@ -17,11 +17,13 @@ window.SQ_MODULES[18] = {
     event: function (player, moduleData) {
       console.log(`🌸 [18番マス: 入学式] ${player.name} のイベント開始`);
 
+      // 🎯 PC側(roomCode)・スマホ側(currentRoomCode)のどちらから呼ばれても安全に取得
+      const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
+
       // ======================================================================
       // 🌸 パターン1: 美人（bijin）の場合 ➔ 乾杯モーダル流用
       // ======================================================================
       if (player.jobId === "bijin") {
-        // 1. 本人以外の全プレイヤーの飲酒数を +1
         if (typeof players !== "undefined" && Array.isArray(players)) {
           players.forEach((p) => {
             if (p.id !== player.id) {
@@ -30,7 +32,6 @@ window.SQ_MODULES[18] = {
           });
         }
 
-        // 2. PC大画面の乾杯モーダル (#pc-kanpai-modal) のテキストを差し替え表示
         const pcModal = document.getElementById("pc-kanpai-modal");
         if (pcModal) {
           const titleEl = pcModal.querySelector(".kanpai-header");
@@ -39,17 +40,16 @@ window.SQ_MODULES[18] = {
 
           if (titleEl) titleEl.textContent = "🌸 ミス龍大（美人）入学歓迎！ 🌸";
           if (membersEl) membersEl.textContent = `👤 ${player.name} を囲むサークル員一同`;
-          if (locationEl) locationEl.textContent = "美人にモテたいの";
+          if (locationEl) locationEl.textContent = "美人にモテたい気持ち";
 
           pcModal.style.display = "flex";
         }
 
-        // 3. スマホ側に完了ダイアログを表示し、次へ進める
         alert("✨ ミス龍大（美人）の入学！周囲が色めき立ち全員で歓迎の乾杯！（他プレイヤー全員 +1杯）");
         
         if (typeof socket !== "undefined") {
           socket.emit("playerAction", {
-            roomCode: currentRoomCode,
+            roomCode: targetRoom,
             action: "squareEventFinished",
             updatedPlayer: player
           });
@@ -60,7 +60,6 @@ window.SQ_MODULES[18] = {
       // ======================================================================
       // 🎲 パターン2: 美人以外の場合 ➔ 41番マスの汎用ルーレット機構流用
       // ======================================================================
-      // 出目対応表: 8〜10は回避(0杯)、4〜7は1杯、1〜3は2杯
       const entranceMapping = {
         1: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
         2: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
@@ -74,10 +73,9 @@ window.SQ_MODULES[18] = {
         10: { name: "見事回避！ (0杯)", drinks: 0 }
       };
 
-      // 41番と同様にサーバーへ第2スピン要求を送信
       if (typeof socket !== "undefined") {
         socket.emit("customEventFirstSpinResult", {
-          roomCode: currentRoomCode,
+          roomCode: targetRoom,
           playerId: player.id,
           result: 1,
           mapping: entranceMapping,
