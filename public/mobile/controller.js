@@ -88,20 +88,66 @@ window.addEventListener("DOMContentLoaded", () => {
     if (modal) modal.style.display = "none";
     if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
   });
+  
+  // ==========================================================================
+  // 🛡️ 【完全一本化・最終決定版】真実の syncGameState 統合制御エンジン
+  // 重複していた2つの受信部を完全消去し、1つの綺麗な箱にガッチャンコしました。
+  // データの同期、生命保険ボタンの盾デザイン制御、マスの1回限定着火を完璧に一本化！
+  // ==========================================================================
   socket.on("syncGameState", (data) => {
+    if (!data) return;
+
+    // ① 【基本ステータス同期】
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
 
-    // 🎯 【本質：共通化】今自分が止まったマス（30や41番など）のJSコンポーネントを、スマホ自身でもダイレクトにロードする！
-    const p = players[activePlayerIndex];
+    // サーバーから送られてきた最新の進行フェーズ状態を手元メモリに確実に記憶
+    if (data.currentPhase) {
+      window.serverCurrentPhase = data.currentPhase;
+    }
+
+    // ② 【常時表示：生命保険利用ボタンの影マスク・点灯ロック判定】
+    // 切り離されていた2つ目の処理をここに完璧に合流させました！
+    const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+    const p = players[currentIdx];
+    if (p) {
+      const insuranceBtn = document.getElementById("btn-phone-use-insurance");
+      if (insuranceBtn) {
+        const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
+        // 🔓 1枚以上持っていて、本当に自分のターンの時だけ、影マスクを解除してピカッと大点灯！
+        if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
+          insuranceBtn.disabled = false;
+          insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
+        } else {
+          // 🔒 0枚の時、または他人のターンの時は自動で半透明の影マスクロック
+          insuranceBtn.disabled = true;
+          insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
+        }
+      }
+    }
+
+    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの暴発をカット
+    if (typeof socket !== "undefined" && p && p.id && socket.id) {
+      if (String(p.id) !== String(socket.id) && players.length > 0) return; 
+    }
+
+    // ③ 【無限ループ根絶の防壁】
+    // サーバーのフェーズが「END_CHECK（今着地した一瞬）」の時だけ処理を通過させて自前eventを実行！
+    // 確定タップが押された後の「WAIT_NEXT」フェーズ時は、2度とイベントを再着火させずにここで安全に終了！
+    if (window.serverCurrentPhase !== "END_CHECK") {
+      if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
+      return;
+    }
+
+    // 🎯 【1回限定】止まったマスのJSファイルをダウンロードして操作UIをダイレクト実行！
     if (p && typeof loadAndApplySquareComponent === "function") {
       loadAndApplySquareComponent(p.position, () => {
         let currentMode = "normal";
         const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
         
-        // 🚀 ロードが完了した瞬間、スマホ画面用の event 処理をその場でダイレクト爆発（実行）！
         if (targetModule && typeof targetModule.event === "function") {
+          console.log(`[一元化ハブ] sq_${p.position}.js の操作UIを1回限定で直接起動します。`);
           targetModule.event(p, targetModule);
         }
       });
@@ -116,22 +162,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (btnNext) {
       console.log("[スマホ一元制御] PHASE_WAIT_NEXT。ボタンのロックを安全に解除（点灯）します。");
       btnNext.disabled = false;
-    }
-  });
-
-  // 🌟 生命保険の枚数判定（syncGameState連動）
-  socket.on("syncGameState", (data) => {
-    const currentIdx = data && data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
-    const currentPlayers = data && data.players ? data.players : players;
-    if (!currentPlayers || currentPlayers.length === 0) return;
-    const p = currentPlayers[currentIdx];
-    const insuranceBtn = document.getElementById("btn-phone-use-insurance");
-    if (insuranceBtn && p) {
-      if ((p.insurance !== undefined ? p.insurance : 0) > 0) {
-        insuranceBtn.disabled = false; insuranceBtn.textContent = `🛡️ 生命保険を利用する (${p.insurance}枚所持)`;
-      } else {
-        insuranceBtn.disabled = true; insuranceBtn.textContent = "🛡️ 生命保険を利用する (0枚)";
-      }
     }
   });
 });
