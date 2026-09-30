@@ -330,13 +330,41 @@ document.addEventListener("click", (e) => {
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
-  if (document.getElementById("route-select-modal")) return;
+  console.log("🔍 [DEBUG] checkBranchSquareOnTurnStart 実行開始");
+  
+  if (document.getElementById("route-select-modal")) {
+    console.log("🛑 [DEBUG 停止理由] route-select-modal が既に存在するためリターン");
+    return;
+  }
+
   const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = syncData && syncData.players ? syncData.players : players;
-  if (!currentPlayers || currentPlayers.length === 0) return;
+  
+  console.log(`🔍 [DEBUG] currentIdx: ${currentIdx}, currentPlayers長: ${currentPlayers ? currentPlayers.length : "無し"}`);
+  
+  if (!currentPlayers || currentPlayers.length === 0) {
+    console.log("🛑 [DEBUG 停止理由] currentPlayers が空のためリターン");
+    return;
+  }
+  
   const pObj = currentPlayers[currentIdx];
-  if (!pObj || window.hasConfirmedThisTurn === true || (Number(pObj.position) !== 0 && Number(pObj.position) !== 49)) return;
+  console.log("🔍 [DEBUG] pObj:", pObj, "hasConfirmed:", window.hasConfirmedThisTurn);
 
+  if (!pObj) {
+    console.log("🛑 [DEBUG 停止理由] pObj が存在しないためリターン");
+    return;
+  }
+  if (window.hasConfirmedThisTurn === true) {
+    console.log("🛑 [DEBUG 停止理由] hasConfirmedThisTurn が true のためリターン");
+    return;
+  }
+  if (Number(pObj.position) !== 0 && Number(pObj.position) !== 49) {
+    console.log(`🛑 [DEBUG 停止理由] position が 0 または 49 ではない (${pObj.position}) ためリターン`);
+    return;
+  }
+
+  console.log("✅ [DEBUG] すべての関門を突破！モーダルを DOM に挿入します。");
+  // （以下、HTML生成処理へ続く）
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
