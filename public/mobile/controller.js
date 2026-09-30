@@ -57,6 +57,7 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
+      window.isLandedThisTurn = false; // 👈 🎯 これを追加！
       activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
       console.log(`\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`);
 
@@ -138,41 +139,40 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）- コンポーネント完全直結仕様
+    // 🧭 行程④：到着イベント（END_CHECK）- 着地時1回限定ガード仕様
     // ------------------------------------------------------------------------
-    if (window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") {
+    if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
+      // 🎯 手番プレイヤー本人でなければ絶対に開かない
+      if (currentIdx !== activePlayerIndex) return;
+
+      window.isLandedThisTurn = true; // 🎯 着地時1回限定フラグを立てる（次の周の開始時誤爆を防止）
       const currentPos = Number(p.position);
       console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
 
       if (typeof loadAndApplySquareComponent === "function") {
         loadAndApplySquareComponent(currentPos, () => {
           let currentMode = "normal";
-          // 🎯 読み込まれた sq_X.js から直接データを取得
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[currentPos] && window.SQ_MODULES[currentPos][currentMode];
-          console.log(`📱 [4.1 ロード完了] targetModule:`, targetModule);
 
           if (!targetModule) {
             console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`);
             return;
           }
 
-          // 🚀 【役職マス】type が "jobChallenge" の場合
+          // 🚀 役職マスの場合
           if (targetModule.type === "jobChallenge" && targetModule.jobId) {
             const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
             console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
-            
             if (typeof showJobChoiceDialog === "function") {
               showJobChoiceDialog(targetModule.jobId, jobName, p.id);
-            } else {
-              console.error("🚨 showJobChoiceDialog が未定義です！");
             }
           } 
-          // 🚀 【特殊マス】固有の event 関数を持つ場合（30番、41番など）
+          // 🚀 特殊マスの場合（30番、41番など）
           else if (typeof targetModule.event === "function") {
             console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
             targetModule.event(p, targetModule);
           } 
-          // 🚀 【通常マス】特別なイベントがない場合
+          // 🚀 通常マスの場合
           else {
             console.log(`📱 [4.2 通常マス] イベント無しのマスです。`);
           }
