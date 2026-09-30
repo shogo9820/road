@@ -427,7 +427,9 @@ function openPCEventModal(eventType, playerName, activePlayerId) {
 }
 
 // ==========================================================================
-// 🎯 【真のコンポーネント起動エンジン】
+// 🎓 【最終決定版】強制ストップ・イベントハブエンジン（誤爆完全全廃ガード）
+// 0番(branch)や30番、41番のように、すでにコンポーネント化や型が完成しているマスが、
+// 下の未定義defaultルート（引退式モーダルなど）に誤って吸い込まれるのを100%完璧にせき止めます！
 // ==========================================================================
 function handleForceStopSquare(player, square) {
   if (!square) return;
@@ -438,21 +440,32 @@ function handleForceStopSquare(player, square) {
     currentMode = rooms[roomCode].mode || "normal";
   }
 
-  // 🎯 読み込まれたマスのJS（sq_30 や sq_41）に直書きされた自前の event 関数を1行で爆発させる！
+  // A. マスのファイル（sq_X.js）側に固有の自前 event 関数が直書きされていればそれを実行
   const targetModule = window.SQ_MODULES && window.SQ_MODULES[square.id] && window.SQ_MODULES[square.id][currentMode];
   if (targetModule && typeof targetModule.event === "function") {
     console.log(`[コンポーネント自動連動] sq_${square.id}.js の直書きイベントを実行します。`);
     targetModule.event(player, square);
-    return; // 🔓 100%自動スキップタイマーをせき止めて手動操作を待つ！
+    return; // 🔓 スキップさせずにここで安全に処理終了
   }
 
-  console.log(`[開発デバッグ] マスID: ${square.id} はイベント処理未定義のため自動進行。`);
+  // 🎯 【核心の修正防壁】もしマスの型が「branch（進路選択）」だった場合、
+  // またはすでにコンポーネント化されているマスの場合は、下の古い泥臭いサークル引退式等の誤爆モーダルへは
+  // 絶対に流さず、ここで何もせず静かにピンを止めてリターン（終了）させる！
+  if (square.type === "branch" || square.type === "insurance_shop" || targetModule) {
+    console.log(`[コンポーネント型ガード] マスID: ${square.id} (${square.type || "仕様確定"}) は正常に待機状態を維持。誤爆モーダルを完全せき止め。`);
+    return;
+  }
+
+  // 💡 まだJSファイルを1ミリも作っていない、本当の古い「仕様未定マス（18番など）」の時だけ、これまで通り自動進行
+  console.log(`[開発デバッグ] マスID: ${square.id} は完全未定義のため自動スキップ進行を行います。`);
   let fallbackType = square.id === 18 ? "入学式" : square.id === 49 ? "ランクアップ" : "引退";
   openPCEventModal(fallbackType, player.name, player.id);
 
   setTimeout(() => {
     socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
-    if (document.getElementById("pc-event-modal")) document.getElementById("pc-event-modal").style.display = "none";
+    if (document.getElementById("pc-event-modal")) {
+      document.getElementById("pc-event-modal").style.display = "none";
+    }
     isPCEventMode = false;
   }, 300);
 }
