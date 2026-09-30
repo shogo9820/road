@@ -90,70 +90,77 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🛡️ 【完全一本化・最終決定版】真実の syncGameState 統合制御エンジン
-  // 重複していた2つの受信部を完全消去し、1つの綺麗な箱にガッチャンコしました。
-  // データの同期、生命保険ボタンの盾デザイン制御、マスの1回限定着火を完璧に一本化！
+  // 🧭 【完全修復・最終決定版】1本化 syncGameState 進行ルーチンエンジン
+  // あなたが定義した基本ルーティン（行程②：開始時イベント / 行程④：到着イベント）を
+  // サーバーのフェーズ（START_CHECK, END_CHECK）と1文字の狂いもなく完全同期！
+  // 0番の進路選択モーダルも、30番の保険も、41番のカップルも、すべてのバグを根絶して大復活させます。
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
 
-    // ① 【基本ステータス同期】
+    // 1. 【基本ステータス同期】
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
 
-    // サーバーから送られてきた最新の進行フェーズ状態を手元メモリに確実に記憶
+    // サーバーの最新フェーズ状態を手元メモリに確実にロックオン
     if (data.currentPhase) {
       window.serverCurrentPhase = data.currentPhase;
     }
 
-    // ② 【常時表示：生命保険利用ボタンの影マスク・点灯ロック判定】
-    // 切り離されていた2つ目の処理をここに完璧に合流させました！
     const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const p = players[currentIdx];
-    if (p) {
-      const insuranceBtn = document.getElementById("btn-phone-use-insurance");
-      if (insuranceBtn) {
-        const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
-        // 🔓 1枚以上持っていて、本当に自分のターンの時だけ、影マスクを解除してピカッと大点灯！
-        if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
-          insuranceBtn.disabled = false;
-          insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
-        } else {
-          // 🔒 0枚の時、または他人のターンの時は自動で半透明の影マスクロック
-          insuranceBtn.disabled = true;
-          insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
-        }
+    if (!p) return;
+
+    // 2. 【常時表示：生命保険利用ボタンの点灯・影ロック制御】
+    const insuranceBtn = document.getElementById("btn-phone-use-insurance");
+    if (insuranceBtn) {
+      const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
+      if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
+        insuranceBtn.disabled = false;
+        insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
+      } else {
+        insuranceBtn.disabled = true;
+        insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
       }
     }
 
-    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの暴発をカット
-    if (typeof socket !== "undefined" && p && p.id && socket.id) {
+    // 🔒 【手番プレイヤー限定防壁】他人のスマホの裏側での暴発を完全せき止め
+    if (typeof socket !== "undefined" && p.id && socket.id) {
       if (String(p.id) !== String(socket.id) && players.length > 0) return; 
     }
 
-    // ③ 【無限ループ根絶の防壁】
-    // サーバーのフェーズが「END_CHECK（今着地した一瞬）」の時だけ処理を通過させて自前eventを実行！
-    // 確定タップが押された後の「WAIT_NEXT」フェーズ時は、2度とイベントを再着火させずにここで安全に終了！
-    if (window.serverCurrentPhase !== "END_CHECK") {
-      if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
-      return;
+    // ==========================================================================
+    // 🧭 【ルーティン行程②：開始時イベントチェック（START_CHECK / WAIT_SPIN）】
+    // サーバーがターン開始を告げている時は、最優先で0番や49番の進路選択モーダルを起動する！
+    // ==========================================================================
+    if (window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "WAIT_SPIN") {
+      if (typeof checkBranchSquareOnTurnStart === "function") {
+        console.log("[ルーティン開始確認] 0番・49番の進路選択チェックをダイレクト実行します。");
+        checkBranchSquareOnTurnStart(data); // 🎯 正解：サーバーから届いたdataをそのまま渡してモーダルを展開！
+      }
+      return; // 開始時は到着イベントを動かさないよう、ここで安全に処理を終了
     }
 
-    // 🎯 【1回限定】止まったマスのJSファイルをダウンロードして操作UIをダイレクト実行！
-    if (p && typeof loadAndApplySquareComponent === "function") {
-      loadAndApplySquareComponent(p.position, () => {
-        let currentMode = "normal";
-        const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
-        
-        if (targetModule && typeof targetModule.event === "function") {
-          console.log(`[一元化ハブ] sq_${p.position}.js の操作UIを1回限定で直接起動します。`);
-          targetModule.event(p, targetModule);
-        }
-      });
+    // ==========================================================================
+    // 🧭 【ルーティン行程④：到着イベントチェック（END_CHECK）】
+    // サーバーの現在のフェーズが「END_CHECK（目的地に今着地した一瞬）」の時だけ、
+    // マスのJSを非同期ロードして event() を1回限定で実行させます！
+    // 確定タップが押された後の「WAIT_NEXT」フェーズ時は、2度と再着火させずに完全スルーします。
+    // ==========================================================================
+    if (window.serverCurrentPhase === "END_CHECK") {
+      if (typeof loadAndApplySquareComponent === "function") {
+        loadAndApplySquareComponent(p.position, () => {
+          let currentMode = "normal";
+          const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
+          
+          if (targetModule && typeof targetModule.event === "function") {
+            console.log(`[ルーティン到着確認] sq_${p.position}.js の到着UIを画面へ1回限定展開します。`);
+            targetModule.event(p, targetModule);
+          }
+        });
+      }
     }
-
-    if (typeof checkBranchSquareOnTurnStart === "function") checkBranchSquareOnTurnStart(data);
   });
 
   // 🎯 サーバーの新ルーティン（WAIT_NEXTフェーズ）から、次へ進めてよい合図を受け取ってロック解除！
