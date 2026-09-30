@@ -123,15 +123,18 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================================================
-    // 🧭 【ルーティン行程②：ターン開始時イベントの確認（1-2.START_CHECK）】
-    // 順序：2.0 サーバーが電波発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
-    // ==========================================================================
-    if (window.serverCurrentPhase === "1-2.START_CHECK") {
-      if (typeof checkBranchSquareOnTurnStart === "function") {
-        console.log(`📱 [2.2 スマホ受信] ➔ 開始時イベント確認。0番・49番の進路選択チェックを素直にキックします。(位置: ${p.position}番)`);
-        checkBranchSquareOnTurnStart(data);
-      }
+  // 🧭 【ルーティン行程②：ターン開始時イベントの確認（START_CHECK / WAIT_SPIN）】
+  // 順序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
+  // 🎯 【核心の修復】サーバーから届く生のフェーズ文字（START_CHECK）と1文字の狂いもなく完全同期！
+  // これにより不整合が完全パージされ、ゲーム開始の瞬間に 2.2 の本物リレーログが爆音で大開通します。
+  // ==========================================================================
+  if (window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "WAIT_SPIN") {
+    if (typeof checkBranchSquareOnTurnStart === "function") {
+      // 🎯 【リレー番号：2.2】大画面(2.1.1)からバトンを正しく引き継ぎ、スマホ画面へルートモーダルを直撃展開！
+      console.log(`📱 [2.2 スマホ受信] ➔ 開始時イベント確認。0番・49番の進路選択チェックをダイレクト実行します！(現在位置: ${p.position}番マス)`);
+      checkBranchSquareOnTurnStart(data);
     }
+  }
 
     // ==========================================================================
     // 🧭 【ルーティン行程④：目的地への到着イベントの確認（4.END_CHECK）】
