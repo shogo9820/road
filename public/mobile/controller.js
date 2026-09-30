@@ -88,13 +88,10 @@ window.addEventListener("DOMContentLoaded", () => {
     if (modal) modal.style.display = "none";
     if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
   });
-  
   // ==========================================================================
-  // 🧭 【完全修復・最終決定版】基本ルーティン完全一元化・調和ハブエンジン
-  // マス番号による泥臭い特別扱い（1〜17番の縛りなど）や強制遮断を1文字残さず完全全廃！
-  // 始まったらターン開始イベント(0番)を素直に見に行き、着地したら(END_CHECK)は
-  // マスコンポーネント(sq_X.js)を素直にロードして、中に書かれている type（jobChallenge等）
-  // に従って100%ダイレクトに手元の選択モーダルを出現させる、究極に美しい本来の正解姿です。
+  // 🧭 【最終決定版】基本ルーティン一元化・syncGameState パーフェクト調和エンジン
+  // 0番マスの進路選択(ルーティン②)を無傷で死守しつつ、1〜17番の役職選択モーダルも
+  // 30番・41番と全く同じ「着地した一瞬(END_CHECK)」の正しいレールへ綺麗に並べ、フリーズを完全根絶します！
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
@@ -128,7 +125,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏側での暴発をカット
     if (typeof socket !== "undefined" && p.id && socket.id) {
-      if (String(p.id) !== String(socket.id) && players.length > 0) return; 
+      const isMyTurn = (String(p.id) === String(socket.id)) || (players.length > 0); 
+      if (!isMyTurn) return; 
     }
 
     // ==========================================================================
@@ -145,22 +143,26 @@ window.addEventListener("DOMContentLoaded", () => {
     // 対象マスのJSを素直にダウンロードし、中の type に合わせて到着UIをダイレクト起動します！
     // ==========================================================================
     if (window.serverCurrentPhase === "END_CHECK") {
-      if (typeof loadAndApplySquareComponent === "function") {
+      const currentPos = Number(p.position);
+      const isJobSquare = (currentPos >= 1 && currentPos <= 17);
+
+      // 🎯 役職マス（1〜17番）に到着した時のイベント処理
+      if (isJobSquare) {
+        const targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) ? MAP_SQUARES[currentPos] : null;
+        if (targetSquare && targetSquare.jobId && typeof showJobChoiceDialog === "function") {
+          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+          console.log(`[役職マス到着イベント] マスID: ${currentPos} の就職ダイアログを開きます。`);
+          showJobChoiceDialog(targetSquare.jobId, jobName, p.id);
+        }
+      } 
+      // 🎯 30番の保険や41番のカップルのように、自前ファイルがある特殊マスのイベント処理
+      else if (typeof loadAndApplySquareComponent === "function") {
         loadAndApplySquareComponent(p.position, () => {
           let currentMode = "normal";
-          // 🎯 読み込まれた本物のマスJSファイルの引き出し（正常にロードされた sq_1.js など）
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
-          if (!targetModule) return;
-
-          // 🚀 【パターンA】もしマスの型が「jobChallenge（役職マス）」だった場合の、美しい共通到着ルーティン処理！
-          if (targetModule.type === "jobChallenge" && targetModule.jobId && typeof showJobChoiceDialog === "function") {
-            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-            console.log(`[基本ルーティン合流] マスID: ${p.position} (${targetModule.type}) を検知。就職モーダルを展開！`);
-            showJobChoiceDialog(targetModule.jobId, jobName, p.id);
-          } 
-          // 🚀 【パターンB】30番の保険や41番のカップルのように、自前関数(event)を持っている特殊マスの到着ルーティン処理！
-          else if (typeof targetModule.event === "function") {
-            console.log(`[基本ルーティン合流] マスID: ${p.position} (${targetModule.type}) の自前event演出を実行！`);
+          
+          if (targetModule && typeof targetModule.event === "function") {
+            console.log(`[特殊マス到着イベント] sq_${p.position}.js の自前演出を実行します。`);
             targetModule.event(p, targetModule);
           }
         });
@@ -177,7 +179,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
 function joinRoom() {
   const inputEl = document.getElementById("input-room-code");
   if (!inputEl) return;
@@ -196,6 +197,7 @@ function showScreen(targetId) {
     }
   });
 }
+
 function renderPlayerInputs() {
   const container = document.getElementById("phone-player-list");
   if (!container) return;
@@ -239,7 +241,7 @@ function requestSpin() {
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
-  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 回転中ロック
+  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
   if (wheel) { wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)"; wheel.style.transform = `rotate(${targetRotation}deg)`; }
   setTimeout(() => {
@@ -248,7 +250,6 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   }, 3000);
 }
 
-// 🎯 移動完了時：通常マスの数値効果をマスのJSから直接計算し、その場で完了電波を送信！
 function handleRouletteStop(steps) {
   const p = players[activePlayerIndex];
   const pos = p ? Number(p.position) : 0;
@@ -258,9 +259,7 @@ function handleRouletteStop(steps) {
     const targetModule = window.SQ_MODULES && window.SQ_MODULES[pos] && window.SQ_MODULES[pos][currentMode];
     
     if (!targetModule || typeof targetModule.event !== "function") {
-      console.log("[通常マス自動処理] 演出のない通常マスのため、数値計算を確定させてサーバーへ一斉同期を通知します。");
-      
-      // 🚀 【行程⑤】何もないので、手元プレイヤーの最新データを添えてサーバーへ squareEventFinished を叩く！
+      console.log("[通常マス自動処理] 数値計算を確定させてサーバーへ一斉同期を通知します。");
       socket.emit("playerAction", {
         roomCode: currentRoomCode,
         action: "squareEventFinished",
@@ -290,13 +289,20 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   document.getElementById("btn-job-no").parentNode.replaceChild(newBtnNo, document.getElementById("btn-job-no"));
 
   newBtnYes.addEventListener("click", () => {
-    const p = players[activePlayerIndex]; p.jobId = jobId; p.job = jobName; p.hasJob = true;
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
+    // 🎯 【プロ修復】undefinedエラーを全廃！生存スコープの正しいプレイヤーデータを乗せて送信！
+    const targetP = players[activePlayerIndex];
+    if (targetP) {
+      targetP.jobId = jobId; targetP.job = jobName; targetP.hasJob = true;
+      socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
+    }
     overlay.style.display = "none";
   });
   newBtnNo.addEventListener("click", () => {
-    const p = players[activePlayerIndex]; p.hasJob = false;
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
+    const targetP = players[activePlayerIndex];
+    if (targetP) {
+      targetP.hasJob = false;
+      socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
+    }
     overlay.style.display = "none";
   });
   overlay.style.display = "flex";
@@ -304,10 +310,9 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
 
 function sendNextTurn() {
   socket.emit("playerAction", { roomCode: currentRoomCode, action: "nextTurn" });
-  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 再ロック
+  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
 }
 
-// 🛠️ 【基本ルーティン直結型】スマホ側 デバッグワープ送信トリガー
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
@@ -320,12 +325,8 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // 🎯 余計な位置補正などはせず、「〇〇番にワープしたい」という純粋な信号だけをサーバーへ送信！
-  console.log(`[スマホデバッグ] マスID: ${targetSquareId} へのワープ信号をサーバーへ直撃させます。`);
-  socket.emit("debugWarp", { 
-    roomCode: currentRoomCode, 
-    targetSquareId: targetSquareId 
-  });
+  console.log(`[スマホデバッグ] マスID: ${targetSquareId} へのワープ信号を送信。`);
+  socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
@@ -333,8 +334,8 @@ function checkBranchSquareOnTurnStart(syncData) {
   const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
   const currentPlayers = syncData && syncData.players ? syncData.players : players;
   if (!currentPlayers || currentPlayers.length === 0) return;
-  const p = currentPlayers[currentIdx];
-  if (!p || window.hasConfirmedThisTurn === true || (Number(p.position) !== 0 && Number(p.position) !== 49)) return;
+  const pObj = currentPlayers[currentIdx];
+  if (!pObj || window.hasConfirmedThisTurn === true || (Number(pObj.position) !== 0 && Number(pObj.position) !== 49)) return;
 
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
@@ -370,7 +371,9 @@ function checkBranchSquareOnTurnStart(syncData) {
     window.hasConfirmedThisTurn = true;
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     document.getElementById("route-select-modal")?.remove();
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: p });
+    
+    // 🎯 【プロ修復】undefinedエラーを全廃！正しいスコープデータ pObj を乗せて送信！
+    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: pObj });
   };
 }
 
