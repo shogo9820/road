@@ -90,10 +90,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🧭 【基本ルーティン遵守】syncGameState 統合制御ハブ
-  // フェーズごとにスマホ側でやることがあるか判定し、無ければスキップ・次へ進める
+  // 🧭 syncGameState 受信部（ブロック解除・確実実行版）
   // ==========================================================================
   socket.on("syncGameState", (data) => {
+    console.log("📱 [DEBUG] syncGameState 受信成功:", data);
     if (!data) return;
 
     if (data.players && Array.isArray(data.players)) players = data.players;
@@ -104,9 +104,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const p = players[currentIdx];
-    if (!p) return;
+    if (!p) {
+      console.log("🛑 [DEBUG] プレイヤー情報が存在しないため終了");
+      return;
+    }
 
-    // 生命保険ボタン
+    // 保険ボタンの更新
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
@@ -119,54 +122,36 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 操作権チェック（手番本人でなければ以降の入力UI処理は行わない）
-    if (typeof socket !== "undefined" && p.id && socket.id) {
-      if (String(p.id) !== String(socket.id) && players.length > 1) return;
+    // ------------------------------------------------------------------------
+    // 🧭 行程②：ターン開始時イベント（進路選択チェック）
+    // ------------------------------------------------------------------------
+    const pos = Number(p.position);
+    console.log(`📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`);
+
+    if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
+      console.log("📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を直接実行します。");
+      checkBranchSquareOnTurnStart(data);
+    } else {
+      console.log("📱 [DEBUG] 分岐なしマスまたは確定済み。ルーレット待機。");
+      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
+      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程②：ターン開始時イベントの確認（START_CHECK）
-    // ------------------------------------------------------------------------
-    const isStartPhase = window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "1-2.START_CHECK";
-    if (isStartPhase) {
-      const pos = Number(p.position);
-      // 0番または49番マスで、まだ確定していない場合 ➔ 分岐モーダル表示
-      if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
-        console.log(`📱 [2.0 開始時イベント有] マスID: ${pos} の進路選択モーダルを展開します。`);
-        checkBranchSquareOnTurnStart({
-          players: players,
-          activePlayerIndex: activePlayerIndex,
-          currentPhase: window.serverCurrentPhase
-        });
-      } else {
-        // 分岐が無いマス、または確定済みの場合はルーレットを回せる状態にする
-        console.log(`📱 [2.0 開始時イベント無/完了] ルーレット待機状態に移行。`);
-        if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-        if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
-      }
-    }
-
-    // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベントの確認（END_CHECK）
+    // 🧭 行程④：到着イベント（END_CHECK）
     // ------------------------------------------------------------------------
     if (window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") {
-      const currentPos = Number(p.position);
-      let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) ? MAP_SQUARES[currentPos] : null;
-
+      let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[pos]) ? MAP_SQUARES[pos] : null;
       if (targetSquare) {
         if (targetSquare.type === "jobChallenge" && targetSquare.jobId && typeof showJobChoiceDialog === "function") {
           const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          console.log(`📱 [4.0 到着イベント有] 役職マス(ID: ${currentPos}) を検知。就職ダイアログを表示。`);
           showJobChoiceDialog(targetSquare.jobId, jobName, p.id);
         } else if (typeof loadAndApplySquareComponent === "function") {
-          loadAndApplySquareComponent(p.position, () => {
+          loadAndApplySquareComponent(pos, () => {
             let currentMode = "normal";
-            const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
+            const targetModule = window.SQ_MODULES && window.SQ_MODULES[pos] && window.SQ_MODULES[pos][currentMode];
             if (targetModule && typeof targetModule.event === "function") {
-              console.log(`📱 [4.0 到着イベント有] 特殊マス(ID: ${p.position}) の固有イベントを実行。`);
               targetModule.event(p, targetModule);
-            } else {
-              console.log(`📱 [4.0 到着イベント無] マスID: ${p.position} イベント無し。スキップ。`);
             }
           });
         }
