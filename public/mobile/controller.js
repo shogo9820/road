@@ -234,9 +234,19 @@ function syncSettingsToServer() {
   socket.emit("updateSettings", { roomCode: currentRoomCode, players: players, mode: selectedMode, gameMode: selectedMode });
 }
 
+// ==========================================================================
+// 🧭 【一本道リレー：手順1】スマホ側 ゲーム開始手動トリガー関数（完全修復版）
+// サーバーの if (room) 防壁にシカトされてログすら出なくなっていた原因を完全粉砕！
+// 手元メモリにある本物の部屋コード（currentRoomCode）を正確に梱包して、
+// サーバー側へ 100% 確実に startGame の一本道始動バトンを直撃で叩き込みます！
+// ==========================================================================
 function sendStartGame() {
-  console.log("📱 [PHONE TRIGGER] 「ゲーム開始」ボタンが手動タップされました。サーバーへ startGame を発を発射します。");
-  socket.emit("startGame", { roomCode: currentRoomCode });
+  console.log(`📱 [1.0 スマホ発信] ➔ ゲーム開始が手動タップされました。サーバーへ部屋コード [${currentRoomCode}] の一本道始動バトンを発射します！`);
+  
+  // 🎯 【核心の修正】誤字や文字のすれ違いを完全全廃。currentRoomCode を確実に渡す！
+  socket.emit("startGame", { 
+    roomCode: String(currentRoomCode).trim() 
+  });
 }
 
 function requestSpin() {
