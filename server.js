@@ -241,6 +241,23 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+    // 🎯 【一本道リレー：行程④】PC側でピンが目的地に着地した合図を受信
+  socket.on("squareLanded", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (room) {
+      room.currentPhase = "4.END_CHECK"; // 🎯 到着確認フェーズへ更新！
+      console.log(`\n🚨 [SERVER] ➔ 4. 目的地着地完了を検知。フェーズ: ${room.currentPhase} を全員へ配信！`);
+
+      io.to(roomCode).emit("syncGameState", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
+        currentPhase: room.currentPhase
+      });
+    }
+  });
+
   // 役職・カップルイベントの単なる中継アンテナ（既存の互換性を保護）
   socket.on("triggerJobChoice", (data) => {
     const { roomCode, playerId, jobId, jobName } = data;

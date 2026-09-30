@@ -309,16 +309,24 @@ function executeSyncedRoulette(resultNum) {
       console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
       loadAndApplySquareComponent(p.position, () => {
         let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
-        if (targetSquare) { p.location = targetSquare.location || ""; if (typeof applySquareEffects === "function") applySquareEffects(p, targetSquare); }
+        if (targetSquare) { 
+          p.location = targetSquare.location || ""; 
+          if (typeof applySquareEffects === "function") applySquareEffects(p, targetSquare); 
+        }
 
         if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-        renderLocationPlayersList(); updateCurrentPlayerDisplay();
+        renderLocationPlayersList(); 
+        updateCurrentPlayerDisplay();
 
-        // 🚀 【100%無差別着地ハブ】どんなマスでも100%確実に handleForceStopSquare を叩いて到着信号を発射！
+        // 🚀 【100%無差別着地ハブ】到着信号を起動し、サーバーへフェーズ更新を通知
         if (targetSquare) {
           console.log(`📡 [PC SIGNAL] マスID: ${p.position} の到着信号ハブを無差別緊急起動！`);
           handleForceStopSquare(p, targetSquare);
+
+          // 🎯 サーバーへ「目的地に着地したぞ！」と通知してフェーズを 4.END_CHECK に進めさせる
+          socket.emit("squareLanded", { roomCode: roomCode, position: p.position });
         }
+
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
         triggerDelayedDisplay(resultNum, targetSquare);
       });
