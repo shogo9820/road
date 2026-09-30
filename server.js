@@ -105,34 +105,36 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始始動エンジン
-  // 開始した瞬間に、全プレイヤーの初期位置を確実に「0番マス」として特別指定！
-  // そこから余計なイベントは作らず、既存の本物のターン更新処理（action: "nextTurn"）へ
-  // そのまま合流させてパチッとキックするだけで、0番の進路選択が100%美しく自動で展開します。
+  // 🚀 【最終決定版】一本道リレー完全準拠・ゲーム開始始動エンジン
+  // 開始した瞬間に、手番プレイヤー全員に「0番マス（position: 0）」のデータを確実に持たせ、
+  // フェーズをターン開始イベント確認（START_CHECK）にセットしてルーム全員へ一斉同期！
+  // ❌ スマホ側のボタンマスクをフライング解除させていた古い二重電波（turnUpdated）は完全全廃・パージ。
+  // これにより、他のマスを巻き込むことなく、0番の進路選択が100%美しく自動で展開します。
   // ==========================================================================
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      console.log(`\n=========================================`);
-      console.log(`🚨 [SERVER START_GAME] ゲーム開始命令を受信しました`);
-      
+      // 1. 全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に特別指定
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0, 
+          position: 0,        // 🎯 0番マス（スタート）にいるよ、と最初に特別に持たせる
           location: "スタート前",
           lovers: []
         };
       });
       
       room.activePlayerIndex = 0;
-      room.currentPhase = "START_CHECK";
+      
+      // 2. 【ルーティン合流】開始時のフェーズを「ターン開始時イベント確認（START_CHECK）」にセット！
+      room.currentPhase = "START_CHECK"; 
 
-      console.log(`ℹ️ [SERVER] プレイヤー1を 0番マス(スタート前) に特別指定完了`);
-      console.log(`📡 [SERVER -> ROOM] ① gameStarted 電波を発射します...`);
+      console.log(`[一本道リレー始動] ルーム ${roomCode}: 全員を0番マスへ配置し、フェーズを ${room.currentPhase} にして一斉配電します。`);
+
+      // 3. PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース電波（既存の完璧な処理）
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -141,21 +143,16 @@ io.on("connection", (socket) => {
         currentPhase: room.currentPhase
       });
 
-      console.log(`📡 [SERVER -> ROOM] ② applyPlayerAction (turnUpdated) 電波を発射します...`);
-      io.to(roomCode).emit("applyPlayerAction", {
-        action: "turnUpdated",
-        activePlayerIndex: room.activePlayerIndex,
-        activePlayerName: room.gamePlayers[room.activePlayerIndex].name,
-        activePlayerId: room.gamePlayers[room.activePlayerIndex].id
-      });
+      // ❌ 【バグの根絶】手動でターン更新が押された時用の電波（applyPlayerAction: turnUpdated）を、
+      // ここでフライング二重乱射していた socket.emit 行は、バグの諸悪の根源のため1文字残さず完全に消去・パージしました！
 
-      console.log(`📡 [SERVER -> ROOM] ③ syncGameState 電波を発射します...`);
+      // 🚀 4. 真実の初期データ（位置0、フェーズ START_CHECK）をルーム全員（PC・スマホ）へ一斉に同期配電！
+      // これにより、スマホ側は他からの割り込みを受けずに、素直に0番マスの「運命の進路選択モーダル」を大点灯させます。
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase
       });
-      console.log(`=========================================\n`);
     }
   });
 
