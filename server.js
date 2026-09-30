@@ -104,7 +104,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 【ゲーム開始】
+  // ==========================================================================
+  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始エンジン
+  // 開始した瞬間に、手番プレイヤー全員に「0番マス（position: 0）」のデータを確実に持たせ、
+  // フェーズをターン開始イベント確認（START_CHECK）にセットしてルーティンのレールに流します。
+  // ==========================================================================
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
@@ -114,12 +118,19 @@ io.on("connection", (socket) => {
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
+          position: 0,        // 🎯 【核心の修正】全プレイヤーの初期位置を確実に「0番マス」に固定！
+          location: "家",     // 初期滞在場所をセット
           lovers: []
         };
       });
       room.activePlayerIndex = 0;
-      room.currentPhase = "WAIT_SPIN";
+      
+      // 🎯 【ルーティン合流】開始時のフェーズを「ターン開始時イベント確認（START_CHECK）」にガチッとセット！
+      room.currentPhase = "START_CHECK"; 
 
+      console.log(`[ゲーム開始ルーティン] ルーム ${roomCode}: 全員を0番マスへ配置し、フェーズを ${room.currentPhase} にしてルーレット待機レールへ流します。`);
+
+      // 🔓 構築された本物の「真実の初期データ」をルームの全員（PC・スマホ）へ一斉に同期配信！
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -127,7 +138,13 @@ io.on("connection", (socket) => {
         activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase
       });
-      console.log(`[ゲーム開始] ルーム ${roomCode}: lovers配列・WAIT_SPINフェーズを初期化`);
+
+      // 💡 追撃でいつもの同期電波も配り、スマホ側の共通アンテナ（syncGameState）をパチッと叩きます！
+      io.to(roomCode).emit("syncGameState", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
+        currentPhase: room.currentPhase
+      });
     }
   });
 

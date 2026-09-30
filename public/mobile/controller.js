@@ -213,6 +213,7 @@ function syncSettingsToServer() {
 }
 
 function sendStartGame() {
+  console.log("[スマホ] ゲーム開始シグナルをサーバーへ送信します。");
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
   activePlayerIndex = 0;
