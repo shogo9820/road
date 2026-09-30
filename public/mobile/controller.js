@@ -298,6 +298,12 @@ document.addEventListener("click", (e) => {
   socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
 });
 
+// ==========================================================================
+// 🧭 【最終決定版】基本ルーティン完全準拠・進路選択(ルート選定)ハブエンジン
+// 進路を確定した直後に、まだルーレットを回していない段階で「イベント完了」の電波を
+// サーバーへ誤爆送信して次へボタンをフライング点灯させていた大バグの1行を完全パージ！
+// 進路確定後は、純粋に進路データを報告するだけで、一本道の正しいルーレット待機へ繋ぎます。
+// ==========================================================================
 function checkBranchSquareOnTurnStart(syncData) {
   if (document.getElementById("route-select-modal")) return;
   const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
@@ -338,11 +344,13 @@ function checkBranchSquareOnTurnStart(syncData) {
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true;
+    
+    // 🎯 【リレーの一本化】純粋に進路選択データのみを確定報告してモーダルを消去
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     document.getElementById("route-select-modal")?.remove();
     
-    // 🎯 【プロ修復】undefinedエラーを全廃！正しいスコープデータ pObj を乗せて送信！
-    socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: pObj });
+    // ❌ 【大爆弾パージ】タイムラインをフライング終了させて次へボタンを誤爆点灯させていた、
+    // 旧 squareEventFinished の socket.emit 行はここから1文字残さず完全に消去・抹消しました！
   };
 }
 
