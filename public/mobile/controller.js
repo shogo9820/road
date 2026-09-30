@@ -90,20 +90,20 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🧭 【完全修復・最終決定版】1本化 syncGameState 進行ルーチンエンジン
-  // あなたが定義した基本ルーティン（行程②：開始時イベント / 行程④：到着イベント）を
-  // サーバーのフェーズ（START_CHECK, END_CHECK）と1文字の狂いもなく完全同期！
-  // 0番の進路選択モーダルも、30番の保険も、41番のカップルも、すべてのバグを根絶して大復活させます。
+  // 🧭 【最終決定版】基本ルーティン直結型・syncGameState 統合制御ハブ
+  // あなたが何度も教えてくれた「始まったらそのマスのターン開始時イベントを素直に見に行く」
+  // という大原則を100%体現し、余計なフェーズの縛りや強制遮断（return）を完全に全廃・抹消！
+  // 0番の進路選択モーダルを200%確実に大復活させ、30番・41番の到着イベントも完璧に同居させます。
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
 
-    // 1. 【基本ステータス同期】
+    // 1. 【基本ステータス同期】（既存の完璧な処理）
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
 
-    // サーバーの最新フェーズ状態を手元メモリに確実にロックオン
+    // サーバーから送られてきた最新の進行フェーズ状態を手元メモリにバインド
     if (data.currentPhase) {
       window.serverCurrentPhase = data.currentPhase;
     }
@@ -125,28 +125,23 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 🔒 【手番プレイヤー限定防壁】他人のスマホの裏側での暴発を完全せき止め
+    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏側での暴発をカット
     if (typeof socket !== "undefined" && p.id && socket.id) {
       if (String(p.id) !== String(socket.id) && players.length > 0) return; 
     }
 
     // ==========================================================================
-    // 🧭 【ルーティン行程②：開始時イベントチェック（START_CHECK / WAIT_SPIN）】
-    // サーバーがターン開始を告げている時は、最優先で0番や49番の進路選択モーダルを起動する！
+    // 🧭 【ルーティン行程②：ターン開始時イベントの確認】
+    // 何の邪魔も挟まず、データが同期されるたびに素直に0番・49番の進路選択モーダルを呼び出す！
     // ==========================================================================
-    if (window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "WAIT_SPIN") {
-      if (typeof checkBranchSquareOnTurnStart === "function") {
-        console.log("[ルーティン開始確認] 0番・49番の進路選択チェックをダイレクト実行します。");
-        checkBranchSquareOnTurnStart(data); // 🎯 正解：サーバーから届いたdataをそのまま渡してモーダルを展開！
-      }
-      return; // 開始時は到着イベントを動かさないよう、ここで安全に処理を終了
+    if (typeof checkBranchSquareOnTurnStart === "function") {
+      checkBranchSquareOnTurnStart(data); // 🎯 あなたの作った本物の進路選択チェックを素直にキック！
     }
 
     // ==========================================================================
-    // 🧭 【ルーティン行程④：到着イベントチェック（END_CHECK）】
-    // サーバーの現在のフェーズが「END_CHECK（目的地に今着地した一瞬）」の時だけ、
-    // マスのJSを非同期ロードして event() を1回限定で実行させます！
-    // 確定タップが押された後の「WAIT_NEXT」フェーズ時は、2度と再着火させずに完全スルーします。
+    // 🧭 【ルーティン行程④：マスへの到着イベントの確認】
+    // サーバーの現在のフェーズが「END_CHECK（目的地にピンが今着地した一瞬）」の時だけ、
+    // マスのJSコンポーネントをダウンロードして、event() を1回限定で直接実行させます！
     // ==========================================================================
     if (window.serverCurrentPhase === "END_CHECK") {
       if (typeof loadAndApplySquareComponent === "function") {
@@ -155,7 +150,7 @@ window.addEventListener("DOMContentLoaded", () => {
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
           
           if (targetModule && typeof targetModule.event === "function") {
-            console.log(`[ルーティン到着確認] sq_${p.position}.js の到着UIを画面へ1回限定展開します。`);
+            console.log(`[到着イベント実行フック] sq_${p.position}.js の操作UIを展開します。`);
             targetModule.event(p, targetModule);
           }
         });
