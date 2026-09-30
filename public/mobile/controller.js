@@ -43,18 +43,17 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
 
-    // 🎯 【システム同期】スマホ画面の物理的なルーレットの1〜10の出目ストップ角度
+    // 🎯 【不可視化バグ完全修復】スマホルーレット角度テーブル
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
     currentRotation += 1800 + ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
 
     isSpinning = true;
     playMobileRouletteAnimation(resultNum, currentRotation, (finalSteps) => {
       isSpinning = false;
-      handleRouletteStop(finalSteps);
+      console.log(`📱 [PHONE RELEY] ルーレット停止(出目: ${finalSteps})。大画面着地を待機。`);
     });
   });
 
-  // 🎯 新ターン開始時の影マスク一括制御（display/hiddenは完全廃止、disabledのオンオフ一本化）
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
@@ -62,15 +61,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
       if (document.getElementById("current-player-banner")) document.getElementById("current-player-banner").textContent = `TURN: ${data.activePlayerName || "プレイヤー"}`;
       if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-      if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; // 🔒 初期ロック
+      if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
       if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
       isSpinning = false;
     }
   });
 
-  socket.on("showJobChoice", (data) => { showJobChoiceDialog(data.jobId, data.jobName, data.playerId); });
-
-  // 🎯 【完全汎用化】マスのJS（sq_41など）から届く2段階ルーレット展開指示をスマホがダイレクトに受信！
   socket.on("startCustomEventSecondSpin", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) {
@@ -81,7 +77,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 🎯 【完全汎用化】演出が決着したことをアラートで綺麗にポップ表示
   socket.on("customEventFinished", (data) => {
     alert(data.message);
     const modal = document.getElementById("mobile-couple-event-modal");
@@ -89,61 +84,71 @@ window.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
   });
   // ==========================================================================
-  // 🛡️ 【最終決定版】基本ルーティン準拠・手元大暴走完全全廃エンジン
-  // ルーレットを回す手前で勝手にマスのJSファイルをロードし、サーバーへ完了報告電波を
-  // フライング乱射してタイムラインを木っ端微塵に破壊していた古い自動着火コードを1文字残さず完全撤去！
-  // スマホ側は勝手に動かず、サーバーとPCからの「一本道のリレー」のバトンを素直に待つ綺麗な姿に戻します。
+  // 🧭 【最終決定版】基本ルーティン完全一元化ハブ（勝手な自動完了コードを全パージ）
+  // 始まったら開始時イベント(0番)を素直に見に行き、着地したら(END_CHECK)は
+  // マスの型(jobChallenge)や個別ファイルをダイレクトに引き出して手元UIを開きます。
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
-
-    // 1. 【基本ステータス同期】（サーバーから届いた部屋の真実のデータを手元に映すだけ）
+    
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
 
-    // サーバーの最新フェーズ状態を手元メモリにバインド
-    if (data.currentPhase) {
-      window.serverCurrentPhase = data.currentPhase;
-    }
+    if (data.currentPhase) window.serverCurrentPhase = data.currentPhase;
 
     const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const p = players[currentIdx];
     if (!p) return;
 
-    // 2. 【常時表示：生命保険利用ボタンの点灯・影ロック制御】
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
-      // 🔓 自分が手番プレイヤーで、保険を1枚以上持っている時だけ明るく大点灯！
       if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
-        insuranceBtn.disabled = false;
-        insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
+        insuranceBtn.disabled = false; insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
       } else {
-        // 🔒 それ以外の時は、自動で半透明の影マスクロック
-        insuranceBtn.disabled = true;
-        insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
+        insuranceBtn.disabled = true; insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
       }
     }
 
-    // ==========================================================================
-    // 🧭 【一本道リレー：開始時イベントチェック（START_CHECK / WAIT_SPIN）】
-    // ターン開始を告げられたまさにその時だけ、0番・49番の進路選択モーダルを画面に展開！
-    // ❌ ここより下にあった、勝手にマスのJSを loadAndApplySquareComponent して裏通信を
-    // フライング暴発させていた最悪の自動着火コード（バグの全原因）は、跡形もなく1文字残さず完全消去しました！
-    // ==========================================================================
-    if (window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "WAIT_SPIN") {
-      if (typeof checkBranchSquareOnTurnStart === "function") {
-        checkBranchSquareOnTurnStart(data);
+    if (typeof socket !== "undefined" && p.id && socket.id) {
+      if (String(p.id) !== String(socket.id) && players.length > 0) return; 
+    }
+
+    // 🧭 【ルーティン②：開始時イベント確認】データ同期のたびに0番・49番の進路モーダルを素直にキック！
+    if (typeof checkBranchSquareOnTurnStart === "function") {
+      checkBranchSquareOnTurnStart(data);
+    }
+
+    // 🧭 【ルーティン④：到着イベント確認】大画面が完全着地した一瞬（END_CHECK）の時だけ1回限定着火！
+    if (window.serverCurrentPhase === "END_CHECK") {
+      const currentPos = Number(p.position);
+      
+      // 🚀 Pattern A: マスタの型が役職マス（jobChallenge）だった場合の共通到着ルーティン
+      let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) ? MAP_SQUARES[currentPos] : null;
+      if (targetSquare && targetSquare.type === "jobChallenge" && targetSquare.jobId && typeof showJobChoiceDialog === "function") {
+        const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+        console.log(`📱 [PHONE SIGNAL] 役職マス(ID: ${currentPos}) 着地を検知。手元モーダルを展開！`);
+        showJobChoiceDialog(targetSquare.jobId, jobName, p.id);
+      } 
+      // 🚀 Pattern B: 30番・41番のように、自前ファイルがある特殊マスの到着ルーティン
+      else if (typeof loadAndApplySquareComponent === "function") {
+        loadAndApplySquareComponent(p.position, () => {
+          let currentMode = "normal";
+          const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
+          if (targetModule && typeof targetModule.event === "function") {
+            console.log(`📱 [PHONE SIGNAL] 特殊マス(ID: ${p.position}) 着地を検知。自前演出を実行！`);
+            targetModule.event(p, targetModule);
+          }
+        });
       }
     }
   });
 
-  // 🎯 サーバーの新ルーティン（WAIT_NEXTフェーズ）から、次へ進めてよい合図を受け取ってロック解除！
   socket.on("enableNextTurnButton", () => {
     const btnNext = document.getElementById("btn-phone-next");
     if (btnNext) {
-      console.log("[スマホ一元制御] 一本道リレー決着。ボタンのロックを安全に解除（点灯）します。");
+      console.log("📱 [PHONE] サーバーから点灯許可を受信。影マスクを解除します。");
       btnNext.disabled = false;
     }
   });
@@ -194,7 +199,7 @@ function syncSettingsToServer() {
 }
 
 function sendStartGame() {
-  console.log("[スマホ] ゲーム開始シグナルをサーバーへ送信します。");
+  console.log("📱 [PHONE ACTION] ゲーム開始要求をサーバーへ送信。");
   socket.emit("startGame", { roomCode: currentRoomCode });
   showScreen("phone-screen-play");
   activePlayerIndex = 0;
@@ -204,6 +209,7 @@ function requestSpin() {
   if (isSpinning) return;
   if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
   if (document.getElementById("mobile-couple-event-modal")) document.getElementById("mobile-couple-event-modal").style.display = "none";
+  console.log("📱 [PHONE ACTION] ルーレット回転要求を送信。");
   socket.emit("requestSpinRoulette", { roomCode: currentRoomCode });
 }
 
@@ -217,25 +223,6 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
     if (resultDisplay) resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
     if (typeof callback === "function") callback(finalSteps);
   }, 3000);
-}
-
-function handleRouletteStop(steps) {
-  const p = players[activePlayerIndex];
-  const pos = p ? Number(p.position) : 0;
-
-  if (pos !== 0 && pos !== 49 && !(pos >= 1 && pos <= 17)) {
-    let currentMode = "normal";
-    const targetModule = window.SQ_MODULES && window.SQ_MODULES[pos] && window.SQ_MODULES[pos][currentMode];
-    
-    if (!targetModule || typeof targetModule.event !== "function") {
-      console.log("[通常マス自動処理] 数値計算を確定させてサーバーへ一斉同期を通知します。");
-      socket.emit("playerAction", {
-        roomCode: currentRoomCode,
-        action: "squareEventFinished",
-        updatedPlayer: p
-      });
-    }
-  }
 }
 function updatePhoneStatusDisplay() {
   const p = players[activePlayerIndex];
@@ -257,10 +244,11 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   document.getElementById("btn-job-yes").parentNode.replaceChild(newBtnYes, document.getElementById("btn-job-yes"));
   document.getElementById("btn-job-no").parentNode.replaceChild(newBtnNo, document.getElementById("btn-job-no"));
 
+  // 🎯 【手動確定タップの瞬間だけに同期報告を一本化！】
   newBtnYes.addEventListener("click", () => {
-    // 🎯 【プロ修復】undefinedエラーを全廃！生存スコープの正しいプレイヤーデータを乗せて送信！
     const targetP = players[activePlayerIndex];
     if (targetP) {
+      console.log(`📱 [PHONE ACTION] 役職「はい」確定。完了バトンをサーバーへ返送！`);
       targetP.jobId = jobId; targetP.job = jobName; targetP.hasJob = true;
       socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
     }
@@ -269,6 +257,7 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   newBtnNo.addEventListener("click", () => {
     const targetP = players[activePlayerIndex];
     if (targetP) {
+      console.log(`📱 [PHONE ACTION] 役職「いいえ」確定。完了バトンをサーバーへ返送！`);
       targetP.hasJob = false;
       socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
     }
@@ -278,6 +267,7 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
 }
 
 function sendNextTurn() {
+  console.log("📱 [PHONE ACTION] 手動交代。サーバーへ nextTurn を発射。");
   socket.emit("playerAction", { roomCode: currentRoomCode, action: "nextTurn" });
   if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
 }
@@ -286,24 +276,13 @@ document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
   e.preventDefault();
-
   const targetVal = document.getElementById("input-debug-square")?.value.trim();
   const targetSquareId = parseInt(targetVal, 10);
-  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
-    alert("0〜99の範囲で入力してください");
-    return;
-  }
-
-  console.log(`[スマホデバッグ] マスID: ${targetSquareId} へのワープ信号を送信。`);
+  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) { alert("0〜99の範囲で入力してください"); return; }
+  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信。マスID: ${targetSquareId}`);
   socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
 });
 
-// ==========================================================================
-// 🧭 【最終決定版】基本ルーティン完全準拠・進路選択(ルート選定)ハブエンジン
-// 進路を確定した直後に、まだルーレットを回していない段階で「イベント完了」の電波を
-// サーバーへ誤爆送信して次へボタンをフライング点灯させていた大バグの1行を完全パージ！
-// 進路確定後は、純粋に進路データを報告するだけで、一本道の正しいルーレット待機へ繋ぎます。
-// ==========================================================================
 function checkBranchSquareOnTurnStart(syncData) {
   if (document.getElementById("route-select-modal")) return;
   const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
@@ -328,8 +307,8 @@ function checkBranchSquareOnTurnStart(syncData) {
   const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
 
-  let tempSelectedIdx = null;
   const btnA = document.getElementById("btn-route-a"); const btnB = document.getElementById("btn-route-b"); const btnConfirm = document.getElementById("btn-route-confirm");
+  let tempSelectedIdx = null;
 
   btnA.onclick = () => {
     tempSelectedIdx = 0; btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75"; btnB.style.borderColor = "#ddd"; btnB.style.background = "#fff"; btnB.style.color = "#333";
@@ -344,13 +323,9 @@ function checkBranchSquareOnTurnStart(syncData) {
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true;
-    
-    // 🎯 【リレーの一本化】純粋に進路選択データのみを確定報告してモーダルを消去
+    console.log(`📱 [PHONE ACTION] 進路選択手動確定。インデックス: ${tempSelectedIdx}`);
     socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
     document.getElementById("route-select-modal")?.remove();
-    
-    // ❌ 【大爆弾パージ】タイムラインをフライング終了させて次へボタンを誤爆点灯させていた、
-    // 旧 squareEventFinished の socket.emit 行はここから1文字残さず完全に消去・抹消しました！
   };
 }
 
