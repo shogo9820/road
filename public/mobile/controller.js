@@ -90,10 +90,11 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🧭 【最終決定版】基本ルーティン一元化・役職＆特殊イベント完全調和エンジン
-  // あなたが教えてくれた大原則「役職マスも普通に到着イベントがあるよね」を100%具現化！
-  // 0番の進路選択モーダル(ルーティン②)を無傷で死守しつつ、1〜17番の役職選択モーダルも
-  // 30番・41番と全く同じ「着地した一瞬(END_CHECK)」の正しいレールへ綺麗に並べ、フリーズを完全根絶します！
+  // 🧭 【完全修復・最終決定版】基本ルーティン完全一元化・調和ハブエンジン
+  // マス番号による泥臭い特別扱い（1〜17番の縛りなど）や強制遮断を1文字残さず完全全廃！
+  // 始まったらターン開始イベント(0番)を素直に見に行き、着地したら(END_CHECK)は
+  // マスコンポーネント(sq_X.js)を素直にロードして、中に書かれている type（jobChallenge等）
+  // に従って100%ダイレクトに手元の選択モーダルを出現させる、究極に美しい本来の正解姿です。
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
@@ -125,15 +126,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏側での暴発を完全カット
+    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏側での暴発をカット
     if (typeof socket !== "undefined" && p.id && socket.id) {
-      const isMyTurn = (String(p.id) === String(socket.id)) || (players.length > 0); 
-      if (!isMyTurn) return; 
+      if (String(p.id) !== String(socket.id) && players.length > 0) return; 
     }
 
     // ==========================================================================
     // 🧭 【ルーティン行程②：ターン開始時イベントの確認（START_CHECK / WAIT_SPIN）】
-    // さっきまで完璧だった0番マスの進路選択チェックをそのまま素直に実行！
+    // さっきまで完璧だった0番マス・49番マスの進路選択チェックをそのまま素直に実行！
     // ==========================================================================
     if (typeof checkBranchSquareOnTurnStart === "function") {
       checkBranchSquareOnTurnStart(data);
@@ -141,34 +141,39 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // ==========================================================================
     // 🧭 【ルーティン行程④：目的地への到着イベントの確認（END_CHECK）】
-    // サーバーの現在のフェーズが「END_CHECK（目的地に今着地した一瞬）」の時だけ処理を通過！
-    // 役職マス（1〜17番）も普通にここで「はい／いいえ」を選ぶ到着イベントとして処理します！
+    // マスの種類に関わらず、目的地にピンが今着地した一瞬（END_CHECK）の時だけ処理を通過！
+    // 対象マスのJSを素直にダウンロードし、中の type に合わせて到着UIをダイレクト起動します！
     // ==========================================================================
     if (window.serverCurrentPhase === "END_CHECK") {
-      const currentPos = Number(p.position);
-      const isJobSquare = (currentPos >= 1 && currentPos <= 17);
-
-      // 🎯 役職マス（1〜17番）に到着した時のイベント処理
-      if (isJobSquare) {
-        const targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) ? MAP_SQUARES[currentPos] : null;
-        if (targetSquare && targetSquare.jobId && typeof showJobChoiceDialog === "function") {
-          const jobName = targetSquare.text ? targetSquare.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-          console.log(`[役職マス到着イベント] マスID: ${currentPos} の就職ダイアログを開きます。`);
-          showJobChoiceDialog(targetSquare.jobId, jobName, p.id);
-        }
-      } 
-      // 🎯 30番の保険や41番のカップルのように、自前ファイルがある特殊マスのイベント処理
-      else if (typeof loadAndApplySquareComponent === "function") {
+      if (typeof loadAndApplySquareComponent === "function") {
         loadAndApplySquareComponent(p.position, () => {
           let currentMode = "normal";
+          // 🎯 読み込まれた本物のマスJSファイルの引き出し（正常にロードされた sq_1.js など）
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
-          
-          if (targetModule && typeof targetModule.event === "function") {
-            console.log(`[特殊マス到着イベント] sq_${p.position}.js の自前演出を実行します。`);
+          if (!targetModule) return;
+
+          // 🚀 【パターンA】もしマスの型が「jobChallenge（役職マス）」だった場合の、美しい共通到着ルーティン処理！
+          if (targetModule.type === "jobChallenge" && targetModule.jobId && typeof showJobChoiceDialog === "function") {
+            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+            console.log(`[基本ルーティン合流] マスID: ${p.position} (${targetModule.type}) を検知。就職モーダルを展開！`);
+            showJobChoiceDialog(targetModule.jobId, jobName, p.id);
+          } 
+          // 🚀 【パターンB】30番の保険や41番のカップルのように、自前関数(event)を持っている特殊マスの到着ルーティン処理！
+          else if (typeof targetModule.event === "function") {
+            console.log(`[基本ルーティン合流] マスID: ${p.position} (${targetModule.type}) の自前event演出を実行！`);
             targetModule.event(p, targetModule);
           }
         });
       }
+    }
+  });
+
+  // 🎯 サーバーの新ルーティン（WAIT_NEXTフェーズ）から、次へ進めてよい合図を受け取ってロック解除！
+  socket.on("enableNextTurnButton", () => {
+    const btnNext = document.getElementById("btn-phone-next");
+    if (btnNext) {
+      console.log("[スマホ一元制御] PHASE_WAIT_NEXT。ボタンのロックを安全に解除（点灯）します。");
+      btnNext.disabled = false;
     }
   });
 });
