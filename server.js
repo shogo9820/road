@@ -105,36 +105,36 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🚀 【最終決定版】一本道リレー完全準拠・ゲーム開始始動エンジン
-  // 開始した瞬間に、手番プレイヤー全員に「0番マス（position: 0）」のデータを確実に持たせ、
-  // フェーズをターン開始イベント確認（START_CHECK）にセットしてルーム全員へ一斉同期！
-  // ❌ スマホ側のボタンマスクをフライング解除させていた古い二重電波（turnUpdated）は完全全廃・パージ。
-  // これにより、他のマスを巻き込むことなく、0番の進路選択が100%美しく自動で展開します。
+  // 🧭 【最終決定版】基本ルーティン番号管理（フェーズID）エンジン
+  // あなたの敷いた完璧な1ターンの基本ルーティン（全6行程）に厳密な番号を定義し、
+  // ルーム全員（PC・スマホ）へ「いま第何ステップを走っているか」の番号を配電します。
   // ==========================================================================
+
+  // 🏁 【リレー始動：特別指定】ゲーム開始トリガー
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      // 1. 全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に特別指定
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0,        // 🎯 0番マス（スタート）にいるよ、と最初に特別に持たせる
+          position: 0,        // 🎯 0番マス（スタート）に特別指定
           location: "スタート前",
           lovers: []
         };
       });
-      
       room.activePlayerIndex = 0;
       
-      // 2. 【ルーティン合流】開始時のフェーズを「ターン開始時イベント確認（START_CHECK）」にセット！
-      room.currentPhase = "START_CHECK"; 
+      // ➔ サーバーのフェーズに「1.新ターン開始 ➔ 2.開始時確認」の番号を持たせる
+      room.currentPhase = "1-2.START_CHECK"; 
 
-      console.log(`[一本道リレー始動] ルーム ${roomCode}: 全員を0番マスへ配置し、フェーズを ${room.currentPhase} にして一斉配電します。`);
+      console.log(`\n=========================================`);
+      console.log(`🚨 [SERVER] ➔ 1. 新ターン開始 (位置:0番マス特別指定)`);
+      console.log(`📡 [SERVER] ➔ 2. 開始時イベント確認電波を一斉配電します。フェーズ: ${room.currentPhase}`);
+      console.log(`=========================================\n`);
 
-      // 3. PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース電波（既存の完璧な処理）
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
@@ -143,11 +143,8 @@ io.on("connection", (socket) => {
         currentPhase: room.currentPhase
       });
 
-      // ❌ 【バグの根絶】手動でターン更新が押された時用の電波（applyPlayerAction: turnUpdated）を、
-      // ここでフライング二重乱射していた socket.emit 行は、バグの諸悪の根源のため1文字残さず完全に消去・パージしました！
+      // 🚀 【フライング電波全廃パージ】古い turnUpdated 二重電波は完全に消去・抹消しました！
 
-      // 🚀 4. 真実の初期データ（位置0、フェーズ START_CHECK）をルーム全員（PC・スマホ）へ一斉に同期配電！
-      // これにより、スマホ側は他からの割り込みを受けずに、素直に0番マスの「運命の進路選択モーダル」を大点灯させます。
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
@@ -156,33 +153,60 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ==========================================================================
-  // 🛠️ 【完全汎用化】基本ルーティン直結型・デバッグワープエンジン
-  // ワープ専用の裏ルート通信は全廃。指定されたマス番号をセットし、
-  // 「〇〇番マスに到着したぞ！（END_CHECK）」という信号フェーズに書き換えて、
-  // ルーム全員（PC・スマホ）へいつもの syncGameState を一斉配電するだけの神設計です。
-  // ==========================================================================
-  socket.on("debugWarp", (data) => {
-    const { roomCode, targetSquareId } = data;
+  // 🎯 【基本ルーティン管理核心部】手動進行リレーのバトンパスカウンター
+  socket.on("playerAction", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    if (!roomCode || !rooms[roomCode]) return;
     const room = rooms[roomCode];
-    if (room && room.gamePlayers && room.gamePlayers[room.activePlayerIndex]) {
-      const p = room.gamePlayers[room.activePlayerIndex];
-      
-      // 1. 通常ルーレットを無視して、指定されたマス番号をダイレクトに上書き
-      p.position = Number(targetSquareId);
 
-      // 2. 【マスターデータ自動検索】移動先のマスに対応する正しい滞在場所（location）を自動保存
-      if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) {
-        p.location = MAP_SQUARES[p.position].location ? MAP_SQUARES[p.position].location : "スタート前";
-      } else {
-        p.location = "スタート前";
+    // 🧭 【基本ルーティン：行程①＆⑥】手動で「次のプレイヤーへ」がカチッとタップされた瞬間
+    if (data.action === "nextTurn") {
+      if (room.gamePlayers && room.gamePlayers.length > 0) {
+        room.activePlayerIndex = (room.activePlayerIndex + 1) % room.gamePlayers.length;
+        const nextPlayer = room.gamePlayers[room.activePlayerIndex];
+
+        room.currentPhase = "1-2.START_CHECK"; // 🎯 1.新ターン開始 ➔ 2.開始時イベント確認へ
+
+        console.log(`\n=========================================`);
+        console.log(`🚨 [SERVER] ➔ 1. 新ターン開始 (手番: ${nextPlayer.name} さん)`);
+        console.log(`📡 [SERVER] ➔ 2. 開始時イベントの確認を行います。フェーズ: ${room.currentPhase}`);
+        console.log(`=========================================\n`);
+
+        io.to(roomCode).emit("applyPlayerAction", {
+          action: "turnUpdated",
+          activePlayerIndex: room.activePlayerIndex,
+          activePlayerName: nextPlayer.name,
+          activePlayerId: nextPlayer.id
+        });
+
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase
+        });
+      }
+    } 
+    // 🧭 【基本ルーティン：行程④＆⑤＆⑥】マスの手動確定（はい/いいえ、購入）がカチッと押されてリレーが完全決着した瞬間
+    else if (data.action === "squareEventFinished") {
+      room.currentPhase = "6.WAIT_NEXT"; // 🎯 サーバーの進行状態を「6.手動進行（タップ待機）」に書き換える！
+
+      if (data.updatedPlayer) {
+        const target = room.gamePlayers.find(p => String(p.id) === String(data.updatedPlayer.id));
+        if (target) {
+          target.drinkCount = data.updatedPlayer.drinkCount !== undefined ? data.updatedPlayer.drinkCount : target.drinkCount;
+          target.happiness  = data.updatedPlayer.happiness  !== undefined ? data.updatedPlayer.happiness  : target.happiness;
+          target.insurance  = data.updatedPlayer.insurance  !== undefined ? data.updatedPlayer.insurance  : target.insurance;
+          target.currentHp  = data.updatedPlayer.currentHp  !== undefined ? data.updatedPlayer.currentHp  : target.currentHp;
+        }
       }
 
-      // 3. 【核心：ルーティン合流】サーバーの進行フェーズを「到着イベント確認（END_CHECK）」にセット！
-      room.currentPhase = "END_CHECK";
-      console.log(`[デバッグワープ信号] ${p.name} が ${p.position} 番マスに到着しました。フェーズを ${room.currentPhase} へ強制合流させます。`);
+      console.log(`\n=========================================`);
+      console.log(`🚨 [SERVER] ➔ 5. 到着イベント数値処理の確認が完全決着！`);
+      console.log(`📡 [SERVER] ➔ 6. 手動進行ボタンを明るく大点灯させます。フェーズ: ${room.currentPhase}`);
+      console.log(`=========================================\n`);
 
-      // 4. あとは本物の進行レールに乗せるため、真実のデータを Room 全員へ一斉に配電するだけ！
+      io.to(roomCode).emit("enableNextTurnButton");
+
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,

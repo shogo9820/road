@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("💻 [PC DOM_LOAD] 大画面初期化を開始します...");
   initEventListeners();
   initSocketListeners();
-  console.log("=========================================\n");
+  console.log("=========================================");
 });
 
 function initEventListeners() {
@@ -77,9 +77,11 @@ function initSocketListeners() {
     }
   });
 
+  // ==========================================================================
+  // 🧭 【ルーティン行程②：ゲーム開始・ターン開始時イベント確認（1-2.START_CHECK）】
+  // 順序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
+  // ==========================================================================
   socket.on("gameStarted", (data) => {
-    console.log("\n=========================================");
-    console.log("💻 [PC RECEIVE] 🚀 gameStarted 電波をキャッチ！ゲーム画面へ切り替えます。");
     if (data && data.players) players = data.players;
     if (data && data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     
@@ -93,33 +95,34 @@ function initSocketListeners() {
     renderLocationPlayersList();
 
     const p = players[activePlayerIndex];
-    console.log(`💻 [PC RESET CHECK] 初期化された手番プレイヤー: ${p ? p.name : "不明"} / マス位置: ${p ? p.position : "なし"}`);
-
     if (p && typeof loadAndApplySquareComponent === "function") {
-      console.log(`💻 [PC ROUTINE-START] 手番プレイヤーが最初の一歩としてマス ${p.position} にいるため、コンポーネントを強制ロードします...`);
+      // 🎯 【リレー番号：2.1】サーバー(2.0)の合図を受け、PC側が0番マスのファイルを読み込みにいく瞬間！
+      console.log(`💻 [2.1 PC受信] ➔ 開始時イベント確認。手番プレイヤーが ${p.position} 番マスにいるため、コンポーネントをロードします。`);
+      
       loadAndApplySquareComponent(p.position, () => {
-        console.log(`💻 [PC ROUTINE-START SUCCESS] マス ${p.position} のロードが完了。イベント判定(handleForceStopSquare)へバトンを繋ぎます。`);
         let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
         if (targetSquare) {
+          console.log(`💻 [2.1.1 PC内部処理] sq_${p.position}.js のロード完了。自動進行をせき止めて待機ロックを掛けます。`);
           handleForceStopSquare(p, targetSquare);
-        } else {
-          console.log(`💻 [PC ROUTINE-START ERROR] MAP_SQUARES[${p.position}] がマスタに見つかりません！`);
         }
       });
     }
-    console.log("=========================================\n");
   });
 }
+
 function appendSocketListeners() {
+  // ==========================================================================
+  // 🧭 【ルーティン行程③：ルーレットを回して駒を進める（3.MOVING）】
+  // 順序：3.0 スマホがrequest発射 ➔ 3.1 サーバーが決定・出目配信 ➔ 3.2 スマホ回転 ➔ 3.3 PC大画面回転・トコトコ移動 ★
+  // ==========================================================================
   socket.on("spinRoulette", (data) => {
     if (data) {
-      console.log("\n=========================================");
-      console.log("💻 [PC RECEIVE] 🌀 spinRoulette 受信！ルーレットのアニメーションを同期開始します。");
       if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
       const resultNum = data.result !== undefined ? data.result : 1;
-      console.log(`ℹ️ [PC] サーバーが確定した今回の真実の出目: ${resultNum} / 手番プレイヤーインデックス: ${activePlayerIndex}`);
+      
+      // 🎯 【リレー番号：3.3】サーバー(3.1)から出目を受け取り、PC大画面が物理回転とトコトコ移動を開始する瞬間！
+      console.log(`💻 [3.3 PC受信] ➔ サーバーから出目 ${resultNum} を受信。大画面のルーレット回転とピンのトコトコ前進を開始します！`);
       executeSyncedRoulette(resultNum);
-      console.log("=========================================\n");
     }
   });
 
@@ -166,6 +169,7 @@ function appendSocketListeners() {
 }
 
 document.addEventListener("DOMContentLoaded", () => { appendSocketListeners(); });
+
 function switchScreen(targetId) {
   const screenIds = ["screen-setup", "screen-waiting", "screen-game"];
   screenIds.forEach((id) => {
@@ -222,7 +226,6 @@ function updateCurrentPlayerDisplay() {
     const playerColor = p.color || playerColors[activePlayerIndex % playerColors.length];
     playerCardEl.style.background = `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`;
   }
-
   const loverIconEl = document.getElementById("current-player-lover-icon");
   if (loverIconEl) {
     if (p.isLover && p.lovers && p.lovers.length > 0) {
@@ -251,6 +254,8 @@ function updateCurrentPlayerDisplay() {
   if (document.getElementById("current-player-location")) document.getElementById("current-player-location").textContent = p.location ? p.location : "-";
   renderLocationPlayersList();
 }
+
+// 🎯 【基本ルーティン：行程③＆④】物理角度盤面スピン・トコトコ移動・100%無差別着地信号
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
