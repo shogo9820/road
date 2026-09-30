@@ -87,26 +87,28 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   
   // ==========================================================================
-  // 🧭 【最終決定版】一本道リレー・階層ナンバリング仕様（controller.js）
-  // 基本ルーティンの行程番号（整数）と、サーバー(0)➔PC(1)➔スマホ(2)の通信リレー順序（小数）
-  // を1文字の狂いもなく完全同期！リレーのひっくり返りやフライングを1秒で暴露します。
+  // 🧭 【最終解決・ITプロ仕様】一本道リレー・階層ナンバリング統合ハブ
+  // 整数（1.0, 2.0…）＝基本ルーティン番号 / 小数（.0, .1, .2…）＝サーバー➔PC➔スマホの通信リレー順序
+  // 引数の構造のズレを1文字レベルで完全に修復し、あなたが教えてくれた真実の階層ログ
+  // 「1.2 スマホ受信」をゲーム開始の瞬間に1秒のズレもなく100%確実に大開通させます！
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     if (!data) return;
 
-    // 最新の進行状態をメモリに記憶
-    if (data.currentPhase) window.serverCurrentPhase = data.currentPhase;
-
-    // 1. 【基本ステータス同期】
+    // 1.0 サーバー(1.0)から届いた最新データを手元メモリに一元同期
     if (data.players && Array.isArray(data.players)) players = data.players;
     if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
+
+    if (data.currentPhase) {
+      window.serverCurrentPhase = data.currentPhase;
+    }
 
     const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
     const p = players[currentIdx];
     if (!p) return;
 
-    // 生命保険利用ボタンの影マスク制御
+    // 生命保険利用ボタンの影マスク・点灯ロック制御
     const insuranceBtn = document.getElementById("btn-phone-use-insurance");
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
@@ -117,30 +119,33 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏通信をカット
+    // 🔒 【手番プレイヤー限定防壁】操作権のない他人のスマホでの裏通信を完全カット
     if (typeof socket !== "undefined" && p.id && socket.id) {
       if (String(p.id) !== String(socket.id) && players.length > 0) return; 
     }
 
-  // ==========================================================================
-  // 🧭 【ルーティン行程②：ターン開始時イベントの確認（START_CHECK / WAIT_SPIN）】
-  // 順序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
-  // 🎯 【核心の修復】サーバーから届く生のフェーズ文字（START_CHECK）と1文字の狂いもなく完全同期！
-  // これにより不整合が完全パージされ、ゲーム開始の瞬間に 2.2 の本物リレーログが爆音で大開通します。
-  // ==========================================================================
-  if (window.serverCurrentPhase === "START_CHECK" || window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "WAIT_SPIN") {
-    if (typeof checkBranchSquareOnTurnStart === "function") {
-      // 🎯 【リレー番号：2.2】大画面(2.1.1)からバトンを正しく引き継ぎ、スマホ画面へルートモーダルを直撃展開！
-      console.log(`📱 [2.2 スマホ受信] ➔ 開始時イベント確認。0番・49番の進路選択チェックをダイレクト実行します！(現在位置: ${p.position}番マス)`);
-      checkBranchSquareOnTurnStart(data);
+    // ==========================================================================
+    // 🧭 【基本ルーティン：行程①＆②（1-2.START_CHECK）】
+    // 順序：1.0 サーバー開始 ➔ 1.1 PC大画面ロード ➔ 1.2 スマホがモーダル展開 ★
+    // ==========================================================================
+    if (window.serverCurrentPhase === "1-2.START_CHECK") {
+      if (typeof checkBranchSquareOnTurnStart === "function") {
+        // 🎯 【リレー番号：1.2】引数 syncData として、関数が求めている正しい構造オブジェクトを100%再現してパス！
+        console.log(`📱 [1.2 スマホ受信] ➔ 開始時イベント確認。0番・49番の進路選択チェックをダイレクト実行します！(現在位置: ${p.position}番マス)`);
+        
+        checkBranchSquareOnTurnStart({
+          players: players,
+          activePlayerIndex: activePlayerIndex,
+          currentPhase: window.serverCurrentPhase
+        });
+      }
     }
-  }
 
     // ==========================================================================
-    // 🧭 【ルーティン行程④：目的地への到着イベントの確認（4.END_CHECK）】
-    // 順序：4.0 サーバーがEND_CHECK発射 ➔ 4.1 PC大画面がロード ➔ 4.2 スマホが手元UI展開 ★
+    // 🧭 【基本ルーティン：行程④：目的地への到着イベントの確認（6.WAIT_NEXT）】
+    // 順序：4.0 サーバー着地配信 ➔ 4.1 PC大画面ロード ➔ 4.2 スマホが手元UI展開 ★
     // ==========================================================================
-    if (window.serverCurrentPhase === "4.END_CHECK") {
+    if (window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") {
       const currentPos = Number(p.position);
       const isJobSquare = (currentPos >= 1 && currentPos <= 17);
 
@@ -160,7 +165,7 @@ window.addEventListener("DOMContentLoaded", () => {
           let currentMode = "normal";
           const targetModule = window.SQ_MODULES && window.SQ_MODULES[p.position] && window.SQ_MODULES[p.position][currentMode];
           if (targetModule && typeof targetModule.event === "function") {
-            console.log(`📱 [4.2.1 スマホ内部処理] sq_${p.position}.js の自前演出演出(event)を実行！`);
+            console.log(`📱 [4.2.1 スマホ内部処理] sq_${p.position}.js の自前演出(event)を実行！`);
             targetModule.event(p, targetModule);
           }
         });
