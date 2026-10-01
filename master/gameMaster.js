@@ -148,35 +148,6 @@ const MAP_SQUARES = [
   { id: 99, type: "goal", text: "【ゴール】", isGoal: true, mode: "all", nextId: [] }
 ];
 
-  // { id: 80, type: "force_stop", text: "【強制ストップマス】引退（ギャンブル）", location: "家", mode: "all", nextId: [81] },
-  
-  // { id: 81, type: "normal", text: "【夏合宿】これにて中瓶とはおさらばじゃい！", drink: 1, degree: 40, location: "家", mode: "all", nextId: [82] },
-  // { id: 82, type: "normal", text: "【秋キャン】引退後の秋キャンがいっちゃん楽しいんやから", drink: 1, degree: 13, location: "家", mode: "all", nextId: [83] },
-  // { id: 83, type: "normal", text: "【秋キャン】HOT LIMIT", drink: 1, degree: 25, location: "家", mode: "all", nextId: [84] },
-  // { id: 84, type: "normal", text: "【龍祭】ガイモン参上！", drink: 1, degree: 13, location: "家", mode: "all", nextId: [85] },
-  // { id: 85, type: "normal", text: "【忘年会】まんぱんまんぱんゲーム！", drink: 1, degree: 13, location: "家", mode: "all", nextId: [86] },
-  // { id: 86, type: "heal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", drink: 0, degree: -100, location: "家", mode: "all", nextId: [87] },
-  // { id: 87, type: "normal", text: "【追いコン】みんな今までありがとう！全員で乾杯！", drink: 1, degree: 25, location: "Qoo", mode: "all", nextId: [88] },
-  // { id: 88, type: "normal", text: "単位が足りない！？そんなの関係ねぇ！", drink: 1, degree: 40, location: "家", mode: "all", nextId: [89] },
-  
-  // // ルーレットで指定の出目を出せたらゴール、出せなかったら隠し留年ルートへ進む
-  // { id: 89, type: "force_stop", text: "【卒業!?留年!?】ドキドキ！運命のルーレット！", location: "家", move: -3, mode: "all", nextId: [90, 99] },
-  
-  // // 留年ルート
-  // { id: 90, type: "repeat", text: "【留年】", mode: "all", nextId: [91] },
-  // { id: 91, type: "repeat", text: "【留年】", mode: "all", nextId: [92] },
-  // { id: 92, type: "repeat", text: "【留年】", mode: "all", nextId: [93] },
-  // { id: 93, type: "repeat", text: "【留年】", mode: "all", nextId: [94] },
-  // { id: 94, type: "repeat", text: "【留年】", mode: "all", nextId: [95] },
-  // { id: 95, type: "repeat", text: "【留年】", mode: "all", nextId: [96] },
-  // { id: 96, type: "repeat", text: "【留年】", mode: "all", nextId: [97] },
-  // { id: 97, type: "repeat", text: "【留年】", mode: "all", nextId: [98] },
-  // { id: 98, type: "repeat", text: "【留年】", mode: "all", nextId: [99] },
-  
-  // // ゴール
-  // { id: 99, type: "goal", text: "【ゴール】", isGoal: true, mode: "all", nextId: [] },
-
-
 function createPlayer(id, name) {
   return {
     id: id || "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
