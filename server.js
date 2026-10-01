@@ -196,9 +196,8 @@ io.on("connection", (socket) => {
         });
       }
     } 
-    // 🧭 【基本ルーティン：行程④＆⑤＆⑥】マスの手動確定（はい/いいえ、購入）がカチッと押されてリレーが完全決着した瞬間
     else if (data.action === "squareEventFinished") {
-      room.currentPhase = "6.WAIT_NEXT"; // 🎯 サーバーの進行状態を「6.手動進行（タップ待機）」に書き換える！
+      room.currentPhase = "6.WAIT_NEXT";
 
       if (data.updatedPlayer) {
         const target = room.gamePlayers.find(p => String(p.id) === String(data.updatedPlayer.id));
@@ -207,16 +206,16 @@ io.on("connection", (socket) => {
           target.happiness  = data.updatedPlayer.happiness  !== undefined ? data.updatedPlayer.happiness  : target.happiness;
           target.insurance  = data.updatedPlayer.insurance  !== undefined ? data.updatedPlayer.insurance  : target.insurance;
           target.currentHp  = data.updatedPlayer.currentHp  !== undefined ? data.updatedPlayer.currentHp  : target.currentHp;
+          
+          // 🎯 【重要追加】役職ステータスを確実にサーバー側へ同期保存！
+          target.hasJob = data.updatedPlayer.hasJob !== undefined ? data.updatedPlayer.hasJob : target.hasJob;
+          target.jobId  = data.updatedPlayer.jobId  !== undefined ? data.updatedPlayer.jobId  : target.jobId;
+          target.job    = data.updatedPlayer.job    !== undefined ? data.updatedPlayer.job    : target.job;
         }
       }
 
-      console.log(`\n=========================================`);
-      console.log(`🚨 [SERVER] ➔ 5. 到着イベント数値処理の確認が完全決着！`);
-      console.log(`📡 [SERVER] ➔ 6. 手動進行ボタンを明るく大点灯させます。フェーズ: ${room.currentPhase}`);
-      console.log(`=========================================\n`);
-
+      console.log(`\n🚨 [SERVER] ➔ 5. イベント数値処理完了。手動進行ボタン点灯通知！`);
       io.to(roomCode).emit("enableNextTurnButton");
-
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,

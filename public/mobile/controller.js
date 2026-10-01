@@ -81,25 +81,44 @@ window.addEventListener("DOMContentLoaded", () => {
 
   socket.on("startCustomEventSecondSpin", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
-    if (modal) {
-      // 🎯 タイトルをイベント名に合わせて動的に書き換える
-      const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
-      if (titleEl) {
-        titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
-      }
+    if (!modal) return;
 
-      const descEl = modal.querySelector(".couple-desc");
-      if (descEl) {
-        descEl.innerHTML = `運命の <b>${data.nextStepEventName || "判定"}</b> スピン！<br>ルーレットを回して結果を決定せよ！`;
-      }
+    const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+    if (titleEl) titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
 
-      const btnSpin = document.getElementById("btn-couple-spin");
-      if (btnSpin) {
-        btnSpin.style.display = "block";
-        btnSpin.textContent = "🎲 判定ルーレットを回す！";
-      }
-      modal.style.display = "flex";
+    const descEl = modal.querySelector(".couple-desc");
+    if (descEl) descEl.innerHTML = `運命の判定スピン！<br>ルーレットを回して結果を決定せよ！`;
+
+    const btnSpin = document.getElementById("btn-couple-spin");
+    if (btnSpin) {
+      btnSpin.style.display = "block";
+      btnSpin.textContent = "🎲 判定ルーレットを回す！";
+      btnSpin.disabled = false;
+
+      // 🎯 スピンタップ時の自己完結処理
+      btnSpin.onclick = () => {
+        btnSpin.disabled = true;
+        const resultNum = Math.floor(Math.random() * 10) + 1;
+        const targetOutcome = data.mapping && data.mapping[resultNum] ? data.mapping[resultNum] : { drinks: 0, name: "結果なし" };
+
+        alert(`🎯 出目: ${resultNum}\n結果: ${targetOutcome.name}`);
+
+        const p = players[activePlayerIndex];
+        if (p) {
+          p.drinkCount = (p.drinkCount || 0) + (targetOutcome.drinks || 0);
+          
+          // サーバーへ完了報告
+          socket.emit("playerAction", {
+            roomCode: currentRoomCode,
+            action: "squareEventFinished",
+            updatedPlayer: p
+          });
+        }
+
+        modal.style.display = "none";
+      };
     }
+    modal.style.display = "flex";
   });
 
   socket.on("customEventFinished", (data) => {
