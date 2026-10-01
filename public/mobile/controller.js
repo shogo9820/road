@@ -290,25 +290,21 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程②：ターン開始時イベント（進路選択チェック）
+    // 🧭 行程②：ターン開始時イベント（進路選択チェック＆スピン待機制御）
     // ------------------------------------------------------------------------
-    const pos = Number(p.position);
-    console.log(
-      `📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`,
-    );
+    const isStartPhase = (window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "START_CHECK");
 
-    if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
-      console.log(
-        "📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を直接実行します。",
-      );
-      checkBranchSquareOnTurnStart(data);
-    } else {
-      console.log("📱 [DEBUG] 分岐なしマスまたは確定済み。ルーレット待機。");
-      if (document.getElementById("btn-phone-spin"))
-        document.getElementById("btn-phone-spin").disabled = false;
-      if (document.getElementById("roulette-result-display"))
-        document.getElementById("roulette-result-display").textContent =
-          "🎯 タップして回そう！";
+    // 🎯 ターン開始時かつ手番本人の場合のみルーレットの待機制御を行う
+    if (isStartPhase && currentIdx === activePlayerIndex) {
+      if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
+        console.log("📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を実行します。");
+        checkBranchSquareOnTurnStart(data);
+      } else {
+        // 分岐がない、または確定済みの場合に「1度だけ」点灯させる
+        console.log("📱 [DEBUG] ルーレット待機状態に移行。");
+        if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
+        if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+      }
     }
 
     // ------------------------------------------------------------------------
