@@ -597,6 +597,9 @@ function handleForceStopSquare(player, square) {
     squareType === "branch" ||
     squareType === "insurance_shop" ||
     squareType === "jobChallenge" ||
+    squareType === "force_stop" ||
+    // squareType === "force_stop_rankup" ||
+    // squareType === "force_stop_retirement" ||
     targetModule
   ) {
     console.log(
