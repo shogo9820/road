@@ -47,6 +47,90 @@
   );
 }
 
+/* ==========================================================================
+   🎨 プレイヤーカラー凡例 & 全エリア駒対照表
+   ========================================================================== */
+.player-color-legend-card {
+  padding: 12px 16px;
+}
+.color-legend-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.color-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5f5f5;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border: 1px solid #ddd;
+}
+.color-piece-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+/* 📍 エリア対照表テーブル */
+.location-board-card {
+  padding: 12px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.location-table-wrapper {
+  overflow-y: auto;
+  max-height: 260px;
+}
+.location-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.location-table th, .location-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+.location-table th {
+  background: #fafafa;
+  color: #666;
+  font-weight: bold;
+}
+.location-name-cell {
+  font-weight: bold;
+  color: #333;
+}
+.location-pieces-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 24px;
+}
+
+/* 駒アイコン（ミニピン） */
+.board-mini-piece {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  border: 2px solid #fff;
+  animation: popIn 0.2s ease-out;
+}
+
 /* 💕 カップルイベント発動時のピンクグラデーション変身定義 */
 .theme-couple .roulette-wheel-board,
 .theme-couple .event-roulette-wheel {

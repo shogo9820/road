@@ -522,23 +522,89 @@ function renderPlayerWaitingList() {
   });
 }
 
+// 🎯 カラーパレット定義（インデックス順）
+const PLAYER_COLOR_PALETTE = [
+  "#f44336", "#2196f3", "#4caf50", "#ff9800",
+  "#9c27b0", "#00bcd4", "#e91e63", "#795548"
+];
+
+// 🗺️ ゲーム内に存在する全ロケーション一覧の定義
+const ALL_GAME_LOCATIONS = [
+  "スタート前",
+  "家",
+  "とりき",
+  "ももじ",
+  "ぱいぱい",
+  "宅飲み",
+];
+
 function renderLocationPlayersList() {
-  const container = document.getElementById("location-players-list");
-  if (!container) return;
-  const locationMap = {};
-  players.forEach((p) => {
-    const loc =
-      p.location && p.location.trim() !== "" ? p.location : "スタート前";
-    if (!locationMap[loc]) locationMap[loc] = [];
-    locationMap[loc].push(p.name);
-  });
-  let html = "";
-  for (const [loc, names] of Object.entries(locationMap)) {
-    html += `<div style="margin-bottom: 4px;"><strong>${loc}：</strong> ${names.join("、")}</div>`;
+  // 1. 【プレイヤー色凡例の描画】
+  const legendContainer = document.getElementById("player-color-legend-list");
+  if (legendContainer) {
+    legendContainer.innerHTML = "";
+    players.forEach((p, idx) => {
+      const pColor = p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length];
+      const item = document.createElement("div");
+      item.className = "color-legend-item";
+      item.innerHTML = `
+        <span class="color-piece-dot" style="background:${pColor};"></span>
+        <span>${p.name || `P\${idx + 1}`}</span>
+      `;
+      legendContainer.appendChild(item);
+    });
   }
-  container.innerHTML =
-    html ||
-    '<p style="color: #666; font-size: 0.85rem;">プレイヤーがいません</p>';
+
+  // 2. 【全ロケーション駒対照表の描画】
+  const tableBody = document.getElementById("location-table-body");
+  if (!tableBody) return;
+  tableBody.innerHTML = "";
+
+  // 各ロケーションに誰がいるかグループ化
+  const locationMap = {};
+  ALL_GAME_LOCATIONS.forEach(loc => locationMap[loc] = []);
+
+  players.forEach((p, idx) => {
+    const loc = p.location && p.location.trim() !== "" ? p.location : "スタート前";
+    if (!locationMap[loc]) locationMap[loc] = [];
+    locationMap[loc].push({
+      index: idx + 1,
+      name: p.name,
+      color: p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length]
+    });
+  });
+
+  // 全場所をループして行を生成
+  ALL_GAME_LOCATIONS.forEach(locName => {
+    const stayingPlayers = locationMap[locName] || [];
+    const tr = document.createElement("tr");
+
+    // 場所名セル
+    const tdName = document.createElement("td");
+    tdName.className = "location-name-cell";
+    tdName.textContent = locName;
+
+    // 駒配置セル
+    const tdPieces = document.createElement("td");
+    tdPieces.className = "location-pieces-cell";
+
+    if (stayingPlayers.length > 0) {
+      stayingPlayers.forEach(pObj => {
+        const piece = document.createElement("span");
+        piece.className = "board-mini-piece";
+        piece.style.backgroundColor = pObj.color;
+        piece.title = `${pObj.name} (P${pObj.index})`;
+        piece.textContent = pObj.index; // 駒の中央に「1」「2」とプレイヤー番号を表示
+        tdPieces.appendChild(piece);
+      });
+    } else {
+      tdPieces.innerHTML = '<span style="color:#ccc; font-size:0.75rem;">-</span>';
+    }
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdPieces);
+    tableBody.appendChild(tr);
+  });
 }
 
 function updateCurrentPlayerDisplay() {
@@ -721,41 +787,37 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
+    // pc.js の finalizeMovement 内部
     function finalizeMovement() {
-      console.log(
-        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`,
-      );
+      console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare =
-          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
-            ? MAP_SQUARES[p.position]
-            : null;
-        if (targetSquare) {
-          p.location = targetSquare.location || "";
-          if (typeof applySquareEffects === "function")
-            applySquareEffects(p, targetSquare);
+        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        let currentMode = "normal";
+        let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+
+        // 🎯 マスタまたは個別モジュールに設定されている場所を確実に代入！
+        const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+        p.location = detectedLocation;
+
+        if (targetSquare && typeof applySquareEffects === "function") {
+          applySquareEffects(p, targetSquare);
         }
 
-        if (window.boardManager)
-          window.boardManager.draw(players, activePlayerIndex);
-        renderLocationPlayersList();
+        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+
+        // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画！
         updateCurrentPlayerDisplay();
 
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
-        // 🎯 1. 先にプレイヤーの最新位置（18番など）をサーバーへ送信して位置を確定させる
-        triggerDelayedDisplay(resultNum, targetSquare);
+        // サーバーへ位置＆最新ステータスを即時送信
+        triggerDelayedDisplay(resultNum, targetSquare || targetModule || { text: "通常マス", location: p.location });
 
-        // 🎯 2. 位置確定後にサーバーへ「着地完了」を通知して 4.END_CHECK を配電させる
-        if (targetSquare) {
-          console.log(
-            `📡 [PC SIGNAL] マスID: ${p.position} の到着通知をサーバーへ送信！`,
-          );
-          socket.emit("squareLanded", {
-            roomCode: roomCode,
-            position: p.position,
-          });
-        }
+        // 着地完了通知
+        socket.emit("squareLanded", {
+          roomCode: roomCode,
+          position: p.position
+        });
       });
     }
   }, 3000);

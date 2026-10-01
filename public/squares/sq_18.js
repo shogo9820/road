@@ -13,7 +13,7 @@ window.SQ_MODULES[18] = {
     id: 18,
     type: "force_stop",
     text: "【強制ストップ】サークル入学式！",
-    location: "大学キャンパス",
+    location: "家",
     event: function (player, moduleData) {
       console.log(`🌸 [18番マス: 入学式] ${player.name} のイベント開始`);
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");

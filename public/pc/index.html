@@ -111,69 +111,86 @@
       <div id="screen-game" style="display: none">
         <div class="game-layout">
           <!-- 【左カラム】300px固定：操作プレイヤーのステータス -->
+          <!-- ──────────────── 左カラム ──────────────── -->
           <div class="layout-left">
-            <div class="current-player-card">
+            <!-- 1. 現在プレイヤーのステータスカード -->
+            <div class="card current-player-card">
+              <!-- 既存のステータスカード内容そのまま -->
               <div class="player-header">
-                <div class="player-avatar">👤</div>
+                <div class="player-avatar" id="current-player-avatar">👤</div>
                 <div class="player-meta">
-                  <h2 id="current-player-name">プレイヤー1</h2>
-                  <div class="job-badge" id="current-player-job">モブ</div>
-                  <span id="current-player-lover-icon" style="display: none"
-                    >💕</span
-                  >
+                  <h2 id="current-player-name">プレイヤー名</h2>
+                  <span class="job-badge" id="current-player-job">モブ</span>
+                  <div
+                    id="current-player-lover-icon"
+                    style="display: none"
+                  ></div>
                 </div>
               </div>
               <div class="player-stats">
                 <div class="stat-item">
-                  <span>肝臓HP:</span>
-                  <span id="current-player-hp">80 / 80</span>
-                </div>
-                <div
-                  style="
-                    background: rgba(0, 0, 0, 0.4);
-                    border-radius: 6px;
-                    height: 12px;
-                    width: 100%;
-                    margin-bottom: 10px;
-                    overflow: hidden;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                  "
-                >
-                  <div
-                    id="current-player-drunk"
-                    style="
-                      width: 100%;
-                      height: 100%;
-                      background: #4caf50;
-                      transition: width 0.3s;
-                    "
-                  ></div>
+                  <span>🍺 杯数</span
+                  ><span id="current-player-drinks">0 杯</span>
                 </div>
                 <div class="stat-item">
-                  <span>酔い度:</span>
-                  <span id="current-player-drunk-percent">0%</span>
+                  <span>❤️ 体力</span
+                  ><span id="current-player-hp">100 / 100</span>
                 </div>
                 <div class="stat-item">
-                  <span>飲んだ杯数:</span>
-                  <strong
-                    id="current-player-drinks"
-                    style="color: #ffeb3b; font-size: 1.3rem"
-                    >0 杯</strong
-                  >
+                  <span>✨ 幸福度</span
+                  ><span id="current-player-happiness">100 pt</span>
                 </div>
-                <div class="stat-item stat-happiness-box">
-                  <span>😊 幸福度:</span>
-                  <strong id="current-player-happiness" class="happiness-value"
-                    >100 pt</strong
-                  >
+                <div class="stat-item">
+                  <span>📍 現在地</span
+                  ><span id="current-player-location">-</span>
                 </div>
               </div>
             </div>
 
-            <!-- 誰がどこの場所に止まっているかリスト -->
-            <div class="card tile-event-card">
-              <div class="card-title">📍 場所ごとのメンバー</div>
-              <div id="location-players-list">スタート前：プレイヤー1</div>
+            <!-- 2. 【新設】何色が誰か分かるプレイヤーカラー凡例カード -->
+            <div class="card player-color-legend-card">
+              <div
+                class="card-title"
+                style="
+                  font-weight: bold;
+                  font-size: 0.95rem;
+                  margin-bottom: 8px;
+                  color: #555;
+                "
+              >
+                🎨 プレイヤーカラー
+              </div>
+              <div id="player-color-legend-list" class="color-legend-container">
+                <!-- JSで動的に 🔴 プレイヤー名 などを生成 -->
+              </div>
+            </div>
+
+            <!-- 3. 【改修】全場所対照表カード（駒を並べるエリア） -->
+            <div class="card location-board-card">
+              <div
+                class="card-title"
+                style="
+                  font-weight: bold;
+                  font-size: 0.95rem;
+                  margin-bottom: 8px;
+                  color: #555;
+                "
+              >
+                📍 エリア別 滞在状況
+              </div>
+              <div class="location-table-wrapper">
+                <table class="location-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 45%">エリア</th>
+                      <th style="width: 55%">滞在中の駒</th>
+                    </tr>
+                  </thead>
+                  <tbody id="location-table-body">
+                    <!-- JSで全ロケーションと駒を生成 -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

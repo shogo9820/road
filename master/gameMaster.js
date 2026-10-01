@@ -127,7 +127,7 @@ const MAP_SQUARES = [
   { id: 83, type: "normal", text: "【秋キャン】HOT LIMIT", mode: "all", nextId: [84]},
   { id: 84, type: "normal", text: "【龍祭】ガイモン参上！", mode: "all", nextId: [85]},
   { id: 85, type: "normal", text: "【忘年会】まんぱんまんぱんゲーム！", mode: "all", nextId: [86]},
-  { id: 86, type: "heal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", mode: "all", nextId: [87]},
+  { id: 86, type: "normal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", mode: "all", nextId: [87]},
   { id: 87, type: "normal", text: "【追いコン】みんな今までありがとう！全員で乾杯！", mode: "all", nextId: [88]},
   { id: 88, type: "normal", text: "単位が足りない！？そんなの関係ねぇ！", mode: "all", nextId: [89]},
   
