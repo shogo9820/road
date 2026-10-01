@@ -82,9 +82,22 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("startCustomEventSecondSpin", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) {
+      // 🎯 タイトルをイベント名に合わせて動的に書き換える
+      const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+      if (titleEl) {
+        titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
+      }
+
       const descEl = modal.querySelector(".couple-desc");
-      if (descEl) descEl.innerHTML = `💕 1回目クリア！運命の ${data.nextStepEventName || "判定"} スピンへ！<br>もう一度ルーレットを回して、止まった数字で最終決着！`;
-      if (document.getElementById("btn-couple-spin")) document.getElementById("btn-couple-spin").style.display = "block";
+      if (descEl) {
+        descEl.innerHTML = `運命の <b>${data.nextStepEventName || "判定"}</b> スピン！<br>ルーレットを回して結果を決定せよ！`;
+      }
+
+      const btnSpin = document.getElementById("btn-couple-spin");
+      if (btnSpin) {
+        btnSpin.style.display = "block";
+        btnSpin.textContent = "🎲 判定ルーレットを回す！";
+      }
       modal.style.display = "flex";
     }
   });

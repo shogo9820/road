@@ -128,19 +128,32 @@ function appendSocketListeners() {
 
   socket.on("startCustomEventSecondSpin", (data) => {
     console.log("💻 [PC RECEIVE] 2段階カスタムイベント開始合図を受信:", data.nextStepEventName);
+
+    // 🎯 【重要】大元のモーダル要素を表示状態にする
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.className = "event-modal-overlay active theme-entrance";
+      pcModal.style.display = "flex";
+    }
+
+    const titleEl = document.getElementById("modal-event-title");
+    if (titleEl) titleEl.textContent = `🌸 ${data.nextStepEventName || "入学式イベント"} 🌸`;
+
+    const descEl = document.getElementById("modal-event-desc");
+    if (descEl) descEl.textContent = "出目に応じて洗礼が決まる！スマホから回してね！";
+
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
-      modalResultBox.className = "event-result-box success";
-      modalResultBox.innerHTML = `🔥 1回目達成！<br>運命の ${data.nextStepEventName || "チャンス"} 突入！`;
-      modalResultBox.style.display = "block";
+      modalResultBox.style.display = "none";
     }
+
     const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
-      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 運命の決定対応表</div><ul class="event-table-list">`;
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
-        let targetText = '<span style="color:#aaa;">（誰もなし：失敗）</span>';
-        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">👤 ${target.name} に決定！</span>`;
+        let targetText = '<span style="color:#aaa;">-</span>';
+        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
