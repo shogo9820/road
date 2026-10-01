@@ -148,7 +148,7 @@ function appendSocketListeners() {
     }
   });
 
-    // 🎯 【重要】マス着地時：サーバーから合図を受け取り、PC大画面モーダルを即座に表示！
+  // 🎯 【重要】マス着地時：サーバーから合図を受け取り、PC大画面モーダルを即座に表示！
   socket.on("openCustomRouletteModal", (data) => {
     console.log(`💻 [PC 着地時モーダル展開] イベント: ${data.eventName}`);
     isPCEventMode = true;
@@ -163,19 +163,23 @@ function appendSocketListeners() {
     if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
 
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) descEl.textContent = "出目に応じて結果が決まる！スマホから回してね！";
+    if (descEl)
+      descEl.textContent = "出目に応じて結果が決まる！スマホから回してね！";
 
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) modalResultBox.style.display = "none";
 
     // 判定対応表を描画
-    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    const dynamicTableZone = document.getElementById(
+      "pc-event-table-dynamic-zone",
+    );
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
         let targetText = '<span style="color:#aaa;">-</span>';
-        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        if (target)
+          targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
@@ -193,7 +197,8 @@ function appendSocketListeners() {
       const locationEl = document.getElementById("pc-kanpai-location");
 
       if (titleEl) titleEl.textContent = "🌸 美人さん大歓迎！ 🌸";
-      if (membersEl) membersEl.textContent = `👤 ${data.playerName} を囲むサークル員一同`;
+      if (membersEl)
+        membersEl.textContent = `👤 ${data.playerName} を囲むサークル員一同`;
       if (locationEl) locationEl.textContent = "美人にモテたいの";
 
       // 🎯 インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
@@ -331,7 +336,7 @@ function appendSocketListeners() {
     }, 3000);
   });
 
-    // 🎓 1. 卒業判定モーダルの展開
+  // 🎓 1. 卒業判定モーダルの展開
   socket.on("showGraduateEvent", (data) => {
     console.log(`💻 [PC 卒業判定展開] プレイヤー: ${data.playerName}`);
     isPCEventMode = true;
@@ -346,12 +351,16 @@ function appendSocketListeners() {
     if (titleEl) titleEl.textContent = "🎓 運命の卒業判定 🎓";
 
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) descEl.textContent = "出目 6以上でストレート卒業GOAL！5以下は地獄の留年ルート突入！";
+    if (descEl)
+      descEl.textContent =
+        "出目 6以上でストレート卒業GOAL！5以下は地獄の留年ルート突入！";
 
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) modalResultBox.style.display = "none";
 
-    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    const dynamicTableZone = document.getElementById(
+      "pc-event-table-dynamic-zone",
+    );
     if (dynamicTableZone) {
       dynamicTableZone.innerHTML = `
         <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定基準</div>
@@ -369,28 +378,68 @@ function appendSocketListeners() {
     executeSyncedRoulette(data.result);
   });
 
-  // 🌸 3. 合格：ゴール特大祝賀演出
+  // 🎯 99番マスのゴール祝賀演出をPC大画面へ中継（これは独立して追加）
   socket.on("triggerGoalCelebration", (data) => {
-    isPCEventMode = false;
-    const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal) pcModal.style.display = "none";
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    io.to(roomCode).emit("showGoalModal", data);
+  });
 
-    // 乾杯モーダルをゴール祝賀用に流用表示
-    const kanpaiModal = document.getElementById("pc-kanpai-modal");
-    if (kanpaiModal) {
-      const titleEl = kanpaiModal.querySelector(".kanpai-header");
-      const membersEl = document.getElementById("pc-kanpai-members");
-      const locationEl = document.getElementById("pc-kanpai-location");
+  // 🎓 卒業判定スピン受信部
+  socket.on("requestGraduateSpin", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (!room) return;
 
-      if (titleEl) titleEl.textContent = "🎉 祝・大学卒業ゴール！！！ 🎉";
-      if (membersEl) membersEl.textContent = `🎓 ${data.player.name} が見事ストレート卒業達成！`;
-      if (locationEl) locationEl.textContent = "社会への第一歩";
+    const resultNum = Math.floor(Math.random() * 10) + 1;
+    const isPass = (resultNum >= 6);
+    const p = room.gamePlayers[room.activePlayerIndex];
 
-      kanpaiModal.style.display = "flex";
-    }
+    console.log(`\n🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格(99番GOALへワープ)" : "💀 留年(地獄ルート開通)"}`);
 
-    // 盤面再描画（99番マスへピンワープ）
-    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+    // PC・スマホへ回転指示
+    io.to(roomCode).emit("spinGraduateRoulette", {
+      result: resultNum,
+      isPass: isPass
+    });
+
+    // 演出完了後（3.5秒後）に分岐処理を実行
+    setTimeout(() => {
+      if (isPass) {
+        // 🌸 6以上（合格）：位置を99（GOAL）にして到着確認フェーズ（4.END_CHECK）へ！
+        // これによりスマホ側が sq_99.js を自動起動し、共通ゴール演出が発火します
+        p.position = 99;
+        p.location = "㊗️ 卒業式(GOAL)";
+        room.currentPhase = "4.END_CHECK";
+
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase
+        });
+      } else {
+        // 💀 5以下（留年）：isRepeat を付与して通常移動可能フェーズへ戻す
+        p.isRepeat = true;
+        p.location = "留年（5年生）";
+        room.currentPhase = "1-2.START_CHECK";
+
+        // PC側をダークモード化
+        io.to(roomCode).emit("applyRepeatDarkTheme", {
+          playerId: p.id,
+          playerName: p.name
+        });
+
+        // スマホ側へ絶望ルーレット復活指示
+        io.to(roomCode).emit("graduateFailedRepeat", {
+          message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`
+        });
+
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase
+        });
+      }
+    }, 3500);
   });
 
   // 💀 4. 留年：画面ダークモード化（暗黒演出）
@@ -399,18 +448,46 @@ function appendSocketListeners() {
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) pcModal.style.display = "none";
 
-    console.log(`💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`);
+    console.log(
+      `💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`,
+    );
     // 画面全体にダーククラスを付与
     document.body.classList.add("theme-repeat-dark");
-    
+
     // イベントメッセージ更新
     if (document.getElementById("event-text")) {
-      document.getElementById("event-text").innerHTML = 
+      document.getElementById("event-text").innerHTML =
         `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
     }
 
     // 留年ルート開通による盤面再描画
-    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+    if (window.boardManager)
+      window.boardManager.draw(players, activePlayerIndex);
+  });
+
+  // 🎉 99番マス到着時：PC大画面にゴール祝賀モーダルを展開！
+  socket.on("showGoalModal", (data) => {
+    console.log(`💻 [PC ゴール祝賀展開] プレイヤー: ${data.player.name}`);
+    isPCEventMode = true;
+
+    // 乾杯モーダル（#pc-kanpai-modal）を祝賀用に流用表示
+    const kanpaiModal = document.getElementById("pc-kanpai-modal");
+    if (kanpaiModal) {
+      const titleEl = kanpaiModal.querySelector(".kanpai-header");
+      const membersEl = document.getElementById("pc-kanpai-members");
+      const locationEl = document.getElementById("pc-kanpai-location");
+
+      if (titleEl) titleEl.textContent = "🎉 祝・大学卒業ゴール！！！ 🎉";
+      if (membersEl)
+        membersEl.textContent = `🎓 ${data.player.name} が見事卒業達成！`;
+      if (locationEl) locationEl.textContent = "社会への輝かしい旅立ち";
+
+      kanpaiModal.style.display = "flex";
+    }
+
+    // 盤面再描画
+    if (window.boardManager)
+      window.boardManager.draw(players, activePlayerIndex);
   });
 }
 
@@ -844,7 +921,9 @@ function loadAndApplySquareComponent(squareId, callback) {
 
 socket.on("applyPlayerAction", (data) => {
   if (data && data.action === "turnUpdated") {
-    console.log("💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。");
+    console.log(
+      "💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。",
+    );
     isPCEventMode = false;
 
     // 🎯 1. 判定ルーレット・イベントモーダルを完全に閉じる
