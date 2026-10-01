@@ -148,9 +148,11 @@ function appendSocketListeners() {
     }
   });
 
-    // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
+  // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
   socket.on("spinCustomRoulette", (data) => {
-    console.log(`💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`);
+    console.log(
+      `💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`,
+    );
     isPCEventMode = true;
 
     const pcModal = document.getElementById("pc-event-modal");
@@ -169,13 +171,16 @@ function appendSocketListeners() {
     if (modalResultBox) modalResultBox.style.display = "none";
 
     // 対応表を描画
-    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    const dynamicTableZone = document.getElementById(
+      "pc-event-table-dynamic-zone",
+    );
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
         let targetText = '<span style="color:#aaa;">-</span>';
-        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        if (target)
+          targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
@@ -192,7 +197,10 @@ function appendSocketListeners() {
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
-      modalResultBox.className = data.outcome && data.outcome.drinks === 0 ? "event-result-box success" : "event-result-box failure";
+      modalResultBox.className =
+        data.outcome && data.outcome.drinks === 0
+          ? "event-result-box success"
+          : "event-result-box failure";
       modalResultBox.innerHTML = `
         <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px;">出目: ${data.result}</div>
         <div style="font-size:1.4rem; font-weight:bold;">${data.message}</div>
@@ -497,42 +505,26 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
+    // pc.js の finalizeMovement 内
     function finalizeMovement() {
-      console.log(
-        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`,
-      );
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare =
-          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
-            ? MAP_SQUARES[p.position]
-            : null;
+        let targetSquare = MAP_SQUARES[p.position];
         if (targetSquare) {
           p.location = targetSquare.location || "";
           if (typeof applySquareEffects === "function")
             applySquareEffects(p, targetSquare);
         }
 
+        // PCは描画を更新して、サーバーに着地を伝えるだけ！
         if (window.boardManager)
           window.boardManager.draw(players, activePlayerIndex);
-        renderLocationPlayersList();
         updateCurrentPlayerDisplay();
 
-        // 🚀 【100%無差別着地ハブ】到着信号を起動し、サーバーへフェーズ更新を通知
-        if (targetSquare) {
-          console.log(
-            `📡 [PC SIGNAL] マスID: ${p.position} の到着信号ハブを無差別緊急起動！`,
-          );
-          handleForceStopSquare(p, targetSquare);
-
-          // 🎯 サーバーへ「目的地に着地したぞ！」と通知してフェーズを 4.END_CHECK に進めさせる
-          socket.emit("squareLanded", {
-            roomCode: roomCode,
-            position: p.position,
-          });
-        }
-
-        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
-        triggerDelayedDisplay(resultNum, targetSquare);
+        // 🎯 サーバーへ「目的地に着地完了」だけを送信（PCからはイベントを実行しない！）
+        socket.emit("squareLanded", {
+          roomCode: roomCode,
+          position: p.position,
+        });
       });
     }
   }, 3000);
