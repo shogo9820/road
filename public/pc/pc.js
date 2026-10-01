@@ -183,7 +183,7 @@ function appendSocketListeners() {
     }
   });
 
-    // 🎯 【追記】美人入学式の乾杯モーダルを受信して大画面に表示
+  // 🎯 【確定版】美人入学式の乾杯モーダルを受信して大画面に表示
   socket.on("openBijinKanpaiModal", (data) => {
     console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
     const pcModal = document.getElementById("pc-kanpai-modal");
@@ -196,6 +196,7 @@ function appendSocketListeners() {
       if (membersEl) membersEl.textContent = `👤 ${data.playerName} を囲むサークル員一同`;
       if (locationEl) locationEl.textContent = "美人にモテたい気持ち";
 
+      // 🎯 インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
     }
   });
