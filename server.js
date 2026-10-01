@@ -241,6 +241,60 @@ io.on("connection", (socket) => {
     }
   });
 
+    // 🎯 マスのJSから「手元の汎用モーダルを開け」という合図を受け取り、スマホへ転送
+  socket.on("openCustomRouletteModal", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    io.to(roomCode).emit("openCustomRouletteModal", data);
+  });
+
+  // ==========================================================================
+  // 🎯 【汎用イベントルーレット】1回回して出目テーブルで決着する汎用パイプライン
+  // ==========================================================================
+  socket.on("startCustomRouletteEvent", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // 1〜10の出目をサーバー側で公平に決定
+    const resultNum = Math.floor(Math.random() * 10) + 1;
+    const outcome = data.mapping && data.mapping[resultNum] ? data.mapping[resultNum] : { name: "結果なし", drinks: 0 };
+
+    console.log(`\n🎲 [SERVER 汎用ルーレット] イベント: ${data.eventName} / 出目: ${resultNum} / 結果: ${outcome.name}`);
+
+    // ルーム全員（PC・スマホ）へルーレット回転指示
+    io.to(roomCode).emit("spinCustomRoulette", {
+      result: resultNum,
+      outcome: outcome,
+      eventName: data.eventName,
+      mapping: data.mapping
+    });
+
+    // 演出完了（3.5秒後）に効果を反映して手動進行（次へ）を点灯
+    setTimeout(() => {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      if (p && outcome.drinks) {
+        p.drinkCount = (p.drinkCount || 0) + outcome.drinks;
+      }
+
+      io.to(roomCode).emit("customRouletteFinished", {
+        result: resultNum,
+        outcome: outcome,
+        eventName: data.eventName,
+        message: outcome.name
+      });
+
+      // ターン終了（次へボタン点灯）フェーズへ
+      room.currentPhase = "6.WAIT_NEXT";
+      io.to(roomCode).emit("enableNextTurnButton");
+      io.to(roomCode).emit("syncGameState", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
+        currentPhase: room.currentPhase
+      });
+    }, 3500);
+  });
+
+
     // 🎯 【一本道リレー：行程④】PC側でピンが目的地に着地した合図を受信
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;

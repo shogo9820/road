@@ -148,6 +148,58 @@ function appendSocketListeners() {
     }
   });
 
+    // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
+  socket.on("spinCustomRoulette", (data) => {
+    console.log(`💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`);
+    isPCEventMode = true;
+
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.className = "event-modal-overlay active theme-entrance";
+      pcModal.style.display = "flex";
+    }
+
+    const titleEl = document.getElementById("modal-event-title");
+    if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
+
+    const descEl = document.getElementById("modal-event-desc");
+    if (descEl) descEl.textContent = "出目に応じて結果が決まる！";
+
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (modalResultBox) modalResultBox.style.display = "none";
+
+    // 対応表を描画
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    if (dynamicTableZone && data.mapping) {
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
+      for (let i = 1; i <= 10; i++) {
+        const target = data.mapping[i];
+        let targetText = '<span style="color:#aaa;">-</span>';
+        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
+      }
+      html += `</ul>`;
+      dynamicTableZone.innerHTML = html;
+    }
+
+    // 大画面ルーレット物理回転
+    executeSyncedRoulette(data.result);
+  });
+
+  // 🎯 汎用ルーレット決着（結果テキスト表示）
+  socket.on("customRouletteFinished", (data) => {
+    isPCEventMode = false;
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (modalResultBox) {
+      modalResultBox.style.display = "block";
+      modalResultBox.className = data.outcome && data.outcome.drinks === 0 ? "event-result-box success" : "event-result-box failure";
+      modalResultBox.innerHTML = `
+        <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px;">出目: ${data.result}</div>
+        <div style="font-size:1.4rem; font-weight:bold;">${data.message}</div>
+      `;
+    }
+  });
+
   socket.on("startCustomEventSecondSpin", (data) => {
     console.log(
       "💻 [PC RECEIVE] 2段階カスタムイベント開始合図を受信:",

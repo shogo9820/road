@@ -16,14 +16,13 @@ window.SQ_MODULES[18] = {
     location: "大学キャンパス",
     event: function (player, moduleData) {
       console.log(`🌸 [18番マス: 入学式] ${player.name} のイベント開始`);
-
-      // 🎯 PC側(roomCode)・スマホ側(currentRoomCode)のどちらから呼ばれても安全に取得
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
 
       // ======================================================================
-      // 🌸 パターン1: 美人（bijin）の場合 ➔ 乾杯モーダル流用
+      // 🌸 パターン1: 美人（bijin）➔ PC乾杯モーダル完全流用（アラートなし）
       // ======================================================================
       if (player.jobId === "bijin") {
+        // 1. 本人以外の全プレイヤーの飲酒数を +1
         if (typeof players !== "undefined" && Array.isArray(players)) {
           players.forEach((p) => {
             if (p.id !== player.id) {
@@ -32,6 +31,7 @@ window.SQ_MODULES[18] = {
           });
         }
 
+        // 2. PC大画面の乾杯モーダル (#pc-kanpai-modal) のテキストを差し替え表示
         const pcModal = document.getElementById("pc-kanpai-modal");
         if (pcModal) {
           const titleEl = pcModal.querySelector(".kanpai-header");
@@ -45,8 +45,7 @@ window.SQ_MODULES[18] = {
           pcModal.style.display = "flex";
         }
 
-        alert("✨ ミス龍大（美人）の入学！周囲が色めき立ち全員で歓迎の乾杯！（他プレイヤー全員 +1杯）");
-        
+        // 3. アラートを使わず、即座に手動進行（次へボタン点灯）へ進める
         if (typeof socket !== "undefined") {
           socket.emit("playerAction", {
             roomCode: targetRoom,
@@ -58,7 +57,7 @@ window.SQ_MODULES[18] = {
       }
 
       // ======================================================================
-      // 🎲 パターン2: 美人以外の場合 ➔ 41番マスの汎用ルーレット機構流用
+      // 🎲 パターン2: 美人以外 ➔ 新設「1発汎用ルーレット」を起動
       // ======================================================================
       const entranceMapping = {
         1: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
@@ -73,13 +72,12 @@ window.SQ_MODULES[18] = {
         10: { name: "見事回避！ (0杯)", drinks: 0 }
       };
 
+      // サーバーへ「手元の汎用モーダルを開け」と合図を送る
       if (typeof socket !== "undefined") {
-        socket.emit("customEventFirstSpinResult", {
+        socket.emit("openCustomRouletteModal", {
           roomCode: targetRoom,
-          playerId: player.id,
-          result: 1,
-          mapping: entranceMapping,
-          nextStepEventName: "入学式の洗礼回避チャレンジ"
+          eventName: "サークル入学式！歓迎の洗礼チャレンジ",
+          mapping: entranceMapping
         });
       }
     }

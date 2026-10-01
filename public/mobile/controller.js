@@ -79,6 +79,45 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+    // 🎯 汎用モーダルの展開指示を受信
+  socket.on("openCustomRouletteModal", (data) => {
+    const modal = document.getElementById("mobile-couple-event-modal");
+    if (!modal) return;
+
+    const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+    if (titleEl) titleEl.innerHTML = `🌸 ${data.eventName} 🌸`;
+
+    const descEl = modal.querySelector(".couple-desc");
+    if (descEl) descEl.innerHTML = `出目に応じて結果が決まる！<br>ボタンをタップしてルーレットを回そう！`;
+
+    const btnSpin = document.getElementById("btn-couple-spin");
+    if (btnSpin) {
+      btnSpin.style.display = "block";
+      btnSpin.textContent = "⚡ ルーレットを回す！";
+      btnSpin.disabled = false;
+
+      // 🎯 タップしたらサーバーへ汎用ルーレット開始を要求
+      btnSpin.onclick = () => {
+        btnSpin.disabled = true;
+        socket.emit("startCustomRouletteEvent", {
+          roomCode: currentRoomCode,
+          eventName: data.eventName,
+          mapping: data.mapping
+        });
+      };
+    }
+    modal.style.display = "flex";
+  });
+
+  // 🎯 決着通知（手元のモーダルを閉じる）
+  socket.on("customRouletteFinished", (data) => {
+    const modal = document.getElementById("mobile-couple-event-modal");
+    if (modal) modal.style.display = "none";
+    if (document.getElementById("roulette-result-display")) {
+      document.getElementById("roulette-result-display").textContent = `🎯 結果: ${data.message}`;
+    }
+  });
+
   socket.on("startCustomEventSecondSpin", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
