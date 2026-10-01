@@ -148,6 +148,41 @@ function appendSocketListeners() {
     }
   });
 
+    // 🎯 【重要】マス着地時：サーバーから合図を受け取り、PC大画面モーダルを即座に表示！
+  socket.on("openCustomRouletteModal", (data) => {
+    console.log(`💻 [PC 着地時モーダル展開] イベント: ${data.eventName}`);
+    isPCEventMode = true;
+
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.className = "event-modal-overlay active theme-entrance";
+      pcModal.style.display = "flex";
+    }
+
+    const titleEl = document.getElementById("modal-event-title");
+    if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
+
+    const descEl = document.getElementById("modal-event-desc");
+    if (descEl) descEl.textContent = "出目に応じて結果が決まる！スマホから回してね！";
+
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (modalResultBox) modalResultBox.style.display = "none";
+
+    // 判定対応表を描画
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    if (dynamicTableZone && data.mapping) {
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
+      for (let i = 1; i <= 10; i++) {
+        const target = data.mapping[i];
+        let targetText = '<span style="color:#aaa;">-</span>';
+        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
+      }
+      html += `</ul>`;
+      dynamicTableZone.innerHTML = html;
+    }
+  });
+
   // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
   socket.on("spinCustomRoulette", (data) => {
     console.log(
