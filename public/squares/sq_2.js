@@ -8,7 +8,7 @@
 
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES = {
+window.SQ_MODULES [2] = {
   // 🌸 現行：宅飲み人生ゲーム（サークル生活モード）
   normal: {
     id: 2,
