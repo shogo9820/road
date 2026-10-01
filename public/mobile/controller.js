@@ -158,37 +158,41 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）
+    // 🧭 行程④：到着イベント（END_CHECK）- フォールバック完全復元版
     // ------------------------------------------------------------------------
     if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
       if (currentIdx !== activePlayerIndex) return;
 
       const currentPos = Number(p.position);
 
-      // 🎯 【重要】まだルーレット移動前のマス（0番マスなど開始位置）にいる間のフライング電波は無視する！
       if (window.turnStartPosition !== null && currentPos === window.turnStartPosition) {
         console.log(`📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`);
         return;
       }
 
-      window.isLandedThisTurn = true; // 🎯 実際にマスを移動した後の着地時のみ消費！
+      window.isLandedThisTurn = true;
       console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
 
       if (typeof loadAndApplySquareComponent === "function") {
         loadAndApplySquareComponent(currentPos, () => {
           let currentMode = "normal";
-          const targetModule = window.SQ_MODULES && window.SQ_MODULES[currentPos] && window.SQ_MODULES[currentPos][currentMode];
+          let targetModule = window.SQ_MODULES && window.SQ_MODULES[currentPos] && window.SQ_MODULES[currentPos][currentMode];
+
+          // 🎯 【重要復元】個別ファイル（sq_4.js 等）が無い場合、MAP_SQUARES からデータをフォールバック取得
+          if (!targetModule && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) {
+            targetModule = MAP_SQUARES[currentPos];
+          }
 
           if (!targetModule) {
             console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`);
             return;
           }
 
-          // 🚀 【役職マス】type が "jobChallenge" の場合
+          // 🚀 役職マスの場合
           if (targetModule.type === "jobChallenge" && targetModule.jobId) {
-            // 🎯 既に役職を持っている場合は何もしない（スルー）
+            // 就職済みならスルー
             if (p.hasJob === true) {
-              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのため、役職マスをスルーします。`);
+              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`);
               socket.emit("playerAction", {
                 roomCode: currentRoomCode,
                 action: "squareEventFinished",
@@ -202,7 +206,7 @@ window.addEventListener("DOMContentLoaded", () => {
             if (typeof showJobChoiceDialog === "function") {
               showJobChoiceDialog(targetModule.jobId, jobName, p.id);
             }
-          }
+          } 
           // 🚀 特殊マスの場合
           else if (typeof targetModule.event === "function") {
             console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
@@ -452,9 +456,25 @@ function checkBranchSquareOnTurnStart(syncData) {
 
 function loadAndApplySquareComponent(squareId, callback) {
   let currentMode = "normal";
-  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) { if (typeof callback === "function") callback(); return; }
-  const script = document.createElement("script"); script.src = `/squares/sq_${squareId}.js`;
-  script.onload = () => { if (typeof callback === "function") callback(); };
-  script.onerror = () => { if (typeof callback === "function") callback(); };
+
+  // 1. 既にメモリ上にロード済みであれば即時実行
+  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) {
+    if (typeof callback === "function") callback();
+    return;
+  }
+
+  // 2. スクリプトの動的生成と確実な読み込み待ち
+  const script = document.createElement("script");
+  script.src = `/squares/sq_${squareId}.js?t=${Date.now()}`; // キャッシュ回避用タイムスタンプ
+  script.onload = () => {
+    // 実行完了を確実にするためマイクロタスクを挟んでコールバックを呼ぶ
+    setTimeout(() => {
+      if (typeof callback === "function") callback();
+    }, 10);
+  };
+  script.onerror = (err) => {
+    console.error(`🚨 [LOAD ERROR] /squares/sq_${squareId}.js の読み込みに失敗しました。パスまたは配置を確認してください。`, err);
+    if (typeof callback === "function") callback();
+  };
   document.head.appendChild(script);
 }
