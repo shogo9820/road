@@ -476,7 +476,7 @@ io.on("connection", (socket) => {
       activePlayerIndex: room.activePlayerIndex
     });
   });
-  // 🎯 通常マスや個別同期用の汎用データ同期（既存の互換性を完全死守）
+  // 🎯 通常マスや個別同期用の汎用データ同期
   socket.on("updateGameState", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
@@ -485,9 +485,16 @@ io.on("connection", (socket) => {
           const target = rooms[roomCode].gamePlayers.find((p) => String(p.id) === String(updatedP.id));
           if (target) {
             target.position = updatedP.position !== undefined ? updatedP.position : target.position;
-            if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[target.position]) {
-              target.location = MAP_SQUARES[target.position].location ? MAP_SQUARES[target.position].location : "スタート前";
+
+            // 🎯 【重要修正】クライアントから送られてきた場所を最優先で保存！
+            if (updatedP.location) {
+              target.location = updatedP.location;
+            } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[target.position] && MAP_SQUARES[target.position].location) {
+              target.location = MAP_SQUARES[target.position].location;
+            } else {
+              target.location = target.location || "スタート前";
             }
+
             target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
             target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
             target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;

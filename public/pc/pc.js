@@ -826,9 +826,16 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!targetSquare) return;
   const p = players[activePlayerIndex];
   if (!p) return;
+  
+  // 🎯 p.location が空なら targetSquare.location を補完
+  if (!p.location && targetSquare.location) {
+    p.location = targetSquare.location;
+  }
+
   if (document.getElementById("event-text"))
     document.getElementById("event-text").innerHTML =
       `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
+      
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -836,7 +843,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       {
         id: p.id,
         position: p.position,
-        location: targetSquare.location ? targetSquare.location : "スタート前",
+        location: p.location || "スタート前", // 🎯 確定した場所文字列を送信
         currentHp: p.currentHp,
         drinkCount: p.drinkCount,
         happiness: p.happiness !== undefined ? p.happiness : 100,
