@@ -505,26 +505,41 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // pc.js の finalizeMovement 内
     function finalizeMovement() {
+      console.log(
+        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`,
+      );
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare = MAP_SQUARES[p.position];
+        let targetSquare =
+          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+            ? MAP_SQUARES[p.position]
+            : null;
         if (targetSquare) {
           p.location = targetSquare.location || "";
           if (typeof applySquareEffects === "function")
             applySquareEffects(p, targetSquare);
         }
 
-        // PCは描画を更新して、サーバーに着地を伝えるだけ！
         if (window.boardManager)
           window.boardManager.draw(players, activePlayerIndex);
+        renderLocationPlayersList();
         updateCurrentPlayerDisplay();
 
-        // 🎯 サーバーへ「目的地に着地完了」だけを送信（PCからはイベントを実行しない！）
-        socket.emit("squareLanded", {
-          roomCode: roomCode,
-          position: p.position,
-        });
+        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+
+        // 🎯 1. 先にプレイヤーの最新位置（18番など）をサーバーへ送信して位置を確定させる
+        triggerDelayedDisplay(resultNum, targetSquare);
+
+        // 🎯 2. 位置確定後にサーバーへ「着地完了」を通知して 4.END_CHECK を配電させる
+        if (targetSquare) {
+          console.log(
+            `📡 [PC SIGNAL] マスID: ${p.position} の到着通知をサーバーへ送信！`,
+          );
+          socket.emit("squareLanded", {
+            roomCode: roomCode,
+            position: p.position,
+          });
+        }
       });
     }
   }, 3000);
