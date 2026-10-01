@@ -60,23 +60,23 @@ window.SQ_MODULES[18] = {
       // 🎲 パターン2: 美人以外 ➔ 新設「1発汎用ルーレット」を起動
       // ======================================================================
       const entranceMapping = {
-        1: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
-        2: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
-        3: { name: "手荒い歓迎！ (2杯飲む)", drinks: 2 },
-        4: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
-        5: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
-        6: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
-        7: { name: "歓迎の洗礼！ (1杯飲む)", drinks: 1 },
-        8: { name: "見事回避！ (0杯)", drinks: 0 },
-        9: { name: "見事回避！ (0杯)", drinks: 0 },
-        10: { name: "見事回避！ (0杯)", drinks: 0 }
+        1: { name: "俺ばり飲めるっす！ (2杯飲む)", drinks: 2 },
+        2: { name: "俺ばり飲めるっす！ (2杯飲む)", drinks: 2 },
+        3: { name: "俺ばり飲めるっす！ (2杯飲む)", drinks: 2 },
+        4: { name: "とりあえず飲めや！ (1杯飲む)", drinks: 1 },
+        5: { name: "とりあえず飲めや！ (1杯飲む)", drinks: 1 },
+        6: { name: "とりあえず飲めや！ (1杯飲む)", drinks: 1 },
+        7: { name: "とりあえず飲めや！ (1杯飲む)", drinks: 1 },
+        8: { name: "回避！ (0杯)", drinks: 0 },
+        9: { name: "回避！ (0杯)", drinks: 0 },
+        10: { name: "回避！ (0杯)", drinks: 0 }
       };
 
       // サーバーへ「手元の汎用モーダルを開け」と合図を送る
       if (typeof socket !== "undefined") {
         socket.emit("openCustomRouletteModal", {
           roomCode: targetRoom,
-          eventName: "サークル入学式！歓迎の洗礼チャレンジ",
+          eventName: "入学式！",
           mapping: entranceMapping
         });
       }
