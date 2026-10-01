@@ -633,13 +633,13 @@ socket.on("syncGameState", (data) => {
   if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
 });
 
-// 🎯 サーバーから「手動進行（次へボタン点灯）」の合図を受け取った時に、大画面の各種イベントモーダルを閉じる
-socket.on("enableNextTurnButton", () => {
-  const pcModal = document.getElementById("pc-event-modal");
-  if (pcModal) pcModal.style.display = "none";
-  const kanpaiModal = document.getElementById("pc-kanpai-modal");
-  if (kanpaiModal) kanpaiModal.style.display = "none";
-});
+// // 🎯 サーバーから「手動進行（次へボタン点灯）」の合図を受け取った時に、大画面の各種イベントモーダルを閉じる
+// socket.on("enableNextTurnButton", () => {
+//   const pcModal = document.getElementById("pc-event-modal");
+//   // if (pcModal) pcModal.style.display = "none";
+//   const kanpaiModal = document.getElementById("pc-kanpai-modal");
+//   if (kanpaiModal) kanpaiModal.style.display = "none";
+// });入学の美人イベントが起きなく見える理由
 
 const GAME_EVENTS = {
   入学式: {
