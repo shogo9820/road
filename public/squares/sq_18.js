@@ -19,7 +19,7 @@ window.SQ_MODULES[18] = {
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
 
       // ======================================================================
-      // 🌸 パターン1: 美人（bijin）➔ PC乾杯モーダル完全流用（アラートなし）
+      // 🌸 パターン1: 美人（bijin）➔ サーバー経由でPCへ乾杯モーダル展開を通知
       // ======================================================================
       if (player.jobId === "bijin") {
         // 1. 本人以外の全プレイヤーの飲酒数を +1
@@ -31,22 +31,14 @@ window.SQ_MODULES[18] = {
           });
         }
 
-        // 2. PC大画面の乾杯モーダル (#pc-kanpai-modal) のテキストを差し替え表示
-        const pcModal = document.getElementById("pc-kanpai-modal");
-        if (pcModal) {
-          const titleEl = pcModal.querySelector(".kanpai-header");
-          const membersEl = document.getElementById("pc-kanpai-members");
-          const locationEl = document.getElementById("pc-kanpai-location");
-
-          if (titleEl) titleEl.textContent = "🌸 ミス龍大（美人）入学歓迎！ 🌸";
-          if (membersEl) membersEl.textContent = `👤 ${player.name} を囲むサークル員一同`;
-          if (locationEl) locationEl.textContent = "美人にモテたい気持ち";
-
-          pcModal.style.display = "flex";
-        }
-
-        // 3. アラートを使わず、即座に手動進行（次へボタン点灯）へ進める
+        // 2. 🎯 サーバー経由でPC大画面へ乾杯モーダル展開を命令
         if (typeof socket !== "undefined") {
+          socket.emit("openBijinKanpaiModal", {
+            roomCode: targetRoom,
+            playerName: player.name
+          });
+
+          // 3. 完了通知を送信して手元の「次へ」ボタンを点灯
           socket.emit("playerAction", {
             roomCode: targetRoom,
             action: "squareEventFinished",

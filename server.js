@@ -247,6 +247,13 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("openCustomRouletteModal", data);
   });
 
+    // 🎯 【追記】美人入学式の乾杯モーダル表示要求をPC大画面へ中継
+  socket.on("openBijinKanpaiModal", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    io.to(roomCode).emit("openBijinKanpaiModal", data);
+  });
+
+
   // ==========================================================================
   // 🎯 【汎用イベントルーレット】1回回して出目テーブルで決着する汎用パイプライン
   // ==========================================================================
