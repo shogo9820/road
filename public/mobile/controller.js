@@ -13,43 +13,97 @@ window.addEventListener("DOMContentLoaded", () => {
     const inputEl = document.getElementById("input-room-code");
     if (inputEl) inputEl.value = roomParam;
     currentRoomCode = String(roomParam).trim();
-    const doJoin = () => { socket.emit("joinRoom", { roomCode: currentRoomCode }); };
-    if (socket.connected) doJoin(); else socket.once("connect", doJoin);
+    const doJoin = () => {
+      socket.emit("joinRoom", { roomCode: currentRoomCode });
+    };
+    if (socket.connected) doJoin();
+    else socket.once("connect", doJoin);
   }
 
   const btnJoin = document.getElementById("btn-join-room");
-  if (btnJoin) btnJoin.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
-  if (document.getElementById("btn-phone-add-player")) document.getElementById("btn-phone-add-player").addEventListener("click", addPlayerRow);
-  if (document.getElementById("btn-phone-start")) document.getElementById("btn-phone-start").addEventListener("click", sendStartGame);
-  if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").addEventListener("click", requestSpin);
-  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").addEventListener("click", sendNextTurn);
+  if (btnJoin)
+    btnJoin.addEventListener("click", (e) => {
+      e.preventDefault();
+      joinRoom();
+    });
+  if (document.getElementById("btn-phone-add-player"))
+    document
+      .getElementById("btn-phone-add-player")
+      .addEventListener("click", addPlayerRow);
+  if (document.getElementById("btn-phone-start"))
+    document
+      .getElementById("btn-phone-start")
+      .addEventListener("click", sendStartGame);
+  if (document.getElementById("btn-phone-spin"))
+    document
+      .getElementById("btn-phone-spin")
+      .addEventListener("click", requestSpin);
+  if (document.getElementById("btn-phone-next"))
+    document
+      .getElementById("btn-phone-next")
+      .addEventListener("click", sendNextTurn);
 
-  document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => { radio.addEventListener("change", (e) => { e.target.checked = true; syncSettingsToServer(); }); });
+  document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      e.target.checked = true;
+      syncSettingsToServer();
+    });
+  });
 
-  socket.on("joinedSuccess", (data) => { currentRoomCode = data.roomCode; showScreen("phone-screen-setup"); renderPlayerInputs(); syncSettingsToServer(); });
-  socket.on("errorMsg", (data) => { alert("エラー: " + data.message); });
-  
+  socket.on("joinedSuccess", (data) => {
+    currentRoomCode = data.roomCode;
+    showScreen("phone-screen-setup");
+    renderPlayerInputs();
+    syncSettingsToServer();
+  });
+  socket.on("errorMsg", (data) => {
+    alert("エラー: " + data.message);
+  });
+
   socket.on("applySettings", (data) => {
-    if (data.players && Array.isArray(data.players) && data.players.length > 0) {
-      if (!(document.activeElement && document.activeElement.tagName === "INPUT" && document.activeElement.closest("#phone-player-list"))) {
-        players = data.players; renderPlayerInputs();
-      } else { players = data.players; }
+    if (
+      data.players &&
+      Array.isArray(data.players) &&
+      data.players.length > 0
+    ) {
+      if (
+        !(
+          document.activeElement &&
+          document.activeElement.tagName === "INPUT" &&
+          document.activeElement.closest("#phone-player-list")
+        )
+      ) {
+        players = data.players;
+        renderPlayerInputs();
+      } else {
+        players = data.players;
+      }
     }
     const targetMode = data.mode || data.gameMode;
-    if (targetMode && document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`)) document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`).checked = true;
+    if (
+      targetMode &&
+      document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`)
+    )
+      document.querySelector(
+        `input[name="phone-mode"][value="${targetMode}"]`,
+      ).checked = true;
   });
   socket.on("spinRoulette", (data) => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
 
     // 🎯 スマホルーレット角度テーブル
-  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-    currentRotation += 1800 + ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
+    const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+    currentRotation +=
+      1800 +
+      ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
 
     isSpinning = true;
     playMobileRouletteAnimation(resultNum, currentRotation, (finalSteps) => {
       isSpinning = false;
-      console.log(`📱 [3. ルーレットを回す SUCCESS] スマホ画面の回転終了(出目: ${finalSteps})。大画面側ピンのトコトコ完全着地を静かに待機。`);
+      console.log(
+        `📱 [3. ルーレットを回す SUCCESS] スマホ画面の回転終了(出目: ${finalSteps})。大画面側ピンのトコトコ完全着地を静かに待機。`,
+      );
     });
   });
 
@@ -58,39 +112,59 @@ window.addEventListener("DOMContentLoaded", () => {
     if (data.action === "turnUpdated") {
       window.hasConfirmedThisTurn = false;
       window.isLandedThisTurn = false;
-      
-      const curP = players[data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex];
+
+      const curP =
+        players[
+          data.activePlayerIndex !== undefined
+            ? data.activePlayerIndex
+            : activePlayerIndex
+        ];
       window.turnStartPosition = curP ? Number(curP.position) : null;
-      activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+      activePlayerIndex =
+        data.activePlayerIndex !== undefined
+          ? data.activePlayerIndex
+          : activePlayerIndex;
 
       // 🎯 手元のアクティブモーダルを全消去
-      document.getElementById("job-modal-overlay") && (document.getElementById("job-modal-overlay").style.display = "none");
-      document.getElementById("mobile-couple-event-modal") && (document.getElementById("mobile-couple-event-modal").style.display = "none");
+      document.getElementById("job-modal-overlay") &&
+        (document.getElementById("job-modal-overlay").style.display = "none");
+      document.getElementById("mobile-couple-event-modal") &&
+        (document.getElementById("mobile-couple-event-modal").style.display =
+          "none");
       document.getElementById("route-select-modal")?.remove();
 
-      console.log(`\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`);
+      console.log(
+        `\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`,
+      );
 
       if (document.getElementById("current-player-banner")) {
-        document.getElementById("current-player-banner").textContent = `TURN: ${data.activePlayerName || "プレイヤー"}`;
+        document.getElementById("current-player-banner").textContent =
+          `TURN: ${data.activePlayerName || "プレイヤー"}`;
       }
-      
-      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
-      if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true;
-      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "進路を選択してください";
+
+      if (document.getElementById("btn-phone-spin"))
+        document.getElementById("btn-phone-spin").disabled = true;
+      if (document.getElementById("btn-phone-next"))
+        document.getElementById("btn-phone-next").disabled = true;
+      if (document.getElementById("roulette-result-display"))
+        document.getElementById("roulette-result-display").textContent =
+          "進路を選択してください";
       isSpinning = false;
     }
   });
 
-    // 🎯 汎用モーダルの展開指示を受信
+  // 🎯 汎用モーダルの展開指示を受信
   socket.on("openCustomRouletteModal", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
 
-    const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+    const titleEl =
+      modal.querySelector("h3") || modal.querySelector(".couple-title");
     if (titleEl) titleEl.innerHTML = `🌸 ${data.eventName} 🌸`;
 
     const descEl = modal.querySelector(".couple-desc");
-    if (descEl) descEl.innerHTML = `出目に応じて結果が決まる！<br>ボタンをタップしてルーレットを回そう！`;
+    if (descEl)
+      descEl.innerHTML = `出目に応じて結果が決まる！<br>ボタンをタップしてルーレットを回そう！`;
 
     const btnSpin = document.getElementById("btn-couple-spin");
     if (btnSpin) {
@@ -104,7 +178,7 @@ window.addEventListener("DOMContentLoaded", () => {
         socket.emit("startCustomRouletteEvent", {
           roomCode: currentRoomCode,
           eventName: data.eventName,
-          mapping: data.mapping
+          mapping: data.mapping,
         });
       };
     }
@@ -116,7 +190,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
     if (document.getElementById("roulette-result-display")) {
-      document.getElementById("roulette-result-display").textContent = `🎯 結果: ${data.message}`;
+      document.getElementById("roulette-result-display").textContent =
+        `🎯 結果: ${data.message}`;
     }
   });
 
@@ -124,11 +199,14 @@ window.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
 
-    const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
-    if (titleEl) titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
+    const titleEl =
+      modal.querySelector("h3") || modal.querySelector(".couple-title");
+    if (titleEl)
+      titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
 
     const descEl = modal.querySelector(".couple-desc");
-    if (descEl) descEl.innerHTML = `運命の判定スピン！<br>ルーレットを回して結果を決定せよ！`;
+    if (descEl)
+      descEl.innerHTML = `運命の判定スピン！<br>ルーレットを回して結果を決定せよ！`;
 
     const btnSpin = document.getElementById("btn-couple-spin");
     if (btnSpin) {
@@ -140,19 +218,22 @@ window.addEventListener("DOMContentLoaded", () => {
       btnSpin.onclick = () => {
         btnSpin.disabled = true;
         const resultNum = Math.floor(Math.random() * 10) + 1;
-        const targetOutcome = data.mapping && data.mapping[resultNum] ? data.mapping[resultNum] : { drinks: 0, name: "結果なし" };
+        const targetOutcome =
+          data.mapping && data.mapping[resultNum]
+            ? data.mapping[resultNum]
+            : { drinks: 0, name: "結果なし" };
 
         alert(`🎯 出目: ${resultNum}\n結果: ${targetOutcome.name}`);
 
         const p = players[activePlayerIndex];
         if (p) {
           p.drinkCount = (p.drinkCount || 0) + (targetOutcome.drinks || 0);
-          
+
           // サーバーへ完了報告
           socket.emit("playerAction", {
             roomCode: currentRoomCode,
             action: "squareEventFinished",
-            updatedPlayer: p
+            updatedPlayer: p,
           });
         }
 
@@ -166,9 +247,11 @@ window.addEventListener("DOMContentLoaded", () => {
     alert(data.message);
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
-    if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+    if (document.getElementById("roulette-result-display"))
+      document.getElementById("roulette-result-display").textContent =
+        "🎯 タップして回そう！";
   });
-  
+
   // ==========================================================================
   // 🧭 syncGameState 受信部（ブロック解除・確実実行版）
   // ==========================================================================
@@ -177,12 +260,16 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!data) return;
 
     if (data.players && Array.isArray(data.players)) players = data.players;
-    if (data.activePlayerIndex !== undefined) activePlayerIndex = data.activePlayerIndex;
+    if (data.activePlayerIndex !== undefined)
+      activePlayerIndex = data.activePlayerIndex;
     updatePhoneStatusDisplay();
 
     if (data.currentPhase) window.serverCurrentPhase = data.currentPhase;
 
-    const currentIdx = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
+    const currentIdx =
+      data.activePlayerIndex !== undefined
+        ? data.activePlayerIndex
+        : activePlayerIndex;
     const p = players[currentIdx];
     if (!p) {
       console.log("🛑 [DEBUG] プレイヤー情報が存在しないため終了");
@@ -206,76 +293,105 @@ window.addEventListener("DOMContentLoaded", () => {
     // 🧭 行程②：ターン開始時イベント（進路選択チェック）
     // ------------------------------------------------------------------------
     const pos = Number(p.position);
-    console.log(`📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`);
+    console.log(
+      `📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`,
+    );
 
     if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
-      console.log("📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を直接実行します。");
+      console.log(
+        "📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を直接実行します。",
+      );
       checkBranchSquareOnTurnStart(data);
     } else {
       console.log("📱 [DEBUG] 分岐なしマスまたは確定済み。ルーレット待機。");
-      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+      if (document.getElementById("btn-phone-spin"))
+        document.getElementById("btn-phone-spin").disabled = false;
+      if (document.getElementById("roulette-result-display"))
+        document.getElementById("roulette-result-display").textContent =
+          "🎯 タップして回そう！";
     }
 
     // ------------------------------------------------------------------------
     // 🧭 行程④：到着イベント（END_CHECK）- フォールバック完全復元版
     // ------------------------------------------------------------------------
-    if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
+    if (
+      (window.serverCurrentPhase === "4.END_CHECK" ||
+        window.serverCurrentPhase === "END_CHECK") &&
+      !window.isLandedThisTurn
+    ) {
       if (currentIdx !== activePlayerIndex) return;
 
       const currentPos = Number(p.position);
 
-      if (window.turnStartPosition !== null && currentPos === window.turnStartPosition) {
-        console.log(`📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`);
+      if (
+        window.turnStartPosition !== null &&
+        currentPos === window.turnStartPosition
+      ) {
+        console.log(
+          `📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`,
+        );
         return;
       }
 
       window.isLandedThisTurn = true;
-      console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
+      console.log(
+        `📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`,
+      );
 
-      if (typeof loadAndApplySquareComponent === "function") {
-        loadAndApplySquareComponent(currentPos, () => {
-          let currentMode = "normal";
-          let targetModule = window.SQ_MODULES && window.SQ_MODULES[currentPos] && window.SQ_MODULES[currentPos][currentMode];
+      if (!targetModule) {
+        console.log(
+          `📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`,
+        );
+        // 🎯 モジュールが無い場合もイベント完了として次へボタンを点灯させる
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "squareEventFinished",
+          updatedPlayer: p,
+        });
+        return;
+      }
 
-          // 🎯 【重要復元】個別ファイル（sq_4.js 等）が無い場合、MAP_SQUARES からデータをフォールバック取得
-          if (!targetModule && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) {
-            targetModule = MAP_SQUARES[currentPos];
-          }
+      // 🚀 役職マスの場合
+      if (targetModule.type === "jobChallenge" && targetModule.jobId) {
+        if (p.hasJob === true) {
+          console.log(
+            `📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`,
+          );
+          socket.emit("playerAction", {
+            roomCode: currentRoomCode,
+            action: "squareEventFinished",
+            updatedPlayer: p,
+          });
+          return;
+        }
 
-          if (!targetModule) {
-            console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`);
-            return;
-          }
-
-          // 🚀 役職マスの場合
-          if (targetModule.type === "jobChallenge" && targetModule.jobId) {
-            // 就職済みならスルー
-            if (p.hasJob === true) {
-              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`);
-              socket.emit("playerAction", {
-                roomCode: currentRoomCode,
-                action: "squareEventFinished",
-                updatedPlayer: p
-              });
-              return;
-            }
-
-            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-            console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
-            if (typeof showJobChoiceDialog === "function") {
-              showJobChoiceDialog(targetModule.jobId, jobName, p.id);
-            }
-          } 
-          // 🚀 特殊マスの場合
-          else if (typeof targetModule.event === "function") {
-            console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
-            targetModule.event(p, targetModule);
-          } 
-          // 🚀 通常マスの場合
-          else {
-            console.log(`📱 [4.2 通常マス] イベント無しのマスです。`);
-          }
+        const jobName = targetModule.text
+          ? targetModule.text.replace(/【役職マス】/g, "").trim()
+          : "新しい役職";
+        console.log(
+          `📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`,
+        );
+        if (typeof showJobChoiceDialog === "function") {
+          showJobChoiceDialog(targetModule.jobId, jobName, p.id);
+        }
+      }
+      // 🚀 特殊マスの場合
+      else if (typeof targetModule.event === "function") {
+        console.log(
+          `📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`,
+        );
+        targetModule.event(p, targetModule);
+      }
+      // 🚀 通常マスの場合
+      else {
+        console.log(
+          `📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`,
+        );
+        // 🎯 【重要追記】サーバーへ完了通知を送り、次へボタンを点灯させる！
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "squareEventFinished",
+          updatedPlayer: p,
         });
       }
     }
@@ -284,7 +400,9 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("enableNextTurnButton", () => {
     const btnNext = document.getElementById("btn-phone-next");
     if (btnNext) {
-      console.log("📱 [⑥. 手動進行ボタン大点灯] ➔ ➔ サーバーから点灯合図(enableNextTurnButton)を受信！ロックマスクを安全に解除しました。");
+      console.log(
+        "📱 [⑥. 手動進行ボタン大点灯] ➔ ➔ サーバーから点灯合図(enableNextTurnButton)を受信！ロックマスクを安全に解除しました。",
+      );
       btnNext.disabled = false;
     }
   });
@@ -292,7 +410,9 @@ window.addEventListener("DOMContentLoaded", () => {
 // 🧭 【一本道リレー：手順1】スマホで「ゲーム開始」が手動タップされた瞬間
 socket.on("gameStarted", (data) => {
   if (data && data.players) players = data.players;
-  console.log("📱 [①. 新ターン開始] ➔ サーバーからゲーム開始電波(gameStarted)を受信。ここで初めて手動操作権をロードします。");
+  console.log(
+    "📱 [①. 新ターン開始] ➔ サーバーからゲーム開始電波(gameStarted)を受信。ここで初めて手動操作権をロードします。",
+  );
   showScreen("phone-screen-play");
   activePlayerIndex = 0;
 });
@@ -301,17 +421,30 @@ function joinRoom() {
   const inputEl = document.getElementById("input-room-code");
   if (!inputEl) return;
   const codeInput = inputEl.value.trim();
-  if (!codeInput) { alert("ルームコードを入力してください"); return; }
+  if (!codeInput) {
+    alert("ルームコードを入力してください");
+    return;
+  }
   currentRoomCode = String(codeInput);
   socket.emit("joinRoom", { roomCode: currentRoomCode });
 }
 
 function showScreen(targetId) {
-  const screens = ["phone-screen-join", "phone-screen-setup", "phone-screen-play"];
+  const screens = [
+    "phone-screen-join",
+    "phone-screen-setup",
+    "phone-screen-play",
+  ];
   screens.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      if (id === targetId) { el.style.display = "block"; el.classList.add("active"); } else { el.style.display = "none"; el.classList.remove("active"); }
+      if (id === targetId) {
+        el.style.display = "block";
+        el.classList.add("active");
+      } else {
+        el.style.display = "none";
+        el.classList.remove("active");
+      }
     }
   });
 }
@@ -321,25 +454,62 @@ function renderPlayerInputs() {
   if (!container) return;
   container.innerHTML = "";
   players.forEach((p, idx) => {
-    const row = document.createElement("div"); row.style.display = "flex"; row.style.gap = "8px"; row.style.marginBottom = "8px";
-    const input = document.createElement("input"); input.type = "text"; input.value = p.name; input.style.flex = "1"; input.style.padding = "10px"; input.style.borderRadius = "6px"; input.style.border = "1px solid #ccc";
-    input.addEventListener("input", (e) => { players[idx].name = e.target.value; syncSettingsToServer(); });
-    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "❌"; delBtn.style.padding = "8px 12px"; delBtn.style.background = "#d9534f"; delBtn.style.color = "#fff"; delBtn.style.border = "none"; delBtn.style.borderRadius = "6px";
-    delBtn.onclick = () => { if (players.length <= 1) { alert("最低1人必要です"); return; } players.splice(idx, 1); renderPlayerInputs(); syncSettingsToServer(); };
-    row.appendChild(input); row.appendChild(delBtn); container.appendChild(row);
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "8px";
+    row.style.marginBottom = "8px";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = p.name;
+    input.style.flex = "1";
+    input.style.padding = "10px";
+    input.style.borderRadius = "6px";
+    input.style.border = "1px solid #ccc";
+    input.addEventListener("input", (e) => {
+      players[idx].name = e.target.value;
+      syncSettingsToServer();
+    });
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.textContent = "❌";
+    delBtn.style.padding = "8px 12px";
+    delBtn.style.background = "#d9534f";
+    delBtn.style.color = "#fff";
+    delBtn.style.border = "none";
+    delBtn.style.borderRadius = "6px";
+    delBtn.onclick = () => {
+      if (players.length <= 1) {
+        alert("最低1人必要です");
+        return;
+      }
+      players.splice(idx, 1);
+      renderPlayerInputs();
+      syncSettingsToServer();
+    };
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    container.appendChild(row);
   });
 }
 
 function addPlayerRow() {
   const newId = "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   players.push({ id: newId, name: `プレイヤー${players.length + 1}` });
-  renderPlayerInputs(); syncSettingsToServer();
+  renderPlayerInputs();
+  syncSettingsToServer();
 }
 
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
-  const selectedMode = document.querySelector('input[name="phone-mode"]:checked')?.value || "normal";
-  socket.emit("updateSettings", { roomCode: currentRoomCode, players: players, mode: selectedMode, gameMode: selectedMode });
+  const selectedMode =
+    document.querySelector('input[name="phone-mode"]:checked')?.value ||
+    "normal";
+  socket.emit("updateSettings", {
+    roomCode: currentRoomCode,
+    players: players,
+    mode: selectedMode,
+    gameMode: selectedMode,
+  });
 }
 
 // ==========================================================================
@@ -349,28 +519,38 @@ function syncSettingsToServer() {
 // サーバー側へ 100% 確実に startGame の一本道始動バトンを直撃で叩き込みます！
 // ==========================================================================
 function sendStartGame() {
-  console.log(`📱 [1.0 スマホ発信] ➔ ゲーム開始が手動タップされました。サーバーへ部屋コード [${currentRoomCode}] の一本道始動バトンを発射します！`);
-  
+  console.log(
+    `📱 [1.0 スマホ発信] ➔ ゲーム開始が手動タップされました。サーバーへ部屋コード [${currentRoomCode}] の一本道始動バトンを発射します！`,
+  );
+
   // 🎯 【核心の修正】誤字や文字のすれ違いを完全全廃。currentRoomCode を確実に渡す！
-  socket.emit("startGame", { 
-    roomCode: String(currentRoomCode).trim() 
+  socket.emit("startGame", {
+    roomCode: String(currentRoomCode).trim(),
   });
 }
 
 function requestSpin() {
   if (isSpinning) return;
-  if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
-  if (document.getElementById("mobile-couple-event-modal")) document.getElementById("mobile-couple-event-modal").style.display = "none";
-  console.log("📱 [③. ルーレットを回す Trigger] ➔ サーバーへ requestSpinRoulette 要求を発射します！");
+  if (document.getElementById("btn-phone-spin"))
+    document.getElementById("btn-phone-spin").disabled = true;
+  if (document.getElementById("mobile-couple-event-modal"))
+    document.getElementById("mobile-couple-event-modal").style.display = "none";
+  console.log(
+    "📱 [③. ルーレットを回す Trigger] ➔ サーバーへ requestSpinRoulette 要求を発射します！",
+  );
   socket.emit("requestSpinRoulette", { roomCode: currentRoomCode });
 }
 
 function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
-  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
+  if (document.getElementById("btn-phone-next"))
+    document.getElementById("btn-phone-next").disabled = true;
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
-  if (wheel) { wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)"; wheel.style.transform = `rotate(${targetRotation}deg)`; }
+  if (wheel) {
+    wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+    wheel.style.transform = `rotate(${targetRotation}deg)`;
+  }
   setTimeout(() => {
     if (resultDisplay) resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
     if (typeof callback === "function") callback(finalSteps);
@@ -379,10 +559,16 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
 function updatePhoneStatusDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
-  if (document.getElementById("phone-current-name")) document.getElementById("phone-current-name").textContent = p.name;
-  if (document.getElementById("phone-current-job")) document.getElementById("phone-current-job").textContent = p.job || "モブ";
-  if (document.getElementById("phone-current-hp")) document.getElementById("phone-current-hp").textContent = `${p.currentHp} / ${p.baseCap || 100}`;
-  if (document.getElementById("phone-current-happiness")) document.getElementById("phone-current-happiness").textContent = `${p.happiness !== undefined ? p.happiness : 100} pt`;
+  if (document.getElementById("phone-current-name"))
+    document.getElementById("phone-current-name").textContent = p.name;
+  if (document.getElementById("phone-current-job"))
+    document.getElementById("phone-current-job").textContent = p.job || "モブ";
+  if (document.getElementById("phone-current-hp"))
+    document.getElementById("phone-current-hp").textContent =
+      `${p.currentHp} / ${p.baseCap || 100}`;
+  if (document.getElementById("phone-current-happiness"))
+    document.getElementById("phone-current-happiness").textContent =
+      `${p.happiness !== undefined ? p.happiness : 100} pt`;
 }
 
 // 🧭 【基本ルーティン：行程⑤】プレイヤーが手動で就職の「はい／いいえ」を確定させた瞬間
@@ -394,24 +580,42 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
   descEl.textContent = `新しい役職「${jobName}」に就職しますか？`;
   const newBtnYes = document.getElementById("btn-job-yes").cloneNode(true);
   const newBtnNo = document.getElementById("btn-job-no").cloneNode(true);
-  document.getElementById("btn-job-yes").parentNode.replaceChild(newBtnYes, document.getElementById("btn-job-yes"));
-  document.getElementById("btn-job-no").parentNode.replaceChild(newBtnNo, document.getElementById("btn-job-no"));
+  document
+    .getElementById("btn-job-yes")
+    .parentNode.replaceChild(newBtnYes, document.getElementById("btn-job-yes"));
+  document
+    .getElementById("btn-job-no")
+    .parentNode.replaceChild(newBtnNo, document.getElementById("btn-job-no"));
 
   newBtnYes.addEventListener("click", () => {
     const targetP = players[activePlayerIndex];
     if (targetP) {
-      console.log(`📱 [⑤. 到着イベント数値処理の確定] ➔ 役職に「はい」が手動確定！サーバーへ squareEventFinished バトンを返送します！`);
-      targetP.jobId = jobId; targetP.job = jobName; targetP.hasJob = true;
-      socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
+      console.log(
+        `📱 [⑤. 到着イベント数値処理の確定] ➔ 役職に「はい」が手動確定！サーバーへ squareEventFinished バトンを返送します！`,
+      );
+      targetP.jobId = jobId;
+      targetP.job = jobName;
+      targetP.hasJob = true;
+      socket.emit("playerAction", {
+        roomCode: currentRoomCode,
+        action: "squareEventFinished",
+        updatedPlayer: targetP,
+      });
     }
     overlay.style.display = "none";
   });
   newBtnNo.addEventListener("click", () => {
     const targetP = players[activePlayerIndex];
     if (targetP) {
-      console.log(`📱 [⑤. 到着イベント数値処理の確定] ➔ 役職に「いいえ」が手動確定！サーバーへ squareEventFinished バトンを返送します！`);
+      console.log(
+        `📱 [⑤. 到着イベント数値処理の確定] ➔ 役職に「いいえ」が手動確定！サーバーへ squareEventFinished バトンを返送します！`,
+      );
       targetP.hasJob = false;
-      socket.emit("playerAction", { roomCode: currentRoomCode, action: "squareEventFinished", updatedPlayer: targetP });
+      socket.emit("playerAction", {
+        roomCode: currentRoomCode,
+        action: "squareEventFinished",
+        updatedPlayer: targetP,
+      });
     }
     overlay.style.display = "none";
   });
@@ -420,9 +624,15 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
 
 // 🧭 【基本ルーティン：行程⑥】手動進行でボタンをタップし、次の手番交代へバトンを繋ぐ瞬間
 function sendNextTurn() {
-  console.log("📱 [⑥. 手動進行 Trigger] ➔ カチッと手動交代されました！サーバーへ次ターン要求（nextTurn）を発射します。");
-  socket.emit("playerAction", { roomCode: currentRoomCode, action: "nextTurn" });
-  if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true; 
+  console.log(
+    "📱 [⑥. 手動進行 Trigger] ➔ カチッと手動交代されました！サーバーへ次ターン要求（nextTurn）を発射します。",
+  );
+  socket.emit("playerAction", {
+    roomCode: currentRoomCode,
+    action: "nextTurn",
+  });
+  if (document.getElementById("btn-phone-next"))
+    document.getElementById("btn-phone-next").disabled = true;
 }
 
 document.addEventListener("click", (e) => {
@@ -431,42 +641,67 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   const targetVal = document.getElementById("input-debug-square")?.value.trim();
   const targetSquareId = parseInt(targetVal, 10);
-  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) { alert("0〜99の範囲で入力してください"); return; }
-  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信要求。ターゲットマスID: ${targetSquareId}`);
-  socket.emit("debugWarp", { roomCode: currentRoomCode, targetSquareId: targetSquareId });
+  if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
+    alert("0〜99の範囲で入力してください");
+    return;
+  }
+  console.log(
+    `📱 [PHONE ACTION] 🛠️ デバッグワープ送信要求。ターゲットマスID: ${targetSquareId}`,
+  );
+  socket.emit("debugWarp", {
+    roomCode: currentRoomCode,
+    targetSquareId: targetSquareId,
+  });
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
   console.log("🔍 [DEBUG] checkBranchSquareOnTurnStart 実行開始");
-  
+
   if (document.getElementById("route-select-modal")) {
-    console.log("🛑 [DEBUG 停止理由] route-select-modal が既に存在するためリターン");
+    console.log(
+      "🛑 [DEBUG 停止理由] route-select-modal が既に存在するためリターン",
+    );
     return;
   }
 
-  const currentIdx = syncData && syncData.activePlayerIndex !== undefined ? syncData.activePlayerIndex : activePlayerIndex;
-  const currentPlayers = syncData && syncData.players ? syncData.players : players;
-  
-  console.log(`🔍 [DEBUG] currentIdx: ${currentIdx}, currentPlayers長: ${currentPlayers ? currentPlayers.length : "無し"}`);
-  
+  const currentIdx =
+    syncData && syncData.activePlayerIndex !== undefined
+      ? syncData.activePlayerIndex
+      : activePlayerIndex;
+  const currentPlayers =
+    syncData && syncData.players ? syncData.players : players;
+
+  console.log(
+    `🔍 [DEBUG] currentIdx: ${currentIdx}, currentPlayers長: ${currentPlayers ? currentPlayers.length : "無し"}`,
+  );
+
   if (!currentPlayers || currentPlayers.length === 0) {
     console.log("🛑 [DEBUG 停止理由] currentPlayers が空のためリターン");
     return;
   }
-  
+
   const pObj = currentPlayers[currentIdx];
-  console.log("🔍 [DEBUG] pObj:", pObj, "hasConfirmed:", window.hasConfirmedThisTurn);
+  console.log(
+    "🔍 [DEBUG] pObj:",
+    pObj,
+    "hasConfirmed:",
+    window.hasConfirmedThisTurn,
+  );
 
   if (!pObj) {
     console.log("🛑 [DEBUG 停止理由] pObj が存在しないためリターン");
     return;
   }
   if (window.hasConfirmedThisTurn === true) {
-    console.log("🛑 [DEBUG 停止理由] hasConfirmedThisTurn が true のためリターン");
+    console.log(
+      "🛑 [DEBUG 停止理由] hasConfirmedThisTurn が true のためリターン",
+    );
     return;
   }
   if (Number(pObj.position) !== 0 && Number(pObj.position) !== 49) {
-    console.log(`🛑 [DEBUG 停止理由] position が 0 または 49 ではない (${pObj.position}) ためリターン`);
+    console.log(
+      `🛑 [DEBUG 停止理由] position が 0 または 49 ではない (${pObj.position}) ためリターン`,
+    );
     return;
   }
 
@@ -485,32 +720,65 @@ function checkBranchSquareOnTurnStart(syncData) {
       </div>
     </div>
   `;
-  const playScreenContainer = document.getElementById("phone-screen-play") || document.body;
+  const playScreenContainer =
+    document.getElementById("phone-screen-play") || document.body;
   playScreenContainer.insertAdjacentHTML("beforeend", modalHtml);
 
-  const btnA = document.getElementById("btn-route-a"); const btnB = document.getElementById("btn-route-b"); const btnConfirm = document.getElementById("btn-route-confirm");
+  const btnA = document.getElementById("btn-route-a");
+  const btnB = document.getElementById("btn-route-b");
+  const btnConfirm = document.getElementById("btn-route-confirm");
   let tempSelectedIdx = null;
 
   btnA.onclick = () => {
-    tempSelectedIdx = 0; btnA.style.borderColor = "#00cb75"; btnA.style.background = "#e6f9f1"; btnA.style.color = "#00cb75"; btnB.style.borderColor = "#ddd"; btnB.style.background = "#fff"; btnB.style.color = "#333";
-    btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 0 });
+    tempSelectedIdx = 0;
+    btnA.style.borderColor = "#00cb75";
+    btnA.style.background = "#e6f9f1";
+    btnA.style.color = "#00cb75";
+    btnB.style.borderColor = "#ddd";
+    btnB.style.background = "#fff";
+    btnB.style.color = "#333";
+    btnConfirm.disabled = false;
+    btnConfirm.style.background = "#00cb75";
+    btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", {
+      roomCode: currentRoomCode,
+      selectedRouteIndex: 0,
+    });
   };
   btnB.onclick = () => {
-    tempSelectedIdx = 1; btnB.style.borderColor = "#00cb75"; btnB.style.background = "#e6f9f1"; btnB.style.color = "#00cb75"; btnA.style.borderColor = "#ddd"; btnA.style.background = "#fff"; btnA.style.color = "#333";
-    btnConfirm.disabled = false; btnConfirm.style.background = "#00cb75"; btnConfirm.style.cursor = "pointer";
-    socket.emit("previewRouteSelection", { roomCode: currentRoomCode, selectedRouteIndex: 1 });
+    tempSelectedIdx = 1;
+    btnB.style.borderColor = "#00cb75";
+    btnB.style.background = "#e6f9f1";
+    btnB.style.color = "#00cb75";
+    btnA.style.borderColor = "#ddd";
+    btnA.style.background = "#fff";
+    btnA.style.color = "#333";
+    btnConfirm.disabled = false;
+    btnConfirm.style.background = "#00cb75";
+    btnConfirm.style.cursor = "pointer";
+    socket.emit("previewRouteSelection", {
+      roomCode: currentRoomCode,
+      selectedRouteIndex: 1,
+    });
   };
   btnConfirm.onclick = () => {
     if (tempSelectedIdx === null) return;
     window.hasConfirmedThisTurn = true;
-    console.log(`📱 [2.1 進路確定] ルートインデックス: ${tempSelectedIdx} を選択。ルーレット待機へ。`);
-    socket.emit("confirmRouteSelection", { roomCode: currentRoomCode, chosenRouteIdx: tempSelectedIdx });
+    console.log(
+      `📱 [2.1 進路確定] ルートインデックス: ${tempSelectedIdx} を選択。ルーレット待機へ。`,
+    );
+    socket.emit("confirmRouteSelection", {
+      roomCode: currentRoomCode,
+      chosenRouteIdx: tempSelectedIdx,
+    });
     document.getElementById("route-select-modal")?.remove();
 
     // 確定したのでルーレットボタンを点灯
-    if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-    if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+    if (document.getElementById("btn-phone-spin"))
+      document.getElementById("btn-phone-spin").disabled = false;
+    if (document.getElementById("roulette-result-display"))
+      document.getElementById("roulette-result-display").textContent =
+        "🎯 タップして回そう！";
   };
 }
 
@@ -518,7 +786,11 @@ function loadAndApplySquareComponent(squareId, callback) {
   let currentMode = "normal";
 
   // 1. 既にメモリ上にロード済みであれば即時実行
-  if (window.SQ_MODULES && window.SQ_MODULES[squareId] && window.SQ_MODULES[squareId][currentMode]) {
+  if (
+    window.SQ_MODULES &&
+    window.SQ_MODULES[squareId] &&
+    window.SQ_MODULES[squareId][currentMode]
+  ) {
     if (typeof callback === "function") callback();
     return;
   }
@@ -533,7 +805,10 @@ function loadAndApplySquareComponent(squareId, callback) {
     }, 10);
   };
   script.onerror = (err) => {
-    console.error(`🚨 [LOAD ERROR] /squares/sq_${squareId}.js の読み込みに失敗しました。パスまたは配置を確認してください。`, err);
+    console.error(
+      `🚨 [LOAD ERROR] /squares/sq_${squareId}.js の読み込みに失敗しました。パスまたは配置を確認してください。`,
+      err,
+    );
     if (typeof callback === "function") callback();
   };
   document.head.appendChild(script);
