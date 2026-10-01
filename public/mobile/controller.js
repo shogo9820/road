@@ -312,85 +312,74 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）- フォールバック完全復元版
+    // 🧭 行程④：到着イベント（END_CHECK）- スコープ完全修復版
     // ------------------------------------------------------------------------
-    if (
-      (window.serverCurrentPhase === "4.END_CHECK" ||
-        window.serverCurrentPhase === "END_CHECK") &&
-      !window.isLandedThisTurn
-    ) {
+    if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
       if (currentIdx !== activePlayerIndex) return;
 
       const currentPos = Number(p.position);
 
-      if (
-        window.turnStartPosition !== null &&
-        currentPos === window.turnStartPosition
-      ) {
-        console.log(
-          `📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`,
-        );
+      if (window.turnStartPosition !== null && currentPos === window.turnStartPosition) {
+        console.log(`📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`);
         return;
       }
 
       window.isLandedThisTurn = true;
-      console.log(
-        `📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`,
-      );
+      console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
 
-      if (!targetModule) {
-        console.log(
-          `📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。`,
-        );
-        // 🎯 モジュールが無い場合もイベント完了として次へボタンを点灯させる
-        socket.emit("playerAction", {
-          roomCode: currentRoomCode,
-          action: "squareEventFinished",
-          updatedPlayer: p,
-        });
-        return;
-      }
+      if (typeof loadAndApplySquareComponent === "function") {
+        loadAndApplySquareComponent(currentPos, () => {
+          let currentMode = "normal";
+          // 🎯 1. モジュール定義を取得
+          let targetModule = (window.SQ_MODULES && window.SQ_MODULES[currentPos]) ? window.SQ_MODULES[currentPos][currentMode] : null;
 
-          // 🚀 役職マスの場合
+          // 🎯 2. 個別ファイルが無い場合のフォールバック取得
+          if (!targetModule && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) {
+            targetModule = MAP_SQUARES[currentPos];
+          }
+
+          if (!targetModule) {
+            console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。完了通知を送信します。`);
+            socket.emit("playerAction", {
+              roomCode: currentRoomCode,
+              action: "squareEventFinished",
+              updatedPlayer: p
+            });
+            return;
+          }
+
+          // 🚀 パターンA：役職マスの場合
           if (targetModule.type === "jobChallenge" && targetModule.jobId) {
-            // 🎯 安全に手番プレイヤーオブジェクトを取得
-            const activeP = (players && players[activePlayerIndex]) ? players[activePlayerIndex] : p;
-
-            // 就職済みならスルー
-            if (activeP && activeP.hasJob === true) {
-              console.log(`📱 [役職スキップ] 既に「${activeP.job || "役職"}」に就職済みのためスルー。`);
+            if (p.hasJob === true) {
+              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`);
               socket.emit("playerAction", {
                 roomCode: currentRoomCode,
                 action: "squareEventFinished",
-                updatedPlayer: activeP
+                updatedPlayer: p
               });
               return;
             }
 
             const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
             console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
-            
             if (typeof showJobChoiceDialog === "function") {
-              showJobChoiceDialog(targetModule.jobId, jobName, activeP ? activeP.id : null);
+              showJobChoiceDialog(targetModule.jobId, jobName, p.id);
             }
+          } 
+          // 🚀 パターンB：特殊マスの場合
+          else if (typeof targetModule.event === "function") {
+            console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
+            targetModule.event(p, targetModule);
+          } 
+          // 🚀 パターンC：通常マスの場合
+          else {
+            console.log(`📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`);
+            socket.emit("playerAction", {
+              roomCode: currentRoomCode,
+              action: "squareEventFinished",
+              updatedPlayer: p
+            });
           }
-      // 🚀 特殊マスの場合
-      else if (typeof targetModule.event === "function") {
-        console.log(
-          `📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`,
-        );
-        targetModule.event(p, targetModule);
-      }
-      // 🚀 通常マスの場合
-      else {
-        console.log(
-          `📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`,
-        );
-        // 🎯 【重要追記】サーバーへ完了通知を送り、次へボタンを点灯させる！
-        socket.emit("playerAction", {
-          roomCode: currentRoomCode,
-          action: "squareEventFinished",
-          updatedPlayer: p,
         });
       }
     }
