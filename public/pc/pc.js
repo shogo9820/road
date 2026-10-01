@@ -192,9 +192,9 @@ function appendSocketListeners() {
       const membersEl = document.getElementById("pc-kanpai-members");
       const locationEl = document.getElementById("pc-kanpai-location");
 
-      if (titleEl) titleEl.textContent = "🌸 ミス龍大（美人）入学歓迎！ 🌸";
+      if (titleEl) titleEl.textContent = "🌸 美人さん大歓迎！ 🌸";
       if (membersEl) membersEl.textContent = `👤 ${data.playerName} を囲むサークル員一同`;
-      if (locationEl) locationEl.textContent = "美人にモテたい気持ち";
+      if (locationEl) locationEl.textContent = "美人にモテたいの";
 
       // 🎯 インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
