@@ -49,26 +49,26 @@ const MAP_SQUARES = [
   { id: 18, type: "force_stop", text: "【強制ストップマス】入学式", mode: "all", nextId: [19]},
   
   { id: 19, type: "normal", text: "【新歓】UKさんごめんなさい。", mode: "all", nextId: [20] },
-  { id: 20, type: "location", text: "【新歓】まる。この前お母さんが料理に使ってました。", mode: "all", nextId: [21] },
+  { id: 20, type: "normal", text: "【新歓】まる。この前お母さんが料理に使ってました。", mode: "all", nextId: [21] },
   { id: 21, type: "normal", text: "【夏合宿】バス飲みおもろすぎ！", mode: "all", nextId: [22] },
   { id: 22, type: "normal", text: "【夏合宿】泊りの飲み会最高やね！", mode: "all", nextId: [23] },
-  { id: 23, type: "location", text: "いつまで一緒におんねん", mode: "all", nextId: [24] },
+  { id: 23, type: "normal", text: "いつまで一緒におんねん", mode: "all", nextId: [24] },
   { id: 24, type: "normal", text: "龍大カップで飲むな！", mode: "all", nextId: [25] },
   { id: 25, type: "normal", text: "【秋キャン】パックワイン不味すぎやせんか？？", mode: "all", nextId: [26] },
   { id: 26, type: "normal", text: "【秋キャン】昼に黒潮市場でビールま？？", mode: "all", nextId: [27] },
-  { id: 27, type: "location", text: "【龍祭】龍祭乙飲みはももじが良いに決まっている。", mode: "all", nextId: [28]},
+  { id: 27, type: "normal", text: "【龍祭】龍祭乙飲みはももじが良いに決まっている。", mode: "all", nextId: [28]},
   { id: 28, type: "normal", text: "リア充は爆発しろ！", mode: "all", nextId: [29]},
   { id: 29, type: "normal", text: "【忘年会】忘れる記憶あんま無くて草", mode: "all", nextId: [30]},
   // 🎯 【30番マス】あなたのマスターデータの型と完璧に一致させます
   { id: 30, type: "force_stop", text: "【強制ストップ】生命保険購入", mode: "all", nextId: [31]},
   
-  { id: 31, type: "location", text: "金麦大でかすぎて草！死ぬぅ！", mode: "all", nextId: [32]},
+  { id: 31, type: "normal", text: "金麦大でかすぎて草！死ぬぅ！", mode: "all", nextId: [32]},
   { id: 32, type: "normal", text: "【冬合宿】悲報、さーもんず壊れる", mode: "all", nextId: [33]},
   { id: 33, type: "normal", text: "新入生0人の新歓キャンプ", mode: "all", nextId: [34]},
-  { id: 34, type: "location", text: "【新歓】お花見！いや、もも見やろ！", mode: "all", nextId: [35]},
+  { id: 34, type: "normal", text: "【新歓】お花見！いや、もも見やろ！", mode: "all", nextId: [35]},
   { id: 35, type: "normal", text: "", mode: "all", nextId: [36]},
   { id: 36, type: "normal", text: "", mode: "all", nextId: [37]},
-  { id: 37, type: "location", text: "空前のたったブーム襲来", mode: "all", nextId: [38]},
+  { id: 37, type: "normal", text: "空前のたったブーム襲来", mode: "all", nextId: [38]},
   { id: 38, type: "normal", text: "第一回太江寺、龍の鉤爪！", mode: "all", nextId: [39]},
   { id: 39, type: "normal", text: "おかみさんに障子を破ったことがばれる。10,000円罰金", mode: "all", nextId: [40]},
   { id: 40, type: "normal", text: "サントロペにて救急車で運ばれる", mode: "all", nextId: [41]},
@@ -76,7 +76,7 @@ const MAP_SQUARES = [
   // 🎯 【41番マス】あなたのマスターデータの型と完璧に一致させます
   { id: 41, type: "force_stop", text: "【強制ストップ】カップル成立！？", mode: "all", nextId: [42]},
   
-  { id: 42, type: "location", text: "ばおわ合致で", mode: "all", nextId: [43]},
+  { id: 42, type: "normal", text: "ばおわ合致で", mode: "all", nextId: [43]},
   { id: 43, type: "normal", text: "", mode: "all", nextId: [44]},
   { id: 44, type: "normal", text: "", mode: "all", nextId: [45]},
   { id: 45, type: "normal", text: "", mode: "all", nextId: [46]},
@@ -100,7 +100,7 @@ const MAP_SQUARES = [
 
   // 激おもろ一生の思い出ルート
   { id: 59, type: "normal", text: "【夏合宿】オレンジジュース取ってごめんなさい。", mode: "all", nextId: [60]},
-  { id: 60, type: "location", text: "琵琶湖終わりのHAMIKIN", mode: "all", nextId: [61]},
+  { id: 60, type: "normal", text: "琵琶湖終わりのHAMIKIN", mode: "all", nextId: [61]},
   { id: 61, type: "normal", text: "", mode: "all", nextId: [62]},
   { id: 62, type: "normal", text: "", mode: "all", nextId: [63]},
   { id: 63, type: "normal", text: "", mode: "all", nextId: [64]},
@@ -128,7 +128,7 @@ const MAP_SQUARES = [
   { id: 84, type: "normal", text: "【龍祭】ガイモン参上！", mode: "all", nextId: [85]},
   { id: 85, type: "normal", text: "【忘年会】まんぱんまんぱんゲーム！", mode: "all", nextId: [86]},
   { id: 86, type: "heal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", mode: "all", nextId: [87]},
-  { id: 87, type: "location", text: "【追いコン】みんな今までありがとう！全員で乾杯！", mode: "all", nextId: [88]},
+  { id: 87, type: "normal", text: "【追いコン】みんな今までありがとう！全員で乾杯！", mode: "all", nextId: [88]},
   { id: 88, type: "normal", text: "単位が足りない！？そんなの関係ねぇ！", mode: "all", nextId: [89]},
   
   { id: 89, type: "force_stop", text: "【卒業!?留年!?】ドキドキ！運命のルーレット！", mode: "all", nextId: [90, 99]},
@@ -156,7 +156,7 @@ const MAP_SQUARES = [
   // { id: 84, type: "normal", text: "【龍祭】ガイモン参上！", drink: 1, degree: 13, location: "家", mode: "all", nextId: [85] },
   // { id: 85, type: "normal", text: "【忘年会】まんぱんまんぱんゲーム！", drink: 1, degree: 13, location: "家", mode: "all", nextId: [86] },
   // { id: 86, type: "heal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", drink: 0, degree: -100, location: "家", mode: "all", nextId: [87] },
-  // { id: 87, type: "location", text: "【追いコン】みんな今までありがとう！全員で乾杯！", drink: 1, degree: 25, location: "Qoo", mode: "all", nextId: [88] },
+  // { id: 87, type: "normal", text: "【追いコン】みんな今までありがとう！全員で乾杯！", drink: 1, degree: 25, location: "Qoo", mode: "all", nextId: [88] },
   // { id: 88, type: "normal", text: "単位が足りない！？そんなの関係ねぇ！", drink: 1, degree: 40, location: "家", mode: "all", nextId: [89] },
   
   // // ルーレットで指定の出目を出せたらゴール、出せなかったら隠し留年ルートへ進む
