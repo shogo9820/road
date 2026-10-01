@@ -30,9 +30,9 @@ const MAP_SQUARES = [
   { id: 2, type: "jobChallenge", text: "【役職マス】美人", jobId: "bijin", mode: "all", nextId: [3] },
   { id: 3, type: "jobChallenge", text: "【役職マス】サッカーキャラ", jobId: "soccer", mode: "all", nextId: [4] },
   { id: 4, type: "jobChallenge", text: "【役職マス】モブ", jobId: "mob", mode: "all", nextId: [5] },
-  { id: 5, type: "jobChallenge", text: "【役職マス】イケメン", jobId: "ikemen", mode: "all", nextId: [6] },
+  { id: 5, type: "jobChallenge", text: "【役職マス】サッカーキャラ", jobId: "soccer", mode: "all", nextId: [6] },
   { id: 6, type: "jobChallenge", text: "【役職マス】ブサイク", jobId: "busaiku", mode: "all", nextId: [7] },
-  { id: 7, type: "jobChallenge", text: "【役職マス】サッカーキャラ", jobId: "soccer", mode: "all", nextId: [18] },
+  { id: 7, type: "jobChallenge", text: "【役職マス】美人", jobId: "bijin", mode: "all", nextId: [18] },
 
   // 来るもの拒まずルート
   { id: 8, type: "jobChallenge", text: "【役職マス】沖縄出身", jobId: "okinawa", mode: "all", nextId: [9] },
