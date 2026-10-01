@@ -300,6 +300,22 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // 🎯 2. 手番本人の開始時フェーズのみ分岐モーダルまたはスピン待機を実行
     if (isStartPhase && currentIdx === activePlayerIndex) {
+      // 🎓 【89番マス特設】卒業判定マスにいるターン開始時（150msバッファ直撃送信）
+      if (pos === 89 && !p.isRepeat) {
+        console.log("📱 [89番マス] 運命の卒業判定を検知。150ms後に独立信号 showGraduateEvent を直撃送信！");
+        
+        // メインルーレットをロック
+        if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
+
+        setTimeout(() => {
+          socket.emit("showGraduateEvent", {
+            roomCode: currentRoomCode,
+            playerName: p.name
+          });
+          openGraduateSpinModal();
+        }, 150);
+        return;
+      }
       if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
         console.log("📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を実行します。");
         checkBranchSquareOnTurnStart(data);
@@ -800,3 +816,64 @@ function loadAndApplySquareComponent(squareId, callback) {
   };
   document.head.appendChild(script);
 }
+
+// 🎓 手元モーダルを展開
+function openGraduateSpinModal() {
+  const modal = document.getElementById("mobile-couple-event-modal");
+  if (!modal) return;
+
+  const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+  if (titleEl) titleEl.innerHTML = "🎓 運命の卒業判定 🎓";
+
+  const descEl = modal.querySelector(".couple-desc");
+  if (descEl) descEl.innerHTML = "出目 6以上でストレート卒業GOAL！<br>5以下は地獄の留年ルート突入！";
+
+  const btnSpin = document.getElementById("btn-couple-spin");
+  if (btnSpin) {
+    btnSpin.style.display = "block";
+    btnSpin.textContent = "⚡ 卒業判定ルーレットを回す！";
+    btnSpin.disabled = false;
+
+    btnSpin.onclick = () => {
+      btnSpin.disabled = true;
+      socket.emit("requestGraduateSpin", { roomCode: currentRoomCode });
+    };
+  }
+  modal.style.display = "flex";
+}
+
+// 🌸 合格時：交代ボタンのみ点灯
+socket.on("showGraduateNextButton", (data) => {
+  const modal = document.getElementById("mobile-couple-event-modal");
+  if (modal) modal.style.display = "none";
+
+  if (document.getElementById("roulette-result-display")) {
+    document.getElementById("roulette-result-display").textContent = `🌸 ${data.message}`;
+  }
+  const btnNext = document.getElementById("btn-phone-next");
+  if (btnNext) btnNext.disabled = false;
+});
+
+// 💀 留年時：手元もダークルーレットに変身させて通常スピンを復活！
+socket.on("graduateFailedRepeat", (data) => {
+  const modal = document.getElementById("mobile-couple-event-modal");
+  if (modal) modal.style.display = "none";
+
+  alert(data.message);
+
+  // 手元画面もダークモード化
+  document.body.classList.add("theme-repeat-dark");
+
+  const spinBtn = document.getElementById("btn-phone-spin");
+  if (spinBtn) {
+    spinBtn.disabled = false;
+    spinBtn.textContent = "💀 留年ルートへ進む！";
+    spinBtn.style.background = "linear-gradient(135deg, #4a148c 0%, #000000 100%)";
+    spinBtn.style.color = "#ff80ab";
+    spinBtn.style.border = "2px solid #ea80fc";
+  }
+
+  if (document.getElementById("roulette-result-display")) {
+    document.getElementById("roulette-result-display").textContent = "💀 5年生編スタート...";
+  }
+});

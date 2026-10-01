@@ -131,3 +131,24 @@
 .event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
 .event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
 .event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }
+
+/* ==========================================================================
+   💀 留年確定時：地獄のダークモード演出スタイル
+   ========================================================================== */
+body.theme-repeat-dark {
+  background-color: #120b18 !important;
+  color: #e1bee7 !important;
+  transition: background-color 1.5s ease;
+}
+
+body.theme-repeat-dark .map-card-maximized,
+body.theme-repeat-dark .card,
+body.theme-repeat-dark .phone-card {
+  background: #1e1226 !important;
+  border-color: #6a1b9a !important;
+  box-shadow: 0 0 25px rgba(106, 27, 154, 0.4) !important;
+}
+
+body.theme-repeat-dark #board-canvas {
+  filter: drop-shadow(0 0 10px #7b1fa2) contrast(1.1);
+}

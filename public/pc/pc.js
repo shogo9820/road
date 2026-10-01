@@ -330,6 +330,88 @@ function appendSocketListeners() {
       }, 3000);
     }, 3000);
   });
+
+    // 🎓 1. 卒業判定モーダルの展開
+  socket.on("showGraduateEvent", (data) => {
+    console.log(`💻 [PC 卒業判定展開] プレイヤー: ${data.playerName}`);
+    isPCEventMode = true;
+
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.className = "event-modal-overlay active theme-rankup";
+      pcModal.style.display = "flex";
+    }
+
+    const titleEl = document.getElementById("modal-event-title");
+    if (titleEl) titleEl.textContent = "🎓 運命の卒業判定 🎓";
+
+    const descEl = document.getElementById("modal-event-desc");
+    if (descEl) descEl.textContent = "出目 6以上でストレート卒業GOAL！5以下は地獄の留年ルート突入！";
+
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (modalResultBox) modalResultBox.style.display = "none";
+
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    if (dynamicTableZone) {
+      dynamicTableZone.innerHTML = `
+        <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定基準</div>
+        <ul class="event-table-list">
+          <li class="event-table-item"><div class="event-table-num-badge" style="background:#4caf50;">6〜10</div><div><span style="color:#2e7d32; font-weight:bold;">🌸 合格！99番マス(GOAL)へ瞬間ワープ！</span></div></li>
+          <li class="event-table-item"><div class="event-table-num-badge" style="background:#f44336;">1〜5</div><div><span style="color:#c62828; font-weight:bold;">💀 留年... 隠し留年ルート(90〜98)へ突入！</span></div></li>
+        </ul>
+      `;
+    }
+  });
+
+  // 🎓 2. 卒業ルーレット回転
+  socket.on("spinGraduateRoulette", (data) => {
+    console.log(`💻 [PC 卒業ルーレット回転] 出目: ${data.result}`);
+    executeSyncedRoulette(data.result);
+  });
+
+  // 🌸 3. 合格：ゴール特大祝賀演出
+  socket.on("triggerGoalCelebration", (data) => {
+    isPCEventMode = false;
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) pcModal.style.display = "none";
+
+    // 乾杯モーダルをゴール祝賀用に流用表示
+    const kanpaiModal = document.getElementById("pc-kanpai-modal");
+    if (kanpaiModal) {
+      const titleEl = kanpaiModal.querySelector(".kanpai-header");
+      const membersEl = document.getElementById("pc-kanpai-members");
+      const locationEl = document.getElementById("pc-kanpai-location");
+
+      if (titleEl) titleEl.textContent = "🎉 祝・大学卒業ゴール！！！ 🎉";
+      if (membersEl) membersEl.textContent = `🎓 ${data.player.name} が見事ストレート卒業達成！`;
+      if (locationEl) locationEl.textContent = "社会への第一歩";
+
+      kanpaiModal.style.display = "flex";
+    }
+
+    // 盤面再描画（99番マスへピンワープ）
+    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+  });
+
+  // 💀 4. 留年：画面ダークモード化（暗黒演出）
+  socket.on("applyRepeatDarkTheme", (data) => {
+    isPCEventMode = false;
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) pcModal.style.display = "none";
+
+    console.log(`💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`);
+    // 画面全体にダーククラスを付与
+    document.body.classList.add("theme-repeat-dark");
+    
+    // イベントメッセージ更新
+    if (document.getElementById("event-text")) {
+      document.getElementById("event-text").innerHTML = 
+        `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
+    }
+
+    // 留年ルート開通による盤面再描画
+    if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -539,8 +621,12 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
+      // pc.js の executeSyncedRoulette 内の moveTimer 内部
       const nextIdArray = currentSquare.nextId;
-      if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
+      if (Number(p.position) === 89 && p.isRepeat) {
+        // 🎯 留年フラグがある時は強制的に 90番マス（留年ルート）へ！
+        p.position = 90;
+      } else if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
         p.position = Number(
           nextIdArray[
             p.chosenRouteIdx !== undefined && p.chosenRouteIdx !== null

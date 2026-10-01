@@ -169,13 +169,31 @@ io.on("connection", (socket) => {
     if (!roomCode || !rooms[roomCode]) return;
     const room = rooms[roomCode];
 
-    // 🧭 【基本ルーティン：行程①＆⑥】手動で「次のプレイヤーへ」がカチッとタップされた瞬間
+    // 🧭 【基本ルーティン：行程①＆⑥】手動で「次のプレイヤーへ」がタップされた瞬間
     if (data.action === "nextTurn") {
       if (room.gamePlayers && room.gamePlayers.length > 0) {
-        room.activePlayerIndex = (room.activePlayerIndex + 1) % room.gamePlayers.length;
+        // 🎯 ゴールしていないプレイヤーを探す（最大プレイヤー数分ループ）
+        let nextIdx = room.activePlayerIndex;
+        let found = false;
+        for (let i = 0; i < room.gamePlayers.length; i++) {
+          nextIdx = (nextIdx + 1) % room.gamePlayers.length;
+          if (!room.gamePlayers[nextIdx].hasFinished) {
+            found = true;
+            break;
+          }
+        }
+
+        // 全員ゴールしていたらゲーム終了
+        if (!found) {
+          console.log("\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！");
+          io.to(roomCode).emit("gameAllFinished");
+          return;
+        }
+
+        room.activePlayerIndex = nextIdx;
         const nextPlayer = room.gamePlayers[room.activePlayerIndex];
 
-        room.currentPhase = "1-2.START_CHECK"; // 🎯 1.新ターン開始 ➔ 2.開始時イベント確認へ
+        room.currentPhase = "1-2.START_CHECK";
 
         console.log(`\n=========================================`);
         console.log(`🚨 [SERVER] ➔ 1. 新ターン開始 (手番: ${nextPlayer.name} さん)`);
@@ -195,7 +213,7 @@ io.on("connection", (socket) => {
           currentPhase: room.currentPhase
         });
       }
-    } 
+    }
     else if (data.action === "squareEventFinished") {
       room.currentPhase = "6.WAIT_NEXT";
 
@@ -253,6 +271,78 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("openBijinKanpaiModal", data);
   });
 
+    // ==========================================================================
+  // 🎓 【89番マス：運命の卒業判定】サーバー制御部
+  // ==========================================================================
+  // 1. PC大画面・スマホへ卒業判定モーダル展開指示
+  socket.on("showGraduateEvent", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    io.to(roomCode).emit("showGraduateEvent", data);
+  });
+
+  // 2. 卒業判定スピン要求
+  socket.on("requestGraduateSpin", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const resultNum = Math.floor(Math.random() * 10) + 1;
+    const isPass = (resultNum >= 6);
+    const p = room.gamePlayers[room.activePlayerIndex];
+
+    console.log(`\n🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格(ストレートGOAL)" : "💀 留年(地獄ルート開通)"}`);
+
+    // PC・スマホへ回転指示
+    io.to(roomCode).emit("spinGraduateRoulette", {
+      result: resultNum,
+      isPass: isPass
+    });
+
+    // 演出完了（3.5秒後）に結果を確定
+    setTimeout(() => {
+      if (isPass) {
+        // 🌸 6以上：合格（ストレートGOAL）
+        p.position = 99;
+        p.location = "㊗️ 卒業式(GOAL)";
+        p.hasFinished = true; // 🎯 ゴールフラグ（手番巡回から除外）
+        room.currentPhase = "6.WAIT_NEXT";
+
+        // ゴール演出をPCへ通知
+        io.to(roomCode).emit("triggerGoalCelebration", {
+          player: p,
+          result: resultNum
+        });
+
+        // スマホ側は交代ボタンのみ点灯
+        io.to(roomCode).emit("showGraduateNextButton", {
+          message: `出目: ${resultNum} ➔ 見事単位取得！ストレート卒業GOAL！`
+        });
+      } else {
+        // 💀 5以下：留年
+        p.isRepeat = true; // 🎯 留年フラグ
+        p.location = "留年（5年生）";
+        room.currentPhase = "1-2.START_CHECK"; // 通常移動できる状態に戻す
+
+        // PC側をダークモード化＆留年ルート開通
+        io.to(roomCode).emit("applyRepeatDarkTheme", {
+          playerId: p.id,
+          playerName: p.name
+        });
+
+        // スマホ側へ絶望ルーレット復活指示
+        io.to(roomCode).emit("graduateFailedRepeat", {
+          message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`
+        });
+      }
+
+      // 全員へ最新状態を同期
+      io.to(roomCode).emit("syncGameState", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
+        currentPhase: room.currentPhase
+      });
+    }, 3500);
+  });
 
   // ==========================================================================
   // 🎯 【汎用イベントルーレット】1回回して出目テーブルで決着する汎用パイプライン
