@@ -351,30 +351,29 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 🚀 役職マスの場合
-      if (targetModule.type === "jobChallenge" && targetModule.jobId) {
-        if (p.hasJob === true) {
-          console.log(
-            `📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`,
-          );
-          socket.emit("playerAction", {
-            roomCode: currentRoomCode,
-            action: "squareEventFinished",
-            updatedPlayer: p,
-          });
-          return;
-        }
+          // 🚀 役職マスの場合
+          if (targetModule.type === "jobChallenge" && targetModule.jobId) {
+            // 🎯 安全に手番プレイヤーオブジェクトを取得
+            const activeP = (players && players[activePlayerIndex]) ? players[activePlayerIndex] : p;
 
-        const jobName = targetModule.text
-          ? targetModule.text.replace(/【役職マス】/g, "").trim()
-          : "新しい役職";
-        console.log(
-          `📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`,
-        );
-        if (typeof showJobChoiceDialog === "function") {
-          showJobChoiceDialog(targetModule.jobId, jobName, p.id);
-        }
-      }
+            // 就職済みならスルー
+            if (activeP && activeP.hasJob === true) {
+              console.log(`📱 [役職スキップ] 既に「${activeP.job || "役職"}」に就職済みのためスルー。`);
+              socket.emit("playerAction", {
+                roomCode: currentRoomCode,
+                action: "squareEventFinished",
+                updatedPlayer: activeP
+              });
+              return;
+            }
+
+            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
+            console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
+            
+            if (typeof showJobChoiceDialog === "function") {
+              showJobChoiceDialog(targetModule.jobId, jobName, activeP ? activeP.id : null);
+            }
+          }
       // 🚀 特殊マスの場合
       else if (typeof targetModule.event === "function") {
         console.log(
