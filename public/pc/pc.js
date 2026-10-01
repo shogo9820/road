@@ -740,10 +740,26 @@ function loadAndApplySquareComponent(squareId, callback) {
 
 socket.on("applyPlayerAction", (data) => {
   if (data && data.action === "turnUpdated") {
+    console.log("💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。");
     isPCEventMode = false;
-    if (document.getElementById("pc-kanpai-modal"))
-      document.getElementById("pc-kanpai-modal").style.display = "none";
-    if (document.getElementById("pc-event-modal"))
-      document.getElementById("pc-event-modal").style.display = "none";
+
+    // 🎯 1. 判定ルーレット・イベントモーダルを完全に閉じる
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.style.display = "none";
+      pcModal.classList.remove("active");
+    }
+
+    // 🎯 2. 乾杯モーダルを閉じる
+    const kanpaiModal = document.getElementById("pc-kanpai-modal");
+    if (kanpaiModal) {
+      kanpaiModal.style.display = "none";
+    }
+
+    // 🎯 3. カップルイベントモーダル（個別要素がある場合）を閉じる
+    const coupleModal = document.getElementById("pc-couple-event-modal");
+    if (coupleModal) {
+      coupleModal.style.display = "none";
+    }
   }
 });

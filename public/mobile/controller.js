@@ -59,19 +59,21 @@ window.addEventListener("DOMContentLoaded", () => {
       window.hasConfirmedThisTurn = false;
       window.isLandedThisTurn = false;
       
-      // 🎯 ターン開始時のマス位置を記憶（移動前の誤着火を完全防止）
       const curP = players[data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex];
       window.turnStartPosition = curP ? Number(curP.position) : null;
-
       activePlayerIndex = data.activePlayerIndex !== undefined ? data.activePlayerIndex : activePlayerIndex;
-      // （以下、既存の処理）
+
+      // 🎯 手元のアクティブモーダルを全消去
+      document.getElementById("job-modal-overlay") && (document.getElementById("job-modal-overlay").style.display = "none");
+      document.getElementById("mobile-couple-event-modal") && (document.getElementById("mobile-couple-event-modal").style.display = "none");
+      document.getElementById("route-select-modal")?.remove();
+
       console.log(`\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`);
 
       if (document.getElementById("current-player-banner")) {
         document.getElementById("current-player-banner").textContent = `TURN: ${data.activePlayerName || "プレイヤー"}`;
       }
       
-      // 🔒 【重要】開始時イベント（分岐選択等）があるか確認するまで、ルーレットも次へも両方ロック！
       if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
       if (document.getElementById("btn-phone-next")) document.getElementById("btn-phone-next").disabled = true;
       if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "進路を選択してください";
