@@ -522,6 +522,69 @@ function appendSocketListeners() {
     if (window.boardManager)
       window.boardManager.draw(players, activePlayerIndex);
   });
+
+    // 🎯 【新設】デバッグワープ受信時、本番の着地関数（finalizeMovement）を強制的に起動してルーティンに合流させる
+  socket.on("debugWarpTriggered", (data) => {
+    console.log(`💻 [PC DEBUG-WARP-TRIGGER] マスID: ${data.targetSquareId} への強制着地リレーを起動！通常の基本ルーティンに合流します。`);
+    
+    // 既存の executeSyncedRoulette 内にある本番の着地完了処理（finalizeMovement）を、
+    // まったく同じ変数・状態のままここで直接キックして一本道リレーに強制合流させます！
+    const p = players[activePlayerIndex];
+    if (p) {
+      p.position = Number(data.targetSquareId);
+      
+      // executeSyncedRoulette の中に直書きされている、あの乾杯判定や動的ロードが詰まった
+      // 本物の「finalizeMovement」を名前を直接指定してここで実行！
+      if (typeof executeSyncedRoulette === "function") {
+        // 通常の3秒タイマーを待たずに、一瞬で着地確定シーケンスへ流し込むため、
+        // 既存の処理をそのまま再現、または直接 finalizeMovement ルーチンを走らせます。
+        loadAndApplySquareComponent(p.position, () => {
+          let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+          let currentMode = "normal";
+          let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+
+          const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+          p.location = detectedLocation;
+
+          if (targetSquare && typeof applySquareEffects === "function") {
+            applySquareEffects(p, targetSquare);
+          }
+
+          if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+          updateCurrentPlayerDisplay();
+
+          // 🍻 【ここで本物の同じ場所乾杯判定が100%確実に発火！】
+          if (p.location && p.location !== "家" && p.location !== "スタート前") {
+            const samePlaceBuddies = players
+              .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
+              .map(otherP => otherP.name);
+
+            if (samePlaceBuddies.length > 0) {
+              const allKanpaiMembers = [p.name, ...samePlaceBuddies];
+              socket.emit("triggerKanpaiEvent", {
+                roomCode: roomCode,
+                members: allKanpaiMembers.join("と"),
+                location: p.location,
+                title: "🍻 特大乾杯イベント発生！ 🍻"
+              });
+            }
+          }
+
+          if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+
+          // 最新状態を確定させてサーバーへ送信
+          triggerDelayedDisplay(1, targetSquare || targetModule || { text: "通常マス", location: p.location });
+
+          // サーバーへ「目的地に着地完了（squareLanded）」を送信して 4.END_CHECK を正規にキック！
+          socket.emit("squareLanded", {
+            roomCode: roomCode,
+            position: p.position
+          });
+        });
+      }
+    }
+  });
+
 }
 
 document.addEventListener("DOMContentLoaded", () => {

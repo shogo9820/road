@@ -542,7 +542,9 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能・完全独立型】場所情報ダイレクト梱包型・強制ワープエンジン
+  // 🛠️ 【デバッグ機能：一本道リレー合流版】強制ワープ＆通常着地シーケンス起動
+  // サーバー側で勝手にフェーズを進めず、通常移動中(MOVING)として同期電波を発射！
+  // PC側に通常ルーレットでそのマスに今まさに着地した瞬間の動きを強制再現させます。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -550,21 +552,24 @@ io.on("connection", (socket) => {
     if (room && room.gamePlayers && room.gamePlayers.length > 0) {
       const p = room.gamePlayers[room.activePlayerIndex];
       const targetId = parseInt(data.targetSquareId, 10);
-
-      // 🎯 スマホから送られてきた正確な場所名（data.location）を最優先で採用！
-      let targetLoc = data.location || "家";
-      if (!data.location && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
-        targetLoc = MAP_SQUARES[targetId].location || "家";
-      }
+      const targetLoc = data.location || "家";
 
       if (p && !isNaN(targetId)) {
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番 ➔ ${targetId}番マス（指定場所: ${targetLoc}）へ強制移動。`);
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${targetId}番マス（場所: ${targetLoc}）へ合流ワープ。`);
         
+        // 1. サーバー側の座標と場所を書き換え
         p.position = targetId;
-        p.location = targetLoc; // 🎯 サーバーのメモリに「宅飲み」を確実に保存！
+        p.location = targetLoc;
         
-        room.currentPhase = "4.END_CHECK";
+        // 2. 🎯 通常の移動中と同じ「MOVING」フェーズをセット！
+        room.currentPhase = "MOVING";
 
+        // 3. 特殊な独立電波「debugWarpTriggered」をPC大画面へ直撃発射して着地処理をキックさせる！
+        io.to(roomCode).emit("debugWarpTriggered", {
+          targetSquareId: targetId
+        });
+
+        // 4. 全員へ同期
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
