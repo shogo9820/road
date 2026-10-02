@@ -399,13 +399,36 @@ io.on("connection", (socket) => {
   });
 
 
-    // 🎯 【一本道リレー：行程④】PC側でピンが目的地に着地した合図を受信
+  // ==========================================================================
+  // 🧭 【基本ルーティン：行程④】目的地着地完了（squareLanded）の受信用ハブ
+  // 通常プレイ時はPCの着地報告を受け取るだけですが、デバッグワープ等で直接マスID（position）が
+  // 送られてきた場合は、サーバーが位置と場所を直接書き換えて「4.END_CHECK」へ強制合流させます！
+  // ==========================================================================
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      room.currentPhase = "4.END_CHECK"; // 🎯 到着確認フェーズへ更新！
-      console.log(`\n🚨 [SERVER] ➔ 4. 目的地着地完了を検知。フェーズ: ${room.currentPhase} を全員へ配信！`);
+      // 🎯 【デバッグワープ・直撃合流処理】
+      if (data && data.position !== undefined) {
+        const p = room.gamePlayers[room.activePlayerIndex];
+        if (p) {
+          const targetId = parseInt(data.position, 10);
+          p.position = targetId;
+          
+          // マスタから最新の場所名（location）を自動で引っ張る（無ければスマホ側から届いた場所か「家」）
+          let detectedLoc = data.location || "家";
+          if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
+            detectedLoc = MAP_SQUARES[targetId].location || "家";
+          }
+          p.location = detectedLoc;
+          
+          console.log(`\n🛠️ [SERVER DEBUG-WARP] 既存の着地完了ハブ(squareLanded)をデバッグ直撃！`);
+          console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${targetId}番マス（場所: ${p.location}）へ瞬間移動。`);
+        }
+      }
+
+      room.currentPhase = "4.END_CHECK"; // 🎯 どんなルートから来ても、100%確実に到着確認フェーズへ！
+      console.log(`🚨 [SERVER] ➔ 4. 目的地着地完了を検知。フェーズ: ${room.currentPhase} を全員へ配信！\n`);
 
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,

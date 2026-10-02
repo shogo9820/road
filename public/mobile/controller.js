@@ -638,7 +638,7 @@ function sendNextTurn() {
     document.getElementById("btn-phone-next").disabled = true;
 }
 
-// 🛠️ 【デバッグ機能：完全修正版】未ロードのマスでも強制先読みして本物の場所名でワープさせる
+// 🛠 Honor Debug-Warp：既存の本番着地ハブ（squareLanded）へデータを乗せて直接弾き込む！
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
@@ -650,28 +650,25 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // 🎯 ワープ前にそのマスの個別ファイルを裏で強制的に先読みロードさせる！
+  // スマホ側の先読みモジュールから「本物の場所名（宅飲みなど）」を取得
   if (typeof loadAndApplySquareComponent === "function") {
-    console.log(`📱 [🛠️ デバッグ先読み] マスID: ${targetSquareId} の個別ファイルを先読み中...`);
-    
     loadAndApplySquareComponent(targetSquareId, () => {
-      let debugLocation = "家"; // デフォルト
+      let debugLocation = "家";
       let currentMode = "normal";
       
-      // 先読みが完了したため、100%確実に sq_23.js 内の「宅飲み」を正確に引き抜ける！
       if (window.SQ_MODULES && window.SQ_MODULES[targetSquareId] && window.SQ_MODULES[targetSquareId][currentMode]) {
         debugLocation = window.SQ_MODULES[targetSquareId][currentMode].location || "家";
       } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetSquareId]) {
         debugLocation = MAP_SQUARES[targetSquareId].location || "家";
       }
 
-      console.log(`📱 [PHONE ACTION] 🛠️ 先読み解決成功。ターゲットマスID: ${targetSquareId}, 場所: ${debugLocation}`);
+      console.log(`📱 [🛠️ デバッグ直撃発信] マスID: ${targetSquareId} / 場所: ${debugLocation} を本番着地ハブへ送信します。`);
       
-      // 完全に正しい場所名を梱包してサーバーへ発射！
-      socket.emit("debugWarp", {
+      // 🎯 【重要】余計なデバッグ用イベント名を全廃！サーバーの通常着地完了(squareLanded)へ直接パッキングして直撃！
+      socket.emit("squareLanded", {
         roomCode: currentRoomCode,
-        targetSquareId: targetSquareId,
-        location: debugLocation
+        position: targetSquareId, // サーバー側にこのマスへの移動を強制認識させる
+        location: debugLocation   // 最新の正しい場所名
       });
     });
   }
