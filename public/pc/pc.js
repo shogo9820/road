@@ -837,20 +837,25 @@ function executeSyncedRoulette(resultNum) {
     }
   }, 3000);
 }
+// 🎯 【確定版】プレイヤーの最新ステータス（現在地含む）をサーバーへ確実に同期する関数
 function triggerDelayedDisplay(resultNum, targetSquare) {
-  if (!targetSquare) return;
   const p = players[activePlayerIndex];
   if (!p) return;
   
-  // 🎯 p.location が空なら targetSquare.location を補完
-  if (!p.location && targetSquare.location) {
-    p.location = targetSquare.location;
-  }
+  // 個別モジュール（sq_X.js）から場所を割り出すための補完
+  const squareText = targetSquare ? (targetSquare.text || "通常マス") : "通常マス";
+  const squareLocation = p.location || (targetSquare ? (targetSquare.location || "家") : "家");
+  
+  // プレイヤー側の location も確実に同期用に確定させる
+  p.location = squareLocation;
 
-  if (document.getElementById("event-text"))
+  // 大画面中央のイベントテキストを更新
+  if (document.getElementById("event-text")) {
     document.getElementById("event-text").innerHTML =
-      `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${targetSquare.text || "何もないマスのようです。"}</p>`;
+      `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${squareText}</p>`;
+  }
       
+  // 🎯 【重要】ガードでリターンさせず、最新の場所（location）を100%確実にサーバーへ送信！
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -858,7 +863,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       {
         id: p.id,
         position: p.position,
-        location: p.location || "スタート前", // 🎯 確定した場所文字列を送信
+        location: p.location, // 確定した最新の場所文字列
         currentHp: p.currentHp,
         drinkCount: p.drinkCount,
         happiness: p.happiness !== undefined ? p.happiness : 100,
@@ -867,6 +872,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         hasJob: p.hasJob !== undefined ? p.hasJob : false,
         jobId: p.jobId || null,
         job: p.job || "モブ",
+        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false // 留年フラグも安全に同期
       },
     ],
   });
