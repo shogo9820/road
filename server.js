@@ -565,10 +565,10 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：最終決定版・1マス前フライング＋出目1完全合流エンジン】
-  // 特殊な着地信号は一切不要！プレイヤーを目的地の「1マス前」に瞬間設置し、
-  // そこから通常プレイと200%完全に同じ「出目1のスピン電波」を強制点火します。
-  // これによりPC側は1歩トコトコ歩いて目的地に着地するため、すべての本番イベントが自動連動します。
+  // 🛠️ 【デバッグ機能：ガード貫通・本番ルーレット完全直結エンジン】
+  // プレイヤーの内部座標をいじって0番のガードに引っかかるバグを完全粉砕！
+  // 現在地から目的地までの差分（歩数）を計算し、通常のルーレット出目として大画面へ配電。
+  // PC側はトコトコ歩いて目的地に到着するため、1文字の二重書きもなく本番イベントに完全合流します。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -578,23 +578,24 @@ io.on("connection", (socket) => {
       const targetId = parseInt(data.targetSquareId, 10);
 
       if (p && !isNaN(targetId)) {
-        // 🎯 1. プレイヤーの位置を目的地の「1マス前」に一瞬で書き換える
-        // (もし0番マスが指定された場合はそのまま0にセット)
-        p.position = targetId > 0 ? (targetId - 1) : 0;
+        // 🎯 内部座標は戻さず、目的地までの「正確な歩数」を計算
+        let requiredSteps = targetId - p.position;
         
-        // 0番マスの場合は1歩進むと1番に行くので、0番直撃の時は出目0にするか、通常の0歩移動をシミュレート
-        const finalSteps = targetId > 0 ? 1 : 1; 
-        if (targetId === 0) p.position = 0; // 0番マスの場合は開始位置を調整
+        // もし後ろのマスを指定されたり、同じマスだった場合の安全なリセット処理
+        if (requiredSteps <= 0) {
+          p.position = 0;
+          requiredSteps = targetId;
+        }
 
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] 1マス前フライング起動！`);
-        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番マスに仮設置し、「出目 ${finalSteps}」の通常移動をキックします！`);
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} (現在位置: ${p.position}番) ➔ 目的地: ${targetId}番マス`);
+        console.log(`📡 [SERVER DEBUG-WARP] 差分歩数【 ${requiredSteps} 歩 】を通常の spinRoulette として大画面へ直撃発射！`);
 
-        // 🎯 2. 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
+        // 🎯 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
         room.currentPhase = "MOVING";
 
-        // 🎯 3. 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
+        // 🎯 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
         io.to(roomCode).emit("spinRoulette", {
-          result: finalSteps, // 強制的に「1歩進む」
+          result: requiredSteps, // 通常の出目として差分歩数をそのまま流し込む
           activePlayerIndex: room.activePlayerIndex,
           players: room.gamePlayers,
           currentPhase: room.currentPhase

@@ -638,7 +638,9 @@ function sendNextTurn() {
     document.getElementById("btn-phone-next").disabled = true;
 }
 
-// 🛠 Honor Debug-Warp：既存の本番着地ハブ（squareLanded）へデータを乗せて直接弾き込む！
+// 🛠️ 【デバッグ機能：お掃除完了・完全独立版】
+// 余計な本番ハブ(squareLanded)への直撃電波を完全全廃！
+// 純粋にサーバーへターゲットのマスIDだけを送り、1マス前からの出目1移動を安全に起動させます。
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
@@ -650,28 +652,13 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // スマホ側の先読みモジュールから「本物の場所名（宅飲みなど）」を取得
-  if (typeof loadAndApplySquareComponent === "function") {
-    loadAndApplySquareComponent(targetSquareId, () => {
-      let debugLocation = "家";
-      let currentMode = "normal";
-      
-      if (window.SQ_MODULES && window.SQ_MODULES[targetSquareId] && window.SQ_MODULES[targetSquareId][currentMode]) {
-        debugLocation = window.SQ_MODULES[targetSquareId][currentMode].location || "家";
-      } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetSquareId]) {
-        debugLocation = MAP_SQUARES[targetSquareId].location || "家";
-      }
-
-      console.log(`📱 [🛠️ デバッグ直撃発信] マスID: ${targetSquareId} / 場所: ${debugLocation} を本番着地ハブへ送信します。`);
-      
-      // 🎯 【重要】余計なデバッグ用イベント名を全廃！サーバーの通常着地完了(squareLanded)へ直接パッキングして直撃！
-      socket.emit("squareLanded", {
-        roomCode: currentRoomCode,
-        position: targetSquareId, // サーバー側にこのマスへの移動を強制認識させる
-        location: debugLocation   // 最新の正しい場所名
-      });
-    });
-  }
+  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信要求。ターゲットマスID: ${targetSquareId}`);
+  
+  // 🎯 サーバー側の debugWarp 受信ボックスへ、ターゲットIDだけをシンプルに発射！
+  socket.emit("debugWarp", {
+    roomCode: currentRoomCode,
+    targetSquareId: targetSquareId
+  });
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
