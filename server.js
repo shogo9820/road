@@ -271,6 +271,13 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("openBijinKanpaiModal", data);
   });
 
+    // 🎯 【復元】汎用一斉乾杯モーダルの表示要求をPC大画面へ中継
+  socket.on("triggerKanpaiEvent", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    io.to(roomCode).emit("showKanpaiModal", data);
+  });
+
+
     // ==========================================================================
   // 🎓 【89番マス：運命の卒業判定】サーバー制御部
   // ==========================================================================

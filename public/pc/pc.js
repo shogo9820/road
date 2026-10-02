@@ -221,6 +221,24 @@ function appendSocketListeners() {
     }
   });
 
+    // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
+  socket.on("showKanpaiModal", (data) => {
+    console.log(`💻 [PC 乾杯モーダル表示] メンバー: ${data.members} / 場所: ${data.location}`);
+    const pcModal = document.getElementById("pc-kanpai-modal");
+    if (pcModal) {
+      const titleEl = pcModal.querySelector(".kanpai-header");
+      const membersEl = document.getElementById("pc-kanpai-members");
+      const locationEl = document.getElementById("pc-kanpai-location");
+
+      if (titleEl && data.title) titleEl.textContent = data.title;
+      if (membersEl && data.members) membersEl.textContent = data.members;
+      if (locationEl && data.location) locationEl.textContent = data.location;
+
+      // インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
+      pcModal.style.display = "flex";
+    }
+  });
+
   // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
   socket.on("spinCustomRoulette", (data) => {
     console.log(
@@ -802,7 +820,7 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // pc.js の finalizeMovement 内部
+    // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
     function finalizeMovement() {
       console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
       loadAndApplySquareComponent(p.position, () => {
@@ -810,7 +828,7 @@ function executeSyncedRoulette(resultNum) {
         let currentMode = "normal";
         let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
 
-        // 🎯 マスタまたは個別モジュールに設定されている場所を確実に代入！
+        // マスタまたは個別モジュールに設定されている場所を確実に代入
         const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
         p.location = detectedLocation;
 
@@ -820,8 +838,35 @@ function executeSyncedRoulette(resultNum) {
 
         if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
 
-        // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画！
+        // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画
         updateCurrentPlayerDisplay();
+
+        // ──────────────────────────────────────────────────────────────────
+        // 🍻 【特設：同じ場所乾杯判定ルーチン】
+        // 「家」と「スタート前」以外の場所で、自分以外に同じ場所にいるプレイヤーを全員抽出！
+        // ──────────────────────────────────────────────────────────────────
+        if (p.location && p.location !== "家" && p.location !== "スタート前") {
+          // メモリ上の全プレイヤーから、同じ場所にいる自分以外のメンバーの名前を引っこ抜く
+          const samePlaceBuddies = players
+            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
+            .map(otherP => otherP.name);
+
+          if (samePlaceBuddies.length > 0) {
+            console.log(`💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`, samePlaceBuddies);
+            
+            // 自分（着地した人）の名前も配列の先頭に追加して全員の名前をドッキング
+            const allKanpaiMembers = [p.name, ...samePlaceBuddies];
+            
+            // サーバーを経由してPC大画面へ「〇〇と〇〇」の乾杯モーダルを命令！
+            socket.emit("triggerKanpaiEvent", {
+              roomCode: roomCode,
+              members: allKanpaiMembers.join("と"), // 「プレイヤー1とプレイヤー2」の形に結合
+              location: p.location,
+              title: "🍻 特大乾杯イベント発生！ 🍻"
+            });
+          }
+        }
+        // ──────────────────────────────────────────────────────────────────
 
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
