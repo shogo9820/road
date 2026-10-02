@@ -401,33 +401,41 @@ io.on("connection", (socket) => {
 
   // ==========================================================================
   // 🧭 【基本ルーティン：行程④】目的地着地完了（squareLanded）の受信用ハブ
-  // 通常プレイ時はPCの着地報告を受け取るだけですが、デバッグワープ等で直接マスID（position）が
-  // 送られてきた場合は、サーバーが位置と場所を直接書き換えて「4.END_CHECK」へ強制合流させます！
+  // スマホから直接届いた「着地マスID（position）」を、サーバー側でメモリに保存し、
+  // 【重要】PC大画面側へもそのまま「squareLanded」の電波を100%そのまま中継配信！
+  // これにより、手前のストップマスを全て無視して目的地(23番など)へダイレクト着地させます。
   // ==========================================================================
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      // 🎯 【デバッグワープ・直撃合流処理】
+      
+      // 🎯 【デバッグ直撃・位置と場所の確定】
       if (data && data.position !== undefined) {
         const p = room.gamePlayers[room.activePlayerIndex];
         if (p) {
           const targetId = parseInt(data.position, 10);
           p.position = targetId;
           
-          // マスタから最新の場所名（location）を自動で引っ張る（無ければスマホ側から届いた場所か「家」）
+          // マスタから最新の場所名(location)を取得（無ければスマホから届いた場所）
           let detectedLoc = data.location || "家";
           if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
             detectedLoc = MAP_SQUARES[targetId].location || "家";
           }
           p.location = detectedLoc;
           
-          console.log(`\n🛠️ [SERVER DEBUG-WARP] 既存の着地完了ハブ(squareLanded)をデバッグ直撃！`);
-          console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${targetId}番マス（場所: ${p.location}）へ瞬間移動。`);
+          console.log(`\n🛠️ [SERVER ROUTINE-HUB] 着地完了ハブ(squareLanded)に直撃合流！`);
+          console.log(`📡 [SERVER ROUTINE-HUB] プレイヤー: ${p.name} が ${targetId}番マス（場所: ${p.location}）に正規着地しました。`);
+
+          // 🎯 【核心の配線】PC大画面（pc.js）側へも「このマスに今着地したぞ」とそのまま右から左へ中継発射！
+          io.to(roomCode).emit("squareLanded", {
+            position: targetId,
+            location: p.location
+          });
         }
       }
 
-      room.currentPhase = "4.END_CHECK"; // 🎯 どんなルートから来ても、100%確実に到着確認フェーズへ！
+      room.currentPhase = "4.END_CHECK"; // 🎯 100%確実に到着確認フェーズへ更新
       console.log(`🚨 [SERVER] ➔ 4. 目的地着地完了を検知。フェーズ: ${room.currentPhase} を全員へ配信！\n`);
 
       io.to(roomCode).emit("syncGameState", {
