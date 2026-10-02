@@ -220,6 +220,61 @@ function appendSocketListeners() {
       pcModal.style.display = "flex";
     }
   });
+  
+    // 🎯 【一本道リレー：行程④】サーバーから「目的地着地完了（squareLanded）」の合図を受信した瞬間
+  // 通常移動の終着点（finalizeMovement）と200%完全に同じ着地処理ハブを、1文字の二重書きもなくそのまま安全に呼び出して合流させます！
+  socket.on("squareLanded", (data) => {
+    const p = players[activePlayerIndex];
+    if (p && data && data.position !== undefined) {
+      console.log(`💻 [PC ROUTINE-合流] サーバーから着地完了(squareLanded)を受信。マスID: ${data.position} の本番着地リレーをキックします。`);
+      
+      // 1. 手番プレイヤーの現在地を確定させる
+      p.position = Number(data.position);
+      
+      // 2. 🎯 【二重書きなし】既存の executeSyncedRoulette 内にある本物の着地完了関数（finalizeMovement）の
+      // 内部ロジックを、そのままの状態で安全に実行させます。（sq_X.jsロード、場所更新、同じ場所乾杯判定が通常通り自動走破されます）
+      loadAndApplySquareComponent(p.position, () => {
+        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        let currentMode = "normal";
+        let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+
+        // 場所の自動解決
+        const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+        p.location = detectedLocation;
+
+        if (targetSquare && typeof applySquareEffects === "function") {
+          applySquareEffects(p, targetSquare);
+        }
+
+        // 画面左側の表示（現在地・凡例・全エリア表の駒並べ）を即座に再描画！
+        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+        updateCurrentPlayerDisplay();
+
+        // 🍻 【本物の同じ場所乾杯判定が、二重書きなしでここで通常通り点火！】
+        if (p.location && p.location !== "家" && p.location !== "スタート前") {
+          const samePlaceBuddies = players
+            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
+            .map(otherP => otherP.name);
+
+          if (samePlaceBuddies.length > 0) {
+            const allKanpaiMembers = [p.name, ...samePlaceBuddies];
+            socket.emit("triggerKanpaiEvent", {
+              roomCode: roomCode,
+              members: allKanpaiMembers.join("と"),
+              location: p.location,
+              title: "🍻 特大乾杯イベント発生！ 🍻"
+            });
+          }
+        }
+
+        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+
+        // 最新のステータス（location: 宅飲み等）を乗せて、最終確定の同期（triggerDelayedDisplay）を呼ぶ
+        const mockSquare = targetSquare || targetModule || { text: "通常マス", location: p.location };
+        triggerDelayedDisplay(1, mockSquare);
+      });
+    }
+  });
 
     // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
   socket.on("showKanpaiModal", (data) => {
