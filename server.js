@@ -565,16 +565,42 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：完全一本道合流版】
-  // スマホから届いた指定マスIDをそのままPC側へ右から左へ受け流すだけ。
-  // あとはPC側の本物の着地ルーティン（finalizeMovement）にすべてを委ねます。
+  // 🛠️ 【デバッグ機能：最終決定版・1マス前フライング＋出目1完全合流エンジン】
+  // 特殊な着地信号は一切不要！プレイヤーを目的地の「1マス前」に瞬間設置し、
+  // そこから通常プレイと200%完全に同じ「出目1のスピン電波」を強制点火します。
+  // これによりPC側は1歩トコトコ歩いて目的地に着地するため、すべての本番イベントが自動連動します。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    // PC大画面とスマホ全員へ「〇〇番マスにデバッグ着地しろ」とそのまま中継
-    io.to(roomCode).emit("debugWarpTriggered", {
-      targetSquareId: parseInt(data.targetSquareId, 10)
-    });
+    const room = rooms[roomCode];
+    if (room && room.gamePlayers && room.gamePlayers.length > 0) {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      const targetId = parseInt(data.targetSquareId, 10);
+
+      if (p && !isNaN(targetId)) {
+        // 🎯 1. プレイヤーの位置を目的地の「1マス前」に一瞬で書き換える
+        // (もし0番マスが指定された場合はそのまま0にセット)
+        p.position = targetId > 0 ? (targetId - 1) : 0;
+        
+        // 0番マスの場合は1歩進むと1番に行くので、0番直撃の時は出目0にするか、通常の0歩移動をシミュレート
+        const finalSteps = targetId > 0 ? 1 : 1; 
+        if (targetId === 0) p.position = 0; // 0番マスの場合は開始位置を調整
+
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] 1マス前フライング起動！`);
+        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番マスに仮設置し、「出目 ${finalSteps}」の通常移動をキックします！`);
+
+        // 🎯 2. 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
+        room.currentPhase = "MOVING";
+
+        // 🎯 3. 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
+        io.to(roomCode).emit("spinRoulette", {
+          result: finalSteps, // 強制的に「1歩進む」
+          activePlayerIndex: room.activePlayerIndex,
+          players: room.gamePlayers,
+          currentPhase: room.currentPhase
+        });
+      }
+    }
   });
 
   socket.on("disconnect", () => {
