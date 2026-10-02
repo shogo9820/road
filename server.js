@@ -535,9 +535,7 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能・完全独立型】指定マスへの場所自動解決型強制ワープ
-  // 本番の進行コードは1ミリも汚さず、ワープ時にゲームマスタ(MAP_SQUARES)から
-  // 移動先の正しい場所名(location)を自動で引き抜いて同期させます。
+  // 🛠️ 【デバッグ機能・完全独立型】場所情報ダイレクト梱包型・強制ワープエンジン
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -546,23 +544,20 @@ io.on("connection", (socket) => {
       const p = room.gamePlayers[room.activePlayerIndex];
       const targetId = parseInt(data.targetSquareId, 10);
 
-      if (p && !isNaN(targetId)) {
-        // 🎯 1. マスタデータ(gameMaster.js)からワープ先マスの正しい場所名を取得
-        let detectedLoc = "家"; // デフォルト
-        if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
-          detectedLoc = MAP_SQUARES[targetId].location || "家";
-        }
+      // 🎯 スマホから送られてきた正確な場所名（data.location）を最優先で採用！
+      let targetLoc = data.location || "家";
+      if (!data.location && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
+        targetLoc = MAP_SQUARES[targetId].location || "家";
+      }
 
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番 ➔ ${targetId}番マス（場所: ${detectedLoc}）へ強制移動。`);
+      if (p && !isNaN(targetId)) {
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番 ➔ ${targetId}番マス（指定場所: ${targetLoc}）へ強制移動。`);
         
-        // 2. プレイヤーの座標と場所を同時に上書き
         p.position = targetId;
-        p.location = detectedLoc;
+        p.location = targetLoc; // 🎯 サーバーのメモリに「宅飲み」を確実に保存！
         
-        // 3. 到着確認フェーズをセット
         room.currentPhase = "4.END_CHECK";
 
-        // 4. ルーム全員（PC・スマホ）へ最新状態を一斉同期
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
