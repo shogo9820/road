@@ -638,7 +638,7 @@ function sendNextTurn() {
     document.getElementById("btn-phone-next").disabled = true;
 }
 
-// 🛠️ 【デバッグ機能：確定版】個別マスの最新の場所名(宅飲み等)を正確に解決してワープさせる
+// 🛠️ 【デバッグ機能：完全修正版】未ロードのマスでも強制先読みして本物の場所名でワープさせる
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
@@ -650,25 +650,31 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // 🎯 1. 既に読み込まれている個別モジュール（sq_23.js など）の場所を最優先で取得
-  let debugLocation = "家"; // デフォルト
-  let currentMode = "normal";
-  
-  if (window.SQ_MODULES && window.SQ_MODULES[targetSquareId] && window.SQ_MODULES[targetSquareId][currentMode]) {
-    debugLocation = window.SQ_MODULES[targetSquareId][currentMode].location || "家";
-  } 
-  // 2. 個別モジュールが無ければ、大元の静的マスタから取得
-  else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetSquareId]) {
-    debugLocation = MAP_SQUARES[targetSquareId].location || "家";
-  }
+  // 🎯 ワープ前にそのマスの個別ファイルを裏で強制的に先読みロードさせる！
+  if (typeof loadAndApplySquareComponent === "function") {
+    console.log(`📱 [🛠️ デバッグ先読み] マスID: ${targetSquareId} の個別ファイルを先読み中...`);
+    
+    loadAndApplySquareComponent(targetSquareId, () => {
+      let debugLocation = "家"; // デフォルト
+      let currentMode = "normal";
+      
+      // 先読みが完了したため、100%確実に sq_23.js 内の「宅飲み」を正確に引き抜ける！
+      if (window.SQ_MODULES && window.SQ_MODULES[targetSquareId] && window.SQ_MODULES[targetSquareId][currentMode]) {
+        debugLocation = window.SQ_MODULES[targetSquareId][currentMode].location || "家";
+      } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetSquareId]) {
+        debugLocation = MAP_SQUARES[targetSquareId].location || "家";
+      }
 
-  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信要求。ターゲットマスID: ${targetSquareId}, 解決された場所: ${debugLocation}`);
-  
-  socket.emit("debugWarp", {
-    roomCode: currentRoomCode,
-    targetSquareId: targetSquareId,
-    location: debugLocation // 🎯 割り出した最新の場所名（「宅飲み」など）をサーバーへ直接パッキング！
-  });
+      console.log(`📱 [PHONE ACTION] 🛠️ 先読み解決成功。ターゲットマスID: ${targetSquareId}, 場所: ${debugLocation}`);
+      
+      // 完全に正しい場所名を梱包してサーバーへ発射！
+      socket.emit("debugWarp", {
+        roomCode: currentRoomCode,
+        targetSquareId: targetSquareId,
+        location: debugLocation
+      });
+    });
+  }
 });
 
 function checkBranchSquareOnTurnStart(syncData) {
