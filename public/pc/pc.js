@@ -187,7 +187,7 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 【確定版】美人入学式の乾杯モーダルを受信して大画面に表示
+  // 🎯 【確定版】美人入学式の乾杯モーダルを受信して大画面に表示（「と」で繋ぐプレイヤー名仕様）
   socket.on("openBijinKanpaiModal", (data) => {
     console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
     const pcModal = document.getElementById("pc-kanpai-modal");
@@ -197,11 +197,26 @@ function appendSocketListeners() {
       const locationEl = document.getElementById("pc-kanpai-location");
 
       if (titleEl) titleEl.textContent = "🌸 美人さん大歓迎！ 🌸";
-      if (membersEl)
-        membersEl.textContent = `👤 ${data.playerName} を囲むサークル員一同`;
+
+      // 🎯 手元の全プレイヤー配列から、美人以外の名前だけを抽出し「と」で結合する
+      if (membersEl && Array.isArray(players) && players.length > 0) {
+        const otherPlayerNames = players
+          .filter(p => p && p.name !== data.playerName)
+          .map(p => p.name);
+
+        if (otherPlayerNames.length > 0) {
+          // 🎯 カンマではなく「と」で繋ぐことで「プレイヤー1とプレイヤー2」の形にします！
+          membersEl.textContent = otherPlayerNames.join("と");
+        } else {
+          membersEl.textContent = "周囲のサークル員";
+        }
+      } else if (membersEl) {
+        membersEl.textContent = "周囲のサークル員";
+      }
+
       if (locationEl) locationEl.textContent = "美人にモテたいの";
 
-      // 🎯 インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
+      // インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
     }
   });
