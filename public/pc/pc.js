@@ -90,7 +90,7 @@ function initSocketListeners() {
 
   // ==========================================================================
   // 🧭 【ルーティン行程②：ゲーム開始・ターン開始時イベント確認（1-2.START_CHECK）】
-  // 順序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
+  // 顺序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
   // ==========================================================================
   socket.on("gameStarted", (data) => {
     if (data && data.players) players = data.players;
@@ -132,7 +132,7 @@ function initSocketListeners() {
 function appendSocketListeners() {
   // ==========================================================================
   // 🧭 【ルーティン行程③：ルーレットを回して駒を進める（3.MOVING）】
-  // 順序：3.0 スマホがrequest発射 ➔ 3.1 サーバーが決定・出目配信 ➔ 3.2 スマホ回転 ➔ 3.3 PC大画面回転・トコトコ移動 ★
+  // 顺序：3.0 スマホがrequest発射 ➔ 3.1 サーバーが決定・出目配信 ➔ 3.2 スマホ回転 ➔ 3.3 PC大画面回転・トコトコ移動 ★
   // ==========================================================================
   socket.on("spinRoulette", (data) => {
     if (data) {
@@ -147,7 +147,6 @@ function appendSocketListeners() {
       executeSyncedRoulette(resultNum);
     }
   });
-
   // 🎯 【重要】マス着地時：サーバーから合図を受け取り、PC大画面モーダルを即座に表示！
   socket.on("openCustomRouletteModal", (data) => {
     console.log(`💻 [PC 着地時モーダル展開] イベント: ${data.eventName}`);
@@ -211,7 +210,7 @@ function appendSocketListeners() {
           membersEl.textContent = "周囲のサークル員";
         }
       } else if (membersEl) {
-        membersEl.textContent = "周囲のサークル員";
+        membersEl.textContent = "周囲 of サークル員";
       }
 
       if (locationEl) locationEl.textContent = "美人にモテたいの";
@@ -221,24 +220,19 @@ function appendSocketListeners() {
     }
   });
 
-    // 🎯 【一本道リレー：行程④】サーバーから「目的地着地完了（squareLanded）」の合図を受信した瞬間
-  // 通常移動の終着点（finalizeMovement）と200%完全に同じ着地処理ハブを、1文字の二重書きもなくそのまま安全に呼び出して合流させます！
+  // 🎯 【基本ルーティン：行程④】目的地着地完了（squareLanded）を受信した瞬間
   socket.on("squareLanded", (data) => {
     const p = players[activePlayerIndex];
     if (p && data && data.position !== undefined) {
       console.log(`💻 [PC ROUTINE-合流] サーバーから着地完了(squareLanded)を受信。マスID: ${data.position} の本番着地リレーをキックします。`);
       
-      // 1. 手番プレイヤーの現在地を確定させる
       p.position = Number(data.position);
       
-      // 2. 🎯 【二重書きなし】既存の executeSyncedRoulette 内にある本物の着地完了関数（finalizeMovement）の
-      // 内部ロジックを、そのままの状態で安全に実行させます。（sq_X.jsロード、場所更新、同じ場所乾杯判定が通常通り自動走破されます）
       loadAndApplySquareComponent(p.position, () => {
         let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
         let currentMode = "normal";
         let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
 
-        // 場所の自動解決
         const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
         p.location = detectedLocation;
 
@@ -246,17 +240,14 @@ function appendSocketListeners() {
           applySquareEffects(p, targetSquare);
         }
 
-        // 画面左側の表示（現在地・凡例・全エリア表の駒並べ）を即座に再描画！
         if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
         updateCurrentPlayerDisplay();
 
-        // 🍻 【本物の同じ場所乾杯判定が、二重書きなしでここで通常通り点火！】
+        // 🍻 同じ場所乾杯自動判定
         if (p.location && p.location !== "家" && p.location !== "スタート前") {
-          const samePlaceBuddies = players
-            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
-            .map(otherP => otherP.name);
-
+          const samePlaceBuddies = players.filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location).map(otherP => otherP.name);
           if (samePlaceBuddies.length > 0) {
+            console.log(`💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`, samePlaceBuddies);
             const allKanpaiMembers = [p.name, ...samePlaceBuddies];
             socket.emit("triggerKanpaiEvent", {
               roomCode: roomCode,
@@ -269,14 +260,12 @@ function appendSocketListeners() {
 
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
-        // 最新のステータス（location: 宅飲み等）を乗せて、最終確定の同期（triggerDelayedDisplay）を呼ぶ
         const mockSquare = targetSquare || targetModule || { text: "通常マス", location: p.location };
         triggerDelayedDisplay(1, mockSquare);
       });
     }
   });
 
-    // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
   socket.on("showKanpaiModal", (data) => {
     console.log(`💻 [PC 乾杯モーダル表示] メンバー: ${data.members} / 場所: ${data.location}`);
     const pcModal = document.getElementById("pc-kanpai-modal");
@@ -288,8 +277,6 @@ function appendSocketListeners() {
       if (titleEl && data.title) titleEl.textContent = data.title;
       if (membersEl && data.members) membersEl.textContent = data.members;
       if (locationEl && data.location) locationEl.textContent = data.location;
-
-      // インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
     }
   });
@@ -622,8 +609,8 @@ const ALL_GAME_LOCATIONS = [
   "家",
   "とりき",
   "ももじ",
-  "ぱいぱい",
   "宅飲み",
+  "カラオケ",
 ];
 
 function renderLocationPlayersList() {
@@ -778,7 +765,6 @@ function updateCurrentPlayerDisplay() {
   renderLocationPlayersList();
 }
 
-// 🎯 【基本ルーティン：行程③＆④】物理角度盤面スピン・トコトコ移動・100%無差別着地信号
 function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -796,7 +782,6 @@ function executeSyncedRoulette(resultNum) {
     document.getElementById("event-text").innerHTML =
       `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
 
-  // 🎯 【不可視化バグ完全修復】大画面の物理ルーレット角度テーブル
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
   pcCurrentRotation +=
@@ -805,8 +790,7 @@ function executeSyncedRoulette(resultNum) {
   let wheel = isPCEventMode
     ? document.querySelector("#pc-event-modal .event-roulette-wheel") ||
       document.querySelector("#pc-couple-event-modal .event-roulette-wheel")
-    : document.getElementById("controller-roulette-wheel") ||
-      document.getElementById("pc-roulette-wheel");
+    : document.getElementById("pc-roulette-wheel");
   if (wheel) {
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
@@ -852,10 +836,8 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // pc.js の executeSyncedRoulette 内の moveTimer 内部
       const nextIdArray = currentSquare.nextId;
       if (Number(p.position) === 89 && p.isRepeat) {
-        // 🎯 留年フラグがある時は強制的に 90番マス（留年ルート）へ！
         p.position = 90;
       } else if (Array.isArray(nextIdArray) && nextIdArray.length > 1) {
         p.position = Number(
@@ -875,87 +857,82 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
 
-    // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
     function finalizeMovement() {
       console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        let targetSquare =
+          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+            ? MAP_SQUARES[p.position]
+            : null;
         let currentMode = "normal";
-        let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+        let targetModule =
+          window.SQ_MODULES &&
+          window.SQ_MODULES[p.position] &&
+          window.SQ_MODULES[p.position][currentMode];
 
-        // マスタまたは個別モジュールに設定されている場所を確実に代入
-        const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+        const detectedLocation =
+          targetModule && targetModule.location
+            ? targetModule.location
+            : targetSquare && targetSquare.location
+              ? targetSquare.location
+              : "家";
         p.location = detectedLocation;
 
         if (targetSquare && typeof applySquareEffects === "function") {
           applySquareEffects(p, targetSquare);
         }
 
-        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-
-        // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画
+        if (window.boardManager)
+          window.boardManager.draw(players, activePlayerIndex);
         updateCurrentPlayerDisplay();
 
-        // ──────────────────────────────────────────────────────────────────
-        // 🍻 【特設：同じ場所乾杯判定ルーチン】
-        // 「家」と「スタート前」以外の場所で、自分以外に同じ場所にいるプレイヤーを全員抽出！
-        // ──────────────────────────────────────────────────────────────────
         if (p.location && p.location !== "家" && p.location !== "スタート前") {
-          // メモリ上の全プレイヤーから、同じ場所にいる自分以外のメンバーの名前を引っこ抜く
           const samePlaceBuddies = players
-            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
-            .map(otherP => otherP.name);
-
+            .filter(
+              (otherP) =>
+                p && otherP && otherP.id !== p.id && otherP.location === p.location,
+            )
+            .map((otherP) => otherP.name);
           if (samePlaceBuddies.length > 0) {
-            console.log(`💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`, samePlaceBuddies);
-            
-            // 自分（着地した人）の名前も配列の先頭に追加して全員の名前をドッキング
+            console.log(
+              `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
+              samePlaceBuddies,
+            );
             const allKanpaiMembers = [p.name, ...samePlaceBuddies];
-            
-            // サーバーを経由してPC大画面へ「〇〇と〇〇」の乾杯モーダルを命令！
             socket.emit("triggerKanpaiEvent", {
               roomCode: roomCode,
-              members: allKanpaiMembers.join("と"), // 「プレイヤー1とプレイヤー2」の形に結合
+              members: allKanpaiMembers.join("と"),
               location: p.location,
-              title: "🍻 特大乾杯イベント発生！ 🍻"
+              title: "🍻 特大乾杯イベント発生！ 🍻",
             });
           }
         }
-        // ──────────────────────────────────────────────────────────────────
 
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
-        // サーバーへ位置＆最新ステータスを即時送信
-        triggerDelayedDisplay(resultNum, targetSquare || targetModule || { text: "通常マス", location: p.location });
+        triggerDelayedDisplay(
+          resultNum,
+          targetSquare || targetModule || { text: "通常マス", location: p.location },
+        );
 
-        // 着地完了通知
-        socket.emit("squareLanded", {
-          roomCode: roomCode,
-          position: p.position
-        });
+        socket.emit("squareLanded", { roomCode: roomCode, position: p.position });
       });
     }
   }, 3000);
 }
-// 🎯 【確定版】プレイヤーの最新ステータス（現在地含む）をサーバーへ確実に同期する関数
+
 function triggerDelayedDisplay(resultNum, targetSquare) {
   const p = players[activePlayerIndex];
   if (!p) return;
-  
-  // 個別モジュール（sq_X.js）から場所を割り出すための補完
-  const squareText = targetSquare ? (targetSquare.text || "通常マス") : "通常マス";
-  const squareLocation = p.location || (targetSquare ? (targetSquare.location || "家") : "家");
-  
-  // プレイヤー側の location も確実に同期用に確定させる
+
+  const squareText = targetSquare ? targetSquare.text || "通常マス" : "通常マス";
+  const squareLocation = p.location || (targetSquare ? targetSquare.location || "家" : "家");
   p.location = squareLocation;
 
-  // 大画面中央のイベントテキストを更新
   if (document.getElementById("event-text")) {
-    document.getElementById("event-text").innerHTML =
-      `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${squareText}</p>`;
+    document.getElementById("event-text").innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${squareText}</p>`;
   }
-      
-  // 🎯 【重要】ガードでリターンさせず、最新の場所（location）を100%確実にサーバーへ送信！
+
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -963,7 +940,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       {
         id: p.id,
         position: p.position,
-        location: p.location, // 確定した最新の場所文字列
+        location: p.location,
         currentHp: p.currentHp,
         drinkCount: p.drinkCount,
         happiness: p.happiness !== undefined ? p.happiness : 100,
@@ -972,64 +949,10 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         hasJob: p.hasJob !== undefined ? p.hasJob : false,
         jobId: p.jobId || null,
         job: p.job || "モブ",
-        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false // 留年フラグも安全に同期
+        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false,
       },
     ],
   });
-}
-
-socket.on("syncGameState", (data) => {
-  if (data.players && Array.isArray(data.players)) players = data.players;
-  if (data.activePlayerIndex !== undefined)
-    activePlayerIndex = data.activePlayerIndex;
-  updateCurrentPlayerDisplay();
-  if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
-});
-
-// // 🎯 サーバーから「手動進行（次へボタン点灯）」の合図を受け取った時に、大画面の各種イベントモーダルを閉じる
-// socket.on("enableNextTurnButton", () => {
-//   const pcModal = document.getElementById("pc-event-modal");
-//   // if (pcModal) pcModal.style.display = "none";
-//   const kanpaiModal = document.getElementById("pc-kanpai-modal");
-//   if (kanpaiModal) kanpaiModal.style.display = "none";
-// });入学の美人イベントが起きなく見える理由
-
-const GAME_EVENTS = {
-  入学式: {
-    class: "theme-entrance",
-    title: "🌸 入学式 🌸",
-    desc: (name) => `${name} さんの大学生活がスタート！`,
-  },
-  ランクアップ: {
-    class: "theme-rankup",
-    title: "🔥 ランクアップチャンス 🔥",
-    desc: (name) => `${name} さんの実力が試される時！`,
-  },
-  引退: {
-    class: "theme-retirement",
-    title: "🎓 サークル引退式 🎓",
-    desc: (name) => `${name} さん、これまでの思い出を胸に引退！`,
-  },
-};
-
-function openPCEventModal(eventType, playerName, activePlayerId) {
-  isPCEventMode = true;
-  const pcModal = document.getElementById("pc-event-modal");
-  if (!pcModal) return;
-  if (document.getElementById("btn-next-turn")) {
-    document.getElementById("btn-next-turn").disabled = true;
-    document.getElementById("btn-next-turn").style.display = "none";
-  }
-  const config = GAME_EVENTS[eventType];
-  if (!config) return;
-  pcModal.className = "event-modal-overlay active " + config.class;
-  if (document.getElementById("modal-event-title"))
-    document.getElementById("modal-event-title").textContent = config.title;
-  if (document.getElementById("modal-event-desc"))
-    document.getElementById("modal-event-desc").textContent =
-      config.desc(playerName);
-  if (document.getElementById("modal-event-result-box"))
-    document.getElementById("modal-event-result-box").style.display = "none";
 }
 
 function handleForceStopSquare(player, square) {
@@ -1055,7 +978,6 @@ function handleForceStopSquare(player, square) {
     return;
   }
 
-  // 🎯 【型ガード確立】すでに仕様確定マスなら、下の古い引退式モーダルのdefaultへは流さず待機ロック！
   const squareType =
     targetModule && targetModule.type ? targetModule.type : square.type;
   if (
@@ -1063,8 +985,6 @@ function handleForceStopSquare(player, square) {
     squareType === "insurance_shop" ||
     squareType === "jobChallenge" ||
     squareType === "force_stop" ||
-    // squareType === "force_stop_rankup" ||
-    // squareType === "force_stop_retirement" ||
     targetModule
   ) {
     console.log(
@@ -1073,9 +993,7 @@ function handleForceStopSquare(player, square) {
     return;
   }
 
-  console.log(
-    `💻 [PC TIME-SKIP] マスID: ${square.id} は未定義。0.3秒自動進行。`,
-  );
+  console.log(`💻 [PC TIME-SKIP] マスID: ${square.id} は未定義。0.3秒自動進行。`);
   let fallbackType =
     square.id === 18 ? "入学式" : square.id === 49 ? "ランクアップ" : "引退";
   openPCEventModal(fallbackType, player.name, player.id);
@@ -1111,25 +1029,20 @@ function loadAndApplySquareComponent(squareId, callback) {
 
 socket.on("applyPlayerAction", (data) => {
   if (data && data.action === "turnUpdated") {
-    console.log(
-      "💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。",
-    );
+    console.log("💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。");
     isPCEventMode = false;
 
-    // 🎯 1. 判定ルーレット・イベントモーダルを完全に閉じる
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.style.display = "none";
       pcModal.classList.remove("active");
     }
 
-    // 🎯 2. 乾杯モーダルを閉じる
     const kanpaiModal = document.getElementById("pc-kanpai-modal");
     if (kanpaiModal) {
       kanpaiModal.style.display = "none";
     }
 
-    // 🎯 3. カップルイベントモーダル（個別要素がある場合）を閉じる
     const coupleModal = document.getElementById("pc-couple-event-modal");
     if (coupleModal) {
       coupleModal.style.display = "none";

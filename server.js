@@ -400,24 +400,24 @@ io.on("connection", (socket) => {
 
 
   // ==========================================================================
-  // 🧭 【基本ルーティン：行程④】目的地着地完了（squareLanded）の受信用ハブ
-  // スマホから直接届いた「着地マスID（position）」を、サーバー側でメモリに保存し、
-  // 【重要】PC大画面側へもそのまま「squareLanded」の電波を100%そのまま中継配信！
-  // これにより、手前のストップマスを全て無視して目的地(23番など)へダイレクト着地させます。
+  // 🧭 【基本ルーティン完全準拠：行程④】目的地着地完了（squareLanded）受信用ハブ
+  // 通常プレイ・デバッグワープのどちらから届いても、サーバーのメモリ位置を直接上書き。
+  // 手前のストップマスを全て飛び越えて目的地(23番など)へダイレクト着地を成立させ、
+  // 【重要】PC大画面側(pc.js)へも「squareLanded」をそのまま右から左へ中継配信します！
   // ==========================================================================
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
       
-      // 🎯 【デバッグ直撃・位置と場所の確定】
+      // 🎯 【デバッグワープ・通常共通 位置と場所の確定】
       if (data && data.position !== undefined) {
         const p = room.gamePlayers[room.activePlayerIndex];
         if (p) {
           const targetId = parseInt(data.position, 10);
           p.position = targetId;
           
-          // マスタから最新の場所名(location)を取得（無ければスマホから届いた場所）
+          // マスタデータ(gameMaster.js)から最新の場所名(location)を取得（無ければスマホから届いた場所）
           let detectedLoc = data.location || "家";
           if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
             detectedLoc = MAP_SQUARES[targetId].location || "家";
@@ -427,7 +427,7 @@ io.on("connection", (socket) => {
           console.log(`\n🛠️ [SERVER ROUTINE-HUB] 着地完了ハブ(squareLanded)に直撃合流！`);
           console.log(`📡 [SERVER ROUTINE-HUB] プレイヤー: ${p.name} が ${targetId}番マス（場所: ${p.location}）に正規着地しました。`);
 
-          // 🎯 【核心の配線】PC大画面（pc.js）側へも「このマスに今着地したぞ」とそのまま右から左へ中継発射！
+          // 🎯 PC大画面（pc.js）側へも「このマスに今着地したぞ」とそのまま中継発射
           io.to(roomCode).emit("squareLanded", {
             position: targetId,
             location: p.location
@@ -457,19 +457,14 @@ io.on("connection", (socket) => {
   });
 
   // 🎯 【完全汎用化：2段階イベント・1回目スピン判定ルーティン】
-  // カップル等の固有ロジックは完全全廃。すべてマスのJS（sq_X.js）から送られてきた
-  // 条件対応表（mapping）や演出データをそのまま部屋全員に流すだけの完全な空のレールです。
   socket.on("customEventFirstSpinResult", (data) => {
     const { roomCode, playerId, result, mapping, nextStepEventName } = data;
     const room = rooms[roomCode];
     if (!room) return;
 
     console.log(`[汎用イベント1回目] 出目: ${result} / 次のステップ: ${nextStepEventName}`);
-    
-    // マス側から届いた「1〜10の運命の対応表」を、サーバーのメモリにそのまま安全に一時記憶
     room.currentCustomEventMapping = mapping;
 
-    // ルーム全員（PC大画面・スマホ）へ、マス側から指定された次の演出名と対応表をそのまま一斉転送！
     io.to(roomCode).emit("startCustomEventSecondSpin", {
       targetPlayerId: playerId,
       nextStepEventName: nextStepEventName,
@@ -478,8 +473,6 @@ io.on("connection", (socket) => {
   });
 
   // 🎯 【完全汎用化：2段階イベント・2回目スピン判定（最終決着）ルーティン】
-  // 止まった出目にプレイヤーがいた場合の「ステータス変動内容」も、すべてマスのJS側から
-  // 届いた指示通りにサーバーのメモリに上書き保存し、演出メッセージを一斉配信します。
   socket.on("customEventSecondSpinResult", (data) => {
     const { roomCode, playerId, result, successMessage, failureMessage } = data;
     const room = rooms[roomCode];
@@ -489,31 +482,28 @@ io.on("connection", (socket) => {
     const player = gamePlayers.find((p) => String(p.id) === String(playerId));
     
     const mapping = room.currentCustomEventMapping;
-    const hitTarget = mapping[result]; // 止まった出目のスロットをチェック
+    const hitTarget = mapping[result];
 
     if (player && hitTarget) {
-      console.log(`[汎用イベント決着] 見事的中！成功処理を行います。`);
       io.to(roomCode).emit("customEventFinished", {
         success: true,
         message: successMessage || "イベント大成功！"
       });
     } else {
-      console.log(`[汎用イベント決着] ハズレマス（出目: ${result}）のため失敗終了。`);
       io.to(roomCode).emit("customEventFinished", {
         success: false,
         message: failureMessage || "イベント失敗..."
       });
     }
 
-    // 使用済みのメモリ用マッピングデータを安全に消去リセット
     delete room.currentCustomEventMapping;
 
-    // 確定したベースステータスを一旦全体へ同期
     io.to(roomCode).emit("syncGameState", {
       players: room.gamePlayers,
       activePlayerIndex: room.activePlayerIndex
     });
   });
+
   // 🎯 通常マスや個別同期用の汎用データ同期
   socket.on("updateGameState", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -524,7 +514,6 @@ io.on("connection", (socket) => {
           if (target) {
             target.position = updatedP.position !== undefined ? updatedP.position : target.position;
 
-            // 🎯 【重要修正】クライアントから送られてきた場所を最優先で保存！
             if (updatedP.location) {
               target.location = updatedP.location;
             } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[target.position] && MAP_SQUARES[target.position].location) {
@@ -569,46 +558,6 @@ io.on("connection", (socket) => {
         p.chosenRouteIdx = Number(data.chosenRouteIdx);
       }
       io.to(data.roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex, currentPhase: room.currentPhase });
-    }
-  });
-
-  // ==========================================================================
-  // 🛠️ 【デバッグ機能：ガード貫通・本番ルーレット完全直結エンジン】
-  // プレイヤーの内部座標をいじって0番のガードに引っかかるバグを完全粉砕！
-  // 現在地から目的地までの差分（歩数）を計算し、通常のルーレット出目として大画面へ配電。
-  // PC側はトコトコ歩いて目的地に到着するため、1文字の二重書きもなく本番イベントに完全合流します。
-  // ==========================================================================
-  socket.on("debugWarp", (data) => {
-    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    const room = rooms[roomCode];
-    if (room && room.gamePlayers && room.gamePlayers.length > 0) {
-      const p = room.gamePlayers[room.activePlayerIndex];
-      const targetId = parseInt(data.targetSquareId, 10);
-
-      if (p && !isNaN(targetId)) {
-        // 🎯 内部座標は戻さず、目的地までの「正確な歩数」を計算
-        let requiredSteps = targetId - p.position;
-        
-        // もし後ろのマスを指定されたり、同じマスだった場合の安全なリセット処理
-        if (requiredSteps <= 0) {
-          p.position = 0;
-          requiredSteps = targetId;
-        }
-
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] プレイヤー: ${p.name} (現在位置: ${p.position}番) ➔ 目的地: ${targetId}番マス`);
-        console.log(`📡 [SERVER DEBUG-WARP] 差分歩数【 ${requiredSteps} 歩 】を通常の spinRoulette として大画面へ直撃発射！`);
-
-        // 🎯 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
-        room.currentPhase = "MOVING";
-
-        // 🎯 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
-        io.to(roomCode).emit("spinRoulette", {
-          result: requiredSteps, // 通常の出目として差分歩数をそのまま流し込む
-          activePlayerIndex: room.activePlayerIndex,
-          players: room.gamePlayers,
-          currentPhase: room.currentPhase
-        });
-      }
     }
   });
 
