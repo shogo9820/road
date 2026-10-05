@@ -514,13 +514,8 @@ io.on("connection", (socket) => {
           if (target) {
             target.position = updatedP.position !== undefined ? updatedP.position : target.position;
 
-            if (updatedP.location) {
-              target.location = updatedP.location;
-            } else if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[target.position] && MAP_SQUARES[target.position].location) {
-              target.location = MAP_SQUARES[target.position].location;
-            } else {
-              target.location = target.location || "スタート前";
-            }
+            // 🎯 【重要・追記する1行】PC側から送られてきた移動後の最新の場所（location）を確実に上書き保存！
+            if (updatedP.location !== undefined) target.location = updatedP.location;
 
             target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
             target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
