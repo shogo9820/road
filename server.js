@@ -556,6 +556,44 @@ io.on("connection", (socket) => {
     }
   });
 
+    // ==========================================================================
+  // 🛠️ 【デバッグ機能：1マス前フライング＋通常出目1完全合流エンジン】
+  // PC側のコードは1文字も触りません！プレイヤーを目的地の「1マス前」に瞬間設置し、
+  // そこから通常プレイと200%完全に同じ「出目1の spinRoulette 電波」を強制点火します。
+  // これにより、PC側は本番のトコトコ移動を経て目的地にピタッと着地するため、
+  // sq_X.jsの動的ロード、場所の宅飲み更新、同じ場所での乾杯判定が自動で100%完璧に動きます。
+  // ==========================================================================
+  socket.on("debugWarp", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (room && room.gamePlayers && room.gamePlayers.length > 0) {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      const targetId = parseInt(data.targetSquareId, 10);
+
+      if (p && !isNaN(targetId)) {
+        // 🎯 1. 座標を目的地の「1マス前」に強制フライング設置（0番直撃なら0に固定）
+        p.position = targetId > 0 ? (targetId - 1) : 0;
+        
+        // 0番マスからなら1歩で1番に行くため、1マス進める歩数は「1」
+        const requiredSteps = 1; 
+
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] 1マス前フライング合流を起動します。`);
+        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番マスに仮設置し、「通常出目 ${requiredSteps}」を強制点火します！`);
+
+        // 🎯 2. 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
+        room.currentPhase = "MOVING";
+
+        // 🎯 3. 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
+        io.to(roomCode).emit("spinRoulette", {
+          result: requiredSteps, // 強制的に「1歩だけ進ませる」
+          activePlayerIndex: room.activePlayerIndex,
+          players: room.gamePlayers,
+          currentPhase: room.currentPhase
+        });
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("クライアント切断:", socket.id);
   });
