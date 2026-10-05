@@ -556,12 +556,12 @@ io.on("connection", (socket) => {
     }
   });
 
-    // ==========================================================================
-  // 🛠️ 【デバッグ機能：1マス前フライング＋通常出目1完全合流エンジン】
-  // PC側のコードは1文字も触りません！プレイヤーを目的地の「1マス前」に瞬間設置し、
-  // そこから通常プレイと200%完全に同じ「出目1の spinRoulette 電波」を強制点火します。
-  // これにより、PC側は本番のトコトコ移動を経て目的地にピタッと着地するため、
-  // sq_X.jsの動的ロード、場所の宅飲み更新、同じ場所での乾杯判定が自動で100%完璧に動きます。
+  // ==========================================================================
+  // 🛠️ 【デバッグ機能：最終確定・出目0直撃合流エンジン】
+  // プレイヤーの座標を指定された目的地IDに直接瞬間ジャンプさせ、
+  // PC側のすごろく移動エンジンを「出目0（歩数0）」としてその場で強制点火！
+  // これにより、1歩も歩くことなく目的地(23番など)で内側の本物である
+  // finalizeMovement() が1回だけ綺麗に起動し、完璧に基本ルーティンに合流します。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -570,22 +570,25 @@ io.on("connection", (socket) => {
       const p = room.gamePlayers[room.activePlayerIndex];
       const targetId = parseInt(data.targetSquareId, 10);
 
-      if (p && !isNaN(targetId)) {
-        // 🎯 1. 座標を目的地の「1マス前」に強制フライング設置（0番直撃なら0に固定）
-        p.position = targetId > 0 ? (targetId - 1) : 0;
+      if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動します。`);
+        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} の位置を直接 ${targetId}番マスに更新。`);
         
-        // 0番マスからなら1歩で1番に行くため、1マス進める歩数は「1」
-        const requiredSteps = 1; 
+        // 1. 🎯 手前のマスを完全無視して、座標を目的地に直接ジャンプセット
+        p.position = targetId;
 
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] 1マス前フライング合流を起動します。`);
-        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} を ${p.position}番マスに仮設置し、「通常出目 ${requiredSteps}」を強制点火します！`);
+        // 大元のマスタデータから目的地の正しい場所名を取得して同期用にセット
+        if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
+          p.location = MAP_SQUARES[targetId].location || "家";
+        }
 
-        // 🎯 2. 通常プレイと1文字も狂わずに全く同じ移動中フェーズをセット
+        // 2. 移動中フェーズをセット
         room.currentPhase = "MOVING";
 
-        // 🎯 3. 通常のルーレットを回した時と「200%完全に同じ電波」を配信してトコトコ移動を走らせる！
+        // 3. 🎯 通常のルーレット電波を「出目 0」としてPC大画面へ直撃発射！
+        // これによりPC側はトコトコ歩くタイマーを回さず、内側にある本物の「finalizeMovement()」を即時起動します。
         io.to(roomCode).emit("spinRoulette", {
-          result: requiredSteps, // 強制的に「1歩だけ進ませる」
+          result: 0, // 👈 🎯 あなたの仰る通り、出目0を流し込んでその場に固定させます
           activePlayerIndex: room.activePlayerIndex,
           players: room.gamePlayers,
           currentPhase: room.currentPhase
