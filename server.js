@@ -557,11 +557,10 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：最終確定・出目0直撃合流エンジン】
-  // プレイヤーの座標を指定された目的地IDに直接瞬間ジャンプさせ、
-  // PC側のすごろく移動エンジンを「出目0（歩数0）」としてその場で強制点火！
-  // これにより、1歩も歩くことなく目的地(23番など)で内側の本物である
-  // finalizeMovement() が1回だけ綺麗に起動し、完璧に基本ルーティンに合流します。
+  // 🛠️ 【デバッグ機能：最終確定・PC位置先行解決型 出目0合流エンジン】
+  // PC側が「古い0番マス」の着地報告を送り返してメモリを巻き戻してしまうバグを完全粉砕！
+  // スピン合図の中にあらかじめ目的地ID(targetSquareId)を梱包して送ることで、
+  // PC側が1ミリも歩く前（出目0の着地処理が走る前）に確実にピンの位置を目的地へジャンプさせます。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -574,10 +573,10 @@ io.on("connection", (socket) => {
         console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動します。`);
         console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} の位置を直接 ${targetId}番マスに更新。`);
         
-        // 1. 🎯 手前のマスを完全無視して、座標を目的地に直接ジャンプセット
+        // 1. サーバーメモリ上の座標を目的地に上書き
         p.position = targetId;
 
-        // 大元のマスタデータから目的地の正しい場所名を取得して同期用にセット
+        // 大元のマスタデータから目的地の正しい場所名を取得してセット
         if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
           p.location = MAP_SQUARES[targetId].location || "家";
         }
@@ -585,10 +584,11 @@ io.on("connection", (socket) => {
         // 2. 移動中フェーズをセット
         room.currentPhase = "MOVING";
 
-        // 3. 🎯 通常のルーレット電波を「出目 0」としてPC大画面へ直撃発射！
-        // これによりPC側はトコトコ歩くタイマーを回さず、内側にある本物の「finalizeMovement()」を即時起動します。
+        // 3. 🎯 【重要】通常のルーレット電波に「目的地ID(targetSquareId)」を乗せて、出目0でPCへ発射！
+        // これにより、pc.js側が101行目で出目を受け取った瞬間に、ピンを確実にそのマスへ配置させます。
         io.to(roomCode).emit("spinRoulette", {
-          result: 0, // 👈 🎯 あなたの仰る通り、出目0を流し込んでその場に固定させます
+          result: 0, 
+          targetSquareId: targetId, // 👈 🎯 PC側に目的地を伝えるために確実にパッキング！
           activePlayerIndex: room.activePlayerIndex,
           players: room.gamePlayers,
           currentPhase: room.currentPhase
