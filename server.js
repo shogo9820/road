@@ -4,7 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// 🎯 修正：createPlayer を追加で読み込む
+// 🎯 createPlayer, JOBS, MAP_SQUARES の読み込み
 const { JOBS, MAP_SQUARES, createPlayer } = require("./master/gameMaster.js");
 
 const app = express();
@@ -13,20 +13,94 @@ const io = new Server(server);
 
 const rooms = {};
 
+// ==========================================================================
+// 🧭 人生ゲーム型ステートマシン・全6フェーズ定数定義
+// ==========================================================================
+const PHASES = {
+  TURN_START:     "1.TURN_START",     // ターン開始前確認（1休み消化・進路選択）
+  WAIT_SPIN:      "2.WAIT_SPIN",      // ルーレットスピン待機
+  PIECE_MOVING:   "3.PIECE_MOVING",   // 移動アニメーション中
+  SQUARE_LANDED:  "4.SQUARE_LANDED",  // マス着地イベント発生
+  ACTION_RESOLVE: "5.ACTION_RESOLVE", // イベント数値確定処理（保険・清算）
+  WAIT_NEXT:      "6.WAIT_NEXT"       // 次のプレイヤー交代待機
+};
+
 // 静的ファイルの公開範囲を「public」フォルダに指定
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🎯 ブラウザからのアクセスに対して、JavaScriptとして認識されるようMIMEタイプを明示して安全に配信します
+// MIMEタイプを明示して安全に配信
 app.get("/master/gameMaster.js", (req, res) => {
   res.type("application/javascript");
   res.sendFile(path.join(__dirname, "master", "gameMaster.js"));
 });
 
-// 🎯 追記：もしCSSがブロックされる場合、パスを直接解決する保険のルーティングを追加しておきます
 app.get("/css/common.css", (req, res) => {
   res.type("text/css");
   res.sendFile(path.join(__dirname, "public", "css", "common.css"));
 });
+
+// ==========================================================================
+// 🧭 ターン開始時共通ルーティン（休み消化・分岐判定・フェーズ自動決定）
+// ==========================================================================
+function startTurnRoutine(room, roomCode) {
+  const p = room.gamePlayers[room.activePlayerIndex];
+  if (!p) return;
+
+  // 1. ターン開始前確認フェーズに設定
+  room.currentPhase = PHASES.TURN_START;
+
+  console.log(`\n=========================================`);
+  console.log(`🚨 [SERVER ROUTINE] ➔ 1. 新ターン開始: ${p.name} さん (現在地: ${p.position}番マス)`);
+
+  // 2. 休み（skipTurn）のチェック
+  if (p.skipTurn) {
+    console.log(`💤 [SERVER ROUTINE] ➔ ${p.name} さんは休み状態のためターンをスキップします。`);
+    p.skipTurn = false;
+    room.currentPhase = PHASES.WAIT_NEXT; // 交代待機へジャンプ
+
+    io.to(roomCode).emit("applyPlayerAction", {
+      action: "turnSkipped",
+      activePlayerName: p.name,
+      activePlayerIndex: room.activePlayerIndex
+    });
+    io.to(roomCode).emit("enableNextTurnButton");
+    io.to(roomCode).emit("syncGameState", {
+      players: room.gamePlayers,
+      activePlayerIndex: room.activePlayerIndex,
+      currentPhase: room.currentPhase
+    });
+    return;
+  }
+
+  // 3. マスタデータから現在地の分岐有無を判定
+  const currentSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+  const isBranchSquare = currentSquare && (currentSquare.type === "branch" || p.position === 0 || p.position === 49);
+
+  // 4. 手元端末用のアクション通知
+  io.to(roomCode).emit("applyPlayerAction", {
+    action: "turnUpdated",
+    activePlayerIndex: room.activePlayerIndex,
+    activePlayerName: p.name,
+    activePlayerId: p.id
+  });
+
+  if (isBranchSquare && !p.hasConfirmedRoute) {
+    // 🧭 分岐マス：進路選択が必要なため TURN_START を維持
+    console.log(`🧭 [SERVER ROUTINE] ➔ 分岐マスを検知。進路選択完了を待機します。フェーズ: ${room.currentPhase}`);
+  } else {
+    // 🎯 通常マス（または進路確定済み）：即座にスピン待機フェーズへ自動昇格
+    room.currentPhase = PHASES.WAIT_SPIN;
+    console.log(`🎯 [SERVER ROUTINE] ➔ 通常マスのためスピン待機へ自動遷移。フェーズ: ${room.currentPhase}`);
+  }
+
+  // 全員へ状態を同期
+  io.to(roomCode).emit("syncGameState", {
+    players: room.gamePlayers,
+    activePlayerIndex: room.activePlayerIndex,
+    currentPhase: room.currentPhase
+  });
+  console.log(`=========================================\n`);
+}
 
 io.on("connection", (socket) => {
   console.log("クライアント接続成功:", socket.id);
@@ -45,7 +119,7 @@ io.on("connection", (socket) => {
       activePlayerIndex: 0,
       mode: "normal",
       currentCoupleMapping: null,
-      currentPhase: "WAIT_SPIN" // 🎯 初期フェーズはルーレット待機
+      currentPhase: PHASES.WAIT_SPIN
     };
 
     let qrCodeDataUrl = "";
@@ -69,6 +143,7 @@ io.on("connection", (socket) => {
       qrCodeDataUrl,
     });
   });
+
   // 【ルーム参加】
   socket.on("joinRoom", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : null;
@@ -105,74 +180,57 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🚀 【最終決定版】基本ルーティン完全直結型・ゲーム開始始動エンジン
-  // あなたの教えてくれた「全プレイヤーを0マスに更新 ➔ ルーティン1から始めるだけ」
-  // という大原則を100%体現！開始した瞬間に全員を0マスに特別指定し、
-  // そこから通常の手動ターン交代と200%完全に同じ電波（turnUpdated）をその場で発射！
-  // 手元のボタンをガチッとロックさせ、一本道のレールで0番の進路選択を展開させます。
+  // 🚀 【ゲーム開始】全プレイヤーを0番マスに初期化し、共通ルーティンを起動
   // ==========================================================================
   socket.on("startGame", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      // 1. 【特別指定】全プレイヤーの最初の位置を確実に「0番マス（スタート地点）」に初期化！
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
           ...base,
           name: p.name || `プレイヤー${idx + 1}`,
-          position: 0,        // 全員の初期位置を確実に0マスに更新
+          position: 0,
           location: "スタート前",
+          hasConfirmedRoute: false,
           lovers: []
         };
       });
-      
+
       room.activePlayerIndex = 0;
-      room.currentPhase = "1-2.START_CHECK"; // フェーズを開始時イベント確認にセット
 
-      console.log(`\n=========================================`);
-      console.log(`🚨 [SERVER ROUTINE] ➔ 1. ゲーム開始により、全プレイヤーを0マスに更新完了！`);
-      console.log(`📡 [SERVER ROUTINE] ➔ ここから基本ルーティンを1から全く同じように始動させます。`);
-      console.log(`=========================================\n`);
-
-      // PC大画面とスマホを待機画面からプレイ画面へ切り替えさせるベース合図
+      // 画面切り替え合図
       io.to(roomCode).emit("gameStarted", {
         roomCode,
         players: room.gamePlayers,
         mode: room.mode,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
+        currentPhase: PHASES.TURN_START
       });
 
-      // 🚀 【核心の配線：リレー行程①を始動】
-      // 次のプレイヤーへ進む時と200%完全に同じ「新ターン開始（turnUpdated）」のバトン電波を発射！
-      // これによりスマホ側の applyPlayerAction が即座に起動し、手元のボタンに完璧に初期ロックをかけます。
-      io.to(roomCode).emit("applyPlayerAction", {
-        action: "turnUpdated",
-        activePlayerIndex: room.activePlayerIndex,
-        activePlayerName: room.gamePlayers[room.activePlayerIndex].name,
-        activePlayerId: room.gamePlayers[room.activePlayerIndex].id
-      });
-
-      // ルーム全員のステータス画面を一斉更新
-      io.to(roomCode).emit("syncGameState", {
-        players: room.gamePlayers,
-        activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
-      });
+      // 共通ルーティンを実行（0番マス判定により TURN_START を維持）
+      startTurnRoutine(room, roomCode);
     }
   });
 
-  // 🎯 【基本ルーティン管理核心部】手動進行リレーのバトンパスカウンター
+  // ==========================================================================
+  // 🧭 【基本ルーティン管理ハブ】
+  // ==========================================================================
   socket.on("playerAction", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (!roomCode || !rooms[roomCode]) return;
     const room = rooms[roomCode];
 
-    // 🧭 【基本ルーティン：行程①＆⑥】手動で「次のプレイヤーへ」がタップされた瞬間
+    // 【次のプレイヤーへ】
     if (data.action === "nextTurn") {
+      // 安全ガード：WAIT_NEXT 以外での交代要求をブロック
+      if (room.currentPhase !== PHASES.WAIT_NEXT && room.currentPhase !== "6.WAIT_NEXT") {
+        console.log(`⚠️ [SERVER] 不正なターン交代要求をブロック（現在のフェーズ: ${room.currentPhase}）`);
+        return;
+      }
+
       if (room.gamePlayers && room.gamePlayers.length > 0) {
-        // 🎯 ゴールしていないプレイヤーを探す（最大プレイヤー数分ループ）
         let nextIdx = room.activePlayerIndex;
         let found = false;
         for (let i = 0; i < room.gamePlayers.length; i++) {
@@ -183,7 +241,6 @@ io.on("connection", (socket) => {
           }
         }
 
-        // 全員ゴールしていたらゲーム終了
         if (!found) {
           console.log("\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！");
           io.to(roomCode).emit("gameAllFinished");
@@ -192,30 +249,15 @@ io.on("connection", (socket) => {
 
         room.activePlayerIndex = nextIdx;
         const nextPlayer = room.gamePlayers[room.activePlayerIndex];
+        nextPlayer.hasConfirmedRoute = false; // 新ターン用の進路フラグリセット
 
-        room.currentPhase = "1-2.START_CHECK";
-
-        console.log(`\n=========================================`);
-        console.log(`🚨 [SERVER] ➔ 1. 新ターン開始 (手番: ${nextPlayer.name} さん)`);
-        console.log(`📡 [SERVER] ➔ 2. 開始時イベントの確認を行います。フェーズ: ${room.currentPhase}`);
-        console.log(`=========================================\n`);
-
-        io.to(roomCode).emit("applyPlayerAction", {
-          action: "turnUpdated",
-          activePlayerIndex: room.activePlayerIndex,
-          activePlayerName: nextPlayer.name,
-          activePlayerId: nextPlayer.id
-        });
-
-        io.to(roomCode).emit("syncGameState", {
-          players: room.gamePlayers,
-          activePlayerIndex: room.activePlayerIndex,
-          currentPhase: room.currentPhase
-        });
+        // 共通ルーティンを起動（通常マスなら自動で WAIT_SPIN へ昇格）
+        startTurnRoutine(room, roomCode);
       }
     }
+    // 【着地イベント数値処理完了】
     else if (data.action === "squareEventFinished") {
-      room.currentPhase = "6.WAIT_NEXT";
+      room.currentPhase = PHASES.ACTION_RESOLVE;
 
       if (data.updatedPlayer) {
         const target = room.gamePlayers.find(p => String(p.id) === String(data.updatedPlayer.id));
@@ -224,15 +266,15 @@ io.on("connection", (socket) => {
           target.happiness  = data.updatedPlayer.happiness  !== undefined ? data.updatedPlayer.happiness  : target.happiness;
           target.insurance  = data.updatedPlayer.insurance  !== undefined ? data.updatedPlayer.insurance  : target.insurance;
           target.currentHp  = data.updatedPlayer.currentHp  !== undefined ? data.updatedPlayer.currentHp  : target.currentHp;
-          
-          // 🎯 【重要追加】役職ステータスを確実にサーバー側へ同期保存！
-          target.hasJob = data.updatedPlayer.hasJob !== undefined ? data.updatedPlayer.hasJob : target.hasJob;
-          target.jobId  = data.updatedPlayer.jobId  !== undefined ? data.updatedPlayer.jobId  : target.jobId;
-          target.job    = data.updatedPlayer.job    !== undefined ? data.updatedPlayer.job    : target.job;
+          target.hasJob     = data.updatedPlayer.hasJob     !== undefined ? data.updatedPlayer.hasJob     : target.hasJob;
+          target.jobId      = data.updatedPlayer.jobId      !== undefined ? data.updatedPlayer.jobId      : target.jobId;
+          target.job        = data.updatedPlayer.job        !== undefined ? data.updatedPlayer.job        : target.job;
         }
       }
 
-      console.log(`\n🚨 [SERVER] ➔ 5. イベント数値処理完了。手動進行ボタン点灯通知！`);
+      console.log(`\n🚨 [SERVER] ➔ 5. イベント数値処理完了。交代待機フェーズ(WAIT_NEXT)へ。`);
+      room.currentPhase = PHASES.WAIT_NEXT;
+
       io.to(roomCode).emit("enableNextTurnButton");
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
@@ -242,52 +284,94 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 【通常ルーレットスピン要求】
+  // ==========================================================================
+  // 🧭 【進路確定】分岐マスの選択完了を受け、WAIT_SPIN へフェーズ昇格
+  // ==========================================================================
+  socket.on("confirmRouteSelection", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    const room = rooms[roomCode];
+    if (room && room.gamePlayers) {
+      const p = room.gamePlayers[room.activePlayerIndex];
+      if (p) {
+        p.chosenRouteIdx = Number(data.chosenRouteIdx);
+        p.hasConfirmedRoute = true;
+        console.log(`🧭 [SERVER] ${p.name} 氏が進路を確定（ルート: ${data.chosenRouteIdx === 0 ? "A" : "B"}）。`);
+
+        // 進路が決定したため、スピン待機フェーズへ移行
+        room.currentPhase = PHASES.WAIT_SPIN;
+        console.log(`🎯 [SERVER] ルーレットスピン待機(WAIT_SPIN)へフェーズ昇格。`);
+
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase
+        });
+      }
+    }
+  });
+
+  // ==========================================================================
+  // 🎲 【通常ルーレットスピン要求】フェーズ防壁チェックと出目配信
+  // ==========================================================================
   socket.on("requestSpinRoulette", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
-    if (room) {
-      room.currentPhase = "MOVING";
-      const resultNum = Math.floor(Math.random() * 10) + 1;
+    if (!room) return;
 
-      io.to(roomCode).emit("spinRoulette", {
-        result: resultNum,
+    // フェーズ防壁：WAIT_SPIN 状態以外からのスピン要求を遮断
+    if (room.currentPhase !== PHASES.WAIT_SPIN && room.currentPhase !== "2.WAIT_SPIN") {
+      console.log(`⚠️ [SERVER] スピン待機中ではないためリクエストを破棄しました（現在のフェーズ: ${room.currentPhase}）`);
+      return;
+    }
+
+    // 移動アニメーション中へ遷移
+    room.currentPhase = PHASES.PIECE_MOVING;
+    const resultNum = Math.floor(Math.random() * 10) + 1;
+
+    console.log(`🎲 [SERVER] 出目決定: ${resultNum}。移動アニメーション中(PIECE_MOVING)へ移行。`);
+
+    io.to(roomCode).emit("spinRoulette", {
+      result: resultNum,
+      activePlayerIndex: room.activePlayerIndex,
+      players: room.gamePlayers,
+      currentPhase: room.currentPhase
+    });
+  });
+
+  // 【中継系イベント】
+  socket.on("previewRouteSelection", (data) => {
+    const room = rooms[data.roomCode || socket.roomCode];
+    if (room) {
+      io.to(data.roomCode).emit("applyRoutePreview", {
         activePlayerIndex: room.activePlayerIndex,
-        players: room.gamePlayers,
-        currentPhase: room.currentPhase
+        selectedRouteIndex: data.selectedRouteIndex
       });
     }
   });
 
-    // 🎯 マスのJSから「手元の汎用モーダルを開け」という合図を受け取り、スマホへ転送
   socket.on("openCustomRouletteModal", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     io.to(roomCode).emit("openCustomRouletteModal", data);
   });
 
-    // 🎯 【追記】美人入学式の乾杯モーダル表示要求をPC大画面へ中継
   socket.on("openBijinKanpaiModal", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     io.to(roomCode).emit("openBijinKanpaiModal", data);
   });
 
-    // 🎯 【復元】汎用一斉乾杯モーダルの表示要求をPC大画面へ中継
   socket.on("triggerKanpaiEvent", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     io.to(roomCode).emit("showKanpaiModal", data);
   });
 
-
-    // ==========================================================================
-  // 🎓 【89番マス：運命の卒業判定】サーバー制御部
   // ==========================================================================
-  // 1. PC大画面・スマホへ卒業判定モーダル展開指示
+  // 🎓 【89番マス：運命の卒業判定】
+  // ==========================================================================
   socket.on("showGraduateEvent", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     io.to(roomCode).emit("showGraduateEvent", data);
   });
 
-  // 2. 卒業判定スピン要求
   socket.on("requestGraduateSpin", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
@@ -297,52 +381,43 @@ io.on("connection", (socket) => {
     const isPass = (resultNum >= 6);
     const p = room.gamePlayers[room.activePlayerIndex];
 
-    console.log(`\n🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格(ストレートGOAL)" : "💀 留年(地獄ルート開通)"}`);
+    console.log(`🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`);
 
-    // PC・スマホへ回転指示
     io.to(roomCode).emit("spinGraduateRoulette", {
       result: resultNum,
       isPass: isPass
     });
 
-    // 演出完了（3.5秒後）に結果を確定
     setTimeout(() => {
       if (isPass) {
-        // 🌸 6以上：合格（ストレートGOAL）
         p.position = 99;
         p.location = "㊗️ 卒業式(GOAL)";
-        p.hasFinished = true; // 🎯 ゴールフラグ（手番巡回から除外）
-        room.currentPhase = "6.WAIT_NEXT";
+        p.hasFinished = true;
+        room.currentPhase = PHASES.WAIT_NEXT;
 
-        // ゴール演出をPCへ通知
         io.to(roomCode).emit("triggerGoalCelebration", {
           player: p,
           result: resultNum
         });
 
-        // スマホ側は交代ボタンのみ点灯
         io.to(roomCode).emit("showGraduateNextButton", {
           message: `出目: ${resultNum} ➔ 見事単位取得！ストレート卒業GOAL！`
         });
       } else {
-        // 💀 5以下：留年
-        p.isRepeat = true; // 🎯 留年フラグ
+        p.isRepeat = true;
         p.location = "留年（5年生）";
-        room.currentPhase = "1-2.START_CHECK"; // 通常移動できる状態に戻す
+        room.currentPhase = PHASES.TURN_START;
 
-        // PC側をダークモード化＆留年ルート開通
         io.to(roomCode).emit("applyRepeatDarkTheme", {
           playerId: p.id,
           playerName: p.name
         });
 
-        // スマホ側へ絶望ルーレット復活指示
         io.to(roomCode).emit("graduateFailedRepeat", {
           message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`
         });
       }
 
-      // 全員へ最新状態を同期
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
@@ -352,20 +427,16 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🎯 【汎用イベントルーレット】1回回して出目テーブルで決着する汎用パイプライン
+  // 🎯 【汎用イベントルーレット】
   // ==========================================================================
   socket.on("startCustomRouletteEvent", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (!room) return;
 
-    // 1〜10の出目をサーバー側で公平に決定
     const resultNum = Math.floor(Math.random() * 10) + 1;
     const outcome = data.mapping && data.mapping[resultNum] ? data.mapping[resultNum] : { name: "結果なし", drinks: 0 };
 
-    console.log(`\n🎲 [SERVER 汎用ルーレット] イベント: ${data.eventName} / 出目: ${resultNum} / 結果: ${outcome.name}`);
-
-    // ルーム全員（PC・スマホ）へルーレット回転指示
     io.to(roomCode).emit("spinCustomRoulette", {
       result: resultNum,
       outcome: outcome,
@@ -373,7 +444,6 @@ io.on("connection", (socket) => {
       mapping: data.mapping
     });
 
-    // 演出完了（3.5秒後）に効果を反映して手動進行（次へ）を点灯
     setTimeout(() => {
       const p = room.gamePlayers[room.activePlayerIndex];
       if (p && outcome.drinks) {
@@ -387,8 +457,7 @@ io.on("connection", (socket) => {
         message: outcome.name
       });
 
-      // ターン終了（次へボタン点灯）フェーズへ
-      room.currentPhase = "6.WAIT_NEXT";
+      room.currentPhase = PHASES.WAIT_NEXT;
       io.to(roomCode).emit("enableNextTurnButton");
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
@@ -398,36 +467,25 @@ io.on("connection", (socket) => {
     }, 3500);
   });
 
-
   // ==========================================================================
-  // 🧭 【基本ルーティン完全準拠：行程④】目的地着地完了（squareLanded）受信用ハブ
-  // 通常プレイ・デバッグワープのどちらから届いても、サーバーのメモリ位置を直接上書き。
-  // 手前のストップマスを全て飛び越えて目的地(23番など)へダイレクト着地を成立させ、
-  // 【重要】PC大画面側(pc.js)へも「squareLanded」をそのまま右から左へ中継配信します！
+  // 🧭 【着地完了ハブ】
   // ==========================================================================
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
-      
-      // 🎯 【デバッグワープ・通常共通 位置と場所の確定】
       if (data && data.position !== undefined) {
         const p = room.gamePlayers[room.activePlayerIndex];
         if (p) {
           const targetId = parseInt(data.position, 10);
           p.position = targetId;
-          
-          // マスタデータ(gameMaster.js)から最新の場所名(location)を取得（無ければスマホから届いた場所）
+
           let detectedLoc = data.location || "家";
           if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
             detectedLoc = MAP_SQUARES[targetId].location || "家";
           }
           p.location = detectedLoc;
-          
-          console.log(`\n🛠️ [SERVER ROUTINE-HUB] 着地完了ハブ(squareLanded)に直撃合流！`);
-          console.log(`📡 [SERVER ROUTINE-HUB] プレイヤー: ${p.name} が ${targetId}番マス（場所: ${p.location}）に正規着地しました。`);
 
-          // 🎯 PC大画面（pc.js）側へも「このマスに今着地したぞ」とそのまま中継発射
           io.to(roomCode).emit("squareLanded", {
             position: targetId,
             location: p.location
@@ -435,8 +493,8 @@ io.on("connection", (socket) => {
         }
       }
 
-      room.currentPhase = "4.END_CHECK"; // 🎯 100%確実に到着確認フェーズへ更新
-      console.log(`🚨 [SERVER] ➔ 4. 目的地着地完了を検知。フェーズ: ${room.currentPhase} を全員へ配信！\n`);
+      room.currentPhase = PHASES.SQUARE_LANDED;
+      console.log(`🚨 [SERVER] ➔ 4. マス着地完了を検知。フェーズ: ${room.currentPhase} を配信！`);
 
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
@@ -446,25 +504,22 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 役職・カップルイベントの単なる中継アンテナ（既存の互換性を保護）
   socket.on("triggerJobChoice", (data) => {
     const { roomCode, playerId, jobId, jobName } = data;
     if (roomCode) io.to(roomCode).emit("showJobChoice", { jobId, jobName, playerId });
   });
+
   socket.on("triggerCoupleEvent", (data) => {
     const { roomCode, playerId, playerName } = data;
     if (roomCode) io.to(roomCode).emit("showCoupleEvent", { playerId, playerName });
   });
 
-  // 🎯 【完全汎用化：2段階イベント・1回目スピン判定ルーティン】
   socket.on("customEventFirstSpinResult", (data) => {
     const { roomCode, playerId, result, mapping, nextStepEventName } = data;
     const room = rooms[roomCode];
     if (!room) return;
 
-    console.log(`[汎用イベント1回目] 出目: ${result} / 次のステップ: ${nextStepEventName}`);
     room.currentCustomEventMapping = mapping;
-
     io.to(roomCode).emit("startCustomEventSecondSpin", {
       targetPlayerId: playerId,
       nextStepEventName: nextStepEventName,
@@ -472,7 +527,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // 🎯 【完全汎用化：2段階イベント・2回目スピン判定（最終決着）ルーティン】
   socket.on("customEventSecondSpinResult", (data) => {
     const { roomCode, playerId, result, successMessage, failureMessage } = data;
     const room = rooms[roomCode];
@@ -480,7 +534,6 @@ io.on("connection", (socket) => {
 
     const gamePlayers = room.gamePlayers;
     const player = gamePlayers.find((p) => String(p.id) === String(playerId));
-    
     const mapping = room.currentCustomEventMapping;
     const hitTarget = mapping[result];
 
@@ -497,14 +550,13 @@ io.on("connection", (socket) => {
     }
 
     delete room.currentCustomEventMapping;
-
     io.to(roomCode).emit("syncGameState", {
       players: room.gamePlayers,
-      activePlayerIndex: room.activePlayerIndex
+      activePlayerIndex: room.activePlayerIndex,
+      currentPhase: room.currentPhase
     });
   });
 
-  // 🎯 通常マスや個別同期用の汎用データ同期
   socket.on("updateGameState", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     if (roomCode && rooms[roomCode]) {
@@ -513,10 +565,7 @@ io.on("connection", (socket) => {
           const target = rooms[roomCode].gamePlayers.find((p) => String(p.id) === String(updatedP.id));
           if (target) {
             target.position = updatedP.position !== undefined ? updatedP.position : target.position;
-
-            // 🎯 【重要・追記する1行】PC側から送られてきた移動後の最新の場所（location）を確実に上書き保存！
             if (updatedP.location !== undefined) target.location = updatedP.location;
-
             target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
             target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
             target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;
@@ -539,29 +588,8 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("previewRouteSelection", (data) => {
-    const room = rooms[data.roomCode || socket.roomCode];
-    if (room) io.to(data.roomCode).emit("applyRoutePreview", { activePlayerIndex: room.activePlayerIndex, selectedRouteIndex: data.selectedRouteIndex });
-  });
-
-  socket.on("confirmRouteSelection", (data) => {
-    const room = rooms[data.roomCode || socket.roomCode];
-    if (room && room.gamePlayers) {
-      const p = room.gamePlayers[room.activePlayerIndex];
-      if (p) {
-        console.log(`[進路確定成功] ${p.name} 氏がルート ${data.chosenRouteIdx === 0 ? "A" : "B"} を選択。`);
-        p.chosenRouteIdx = Number(data.chosenRouteIdx);
-      }
-      io.to(data.roomCode).emit("syncGameState", { players: room.gamePlayers, activePlayerIndex: room.activePlayerIndex, currentPhase: room.currentPhase });
-    }
-  });
-
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：最終確定・PC位置強制ワープ型 出目0合流エンジン】
-  // PC側が古い0番マスの着地報告を送り返してフリーズしてしまうバグを完全粉砕！
-  // スピン合図(spinRoulette)の中に、目的地「2番マス」に書き換わった最新のプレイヤー配列を
-  // そのまま同乗させて送ることで、PC側が1歩も歩く前に確実にピンを目的地へジャンプさせます。
-  // これにより、目的のマスの位置で100%正規の到着リレー(次のプレイヤーボタン点灯)が走ります。
+  // 🛠️ 【デバッグワープ】
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -571,30 +599,19 @@ io.on("connection", (socket) => {
       const targetId = parseInt(data.targetSquareId, 10);
 
       if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動します。`);
-        
-        // 1. サーバーメモリ上の座標を目的地（2番マスなど）に直接書き換え
         p.position = targetId;
-
-        // 大元のマスタデータから目的地の正しい場所名(location)を取得してセット
         if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
           p.location = MAP_SQUARES[targetId].location || "家";
         } else {
           p.location = "家";
         }
 
-        // 2. 移動中フェーズをセット
-        room.currentPhase = "MOVING";
+        room.currentPhase = PHASES.PIECE_MOVING;
 
-        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} の位置を直接 ${targetId}番マス（場所: ${p.location}）にジャンプ同期します。`);
-
-        // 3. 🎯 【ここが核心の配線！】通常のルーレット電波に「最新の位置に書き換わった players 配列」をドッキングさせ、
-        // さらに「出目 0」としてPC大画面へ直撃発射！
-        // これにより、pc.jsは1歩も歩く前の段階で2番マスへピンをワープさせ、その場所で本物の finalizeMovement() を安全にキックします。
         io.to(roomCode).emit("spinRoulette", {
-          result: 0, // 強制的に出目0を流し込む（その場に固定）
+          result: 0,
           activePlayerIndex: room.activePlayerIndex,
-          players: room.gamePlayers, // 🎯 目的地に書き換わった最新のプレイヤー位置データを同乗させる！
+          players: room.gamePlayers,
           currentPhase: room.currentPhase
         });
       }
