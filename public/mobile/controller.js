@@ -88,12 +88,13 @@ window.addEventListener("DOMContentLoaded", () => {
         `input[name="phone-mode"][value="${targetMode}"]`,
       ).checked = true;
   });
+
   socket.on("spinRoulette", (data) => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
 
     // 🎯 スマホルーレット角度テーブル
-    const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
     currentRotation +=
       1800 +
       ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
@@ -157,7 +158,6 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("openCustomRouletteModal", (data) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
-
     const titleEl =
       modal.querySelector("h3") || modal.querySelector(".couple-title");
     if (titleEl) titleEl.innerHTML = `🌸 ${data.eventName} 🌸`;
@@ -253,7 +253,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================================================
-  // 🧭 syncGameState 受信部（ブロック解除・確実実行版）
+  // 🧭 syncGameState 受信部（最新6フェーズ定数・完全連動版）
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     console.log("📱 [DEBUG] syncGameState 受信成功:", data);
@@ -292,19 +292,16 @@ window.addEventListener("DOMContentLoaded", () => {
     // ------------------------------------------------------------------------
     // 🧭 行程②：ターン開始時イベント（進路選択チェック＆スピン待機制御）
     // ------------------------------------------------------------------------
-    // 🎯 1. 先に pos を安全に定義する（ReferenceError を完全解消）
     const pos = Number(p.position);
     console.log(`📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`);
 
-    const isStartPhase = (window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "START_CHECK");
+    // 🎯 1. ターン開始前確認フェーズ（1.TURN_START）
+    const isStartPhase = (window.serverCurrentPhase === "1.TURN_START" || window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "START_CHECK");
 
-    // 🎯 2. 手番本人の開始時フェーズのみ分岐モーダルまたはスピン待機を実行
     if (isStartPhase && currentIdx === activePlayerIndex) {
-      // 🎓 【89番マス特設】卒業判定マスにいるターン開始時（150msバッファ直撃送信）
+      // 🎓 【89番マス特設】卒業判定マスにいるターン開始時
       if (pos === 89 && !p.isRepeat) {
-        console.log("📱 [89番マス] 運命の卒業判定を検知。150ms後に独立信号 showGraduateEvent を直撃送信！");
-        
-        // メインルーレットをロック
+        console.log("📱 [89番マス] 運命の卒業判定を検知。独立信号 showGraduateEvent を直撃送信！");
         if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
 
         setTimeout(() => {
@@ -317,19 +314,28 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
-        console.log("📱 [DEBUG] 分岐対象マスを検知。モーダル表示関数を実行します。");
+        console.log("📱 [DEBUG] 分岐対象マスを検知。進路選択モーダルを表示します。");
         checkBranchSquareOnTurnStart(data);
-      } else {
-        console.log("📱 [DEBUG] 分岐なしマスまたは確定済み。ルーレット待機。");
-        if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-        if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
       }
     }
 
+    // 🎯 2. スピン待機フェーズ（2.WAIT_SPIN）
+    const isWaitSpinPhase = (window.serverCurrentPhase === "2.WAIT_SPIN");
+    if (isWaitSpinPhase && currentIdx === activePlayerIndex) {
+      console.log("📱 [DEBUG] スピン待機フェーズを検知。ルーレットボタンを点灯します。");
+      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
+      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+    }
     // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（END_CHECK）- スコープ完全修復版
+    // 🧭 行程④：到着イベント（4.SQUARE_LANDED）- 最新ルーティン対応版
     // ------------------------------------------------------------------------
-    if ((window.serverCurrentPhase === "4.END_CHECK" || window.serverCurrentPhase === "END_CHECK") && !window.isLandedThisTurn) {
+    const isLandedPhase = (
+      window.serverCurrentPhase === "4.SQUARE_LANDED" ||
+      window.serverCurrentPhase === "4.END_CHECK" ||
+      window.serverCurrentPhase === "END_CHECK"
+    );
+
+    if (isLandedPhase && !window.isLandedThisTurn) {
       if (currentIdx !== activePlayerIndex) return;
 
       const currentPos = Number(p.position);
@@ -501,7 +507,6 @@ function addPlayerRow() {
   renderPlayerInputs();
   syncSettingsToServer();
 }
-
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
   const selectedMode =
@@ -665,7 +670,6 @@ document.addEventListener("click", (e) => {
     targetSquareId: Number(targetSquareId)
   });
 });
-
 function checkBranchSquareOnTurnStart(syncData) {
   console.log("🔍 [DEBUG] checkBranchSquareOnTurnStart 実行開始");
 
