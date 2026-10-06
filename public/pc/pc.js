@@ -44,6 +44,7 @@ function handleNextTurnClick(e) {
   );
   socket.emit("playerAction", { roomCode, action: "nextTurn" });
 }
+
 function initSocketListeners() {
   socket.on("connect", () => {
     console.log(
@@ -89,8 +90,7 @@ function initSocketListeners() {
   });
 
   // ==========================================================================
-  // 🧭 【ルーティン行程②：ゲーム開始・ターン開始時イベント確認（1-2.START_CHECK）】
-  // 順序：2.0 サーバーがSTART_CHECK発射 ➔ 2.1 PC大画面がロード ➔ 2.2 スマホがモーダル展開 ★
+  // 🧭 【ルーティン行程②：ゲーム開始・ターン開始時イベント確認（1.TURN_START）】
   // ==========================================================================
   socket.on("gameStarted", (data) => {
     if (data && data.players) players = data.players;
@@ -108,7 +108,6 @@ function initSocketListeners() {
 
     const p = players[activePlayerIndex];
     if (p && typeof loadAndApplySquareComponent === "function") {
-      // 🎯 【リレー番号：2.1】サーバー(2.0)の合図を受け、PC側が0番マスのファイルを読み込みにいく瞬間！
       console.log(
         `💻 [2.1 PC受信] ➔ 開始時イベント確認。手番プレイヤーが ${p.position} 番マスにいるため、コンポーネントをロードします。`,
       );
@@ -132,21 +131,16 @@ function initSocketListeners() {
 function appendSocketListeners() {
   // ==========================================================================
   // 🧭 【基本ルーティン：行程③】サーバーから出目配信を受信した瞬間
-  // 通常移動時・デバッグワープ時のどちらでも、送られてきた最新のプレイヤー位置データを
-  // 最優先で手元メモリに同期し、Canvas盤面をその瞬間に強制再描画（draw）させます。
-  // これにより、出目0が走る前に駒のグラフィックが目的地へ一瞬でパッとジャンプします！
   // ==========================================================================
   socket.on("spinRoulette", (data) => {
     if (data) {
       if (data.activePlayerIndex !== undefined)
         activePlayerIndex = data.activePlayerIndex;
       
-      // 🎯 【重要追加】サーバーから同乗して届いた最新のプレイヤーデータを手元メモリに即時同期！
       if (data.players && Array.isArray(data.players)) {
         players = data.players;
       }
       
-      // 🎯 【重要追加】トコトコ歩き（または出目0）が始まる前に、Canvas盤面を強制再描画してピンをワープさせる！
       if (window.boardManager) {
         window.boardManager.draw(players, activePlayerIndex);
       }
@@ -195,7 +189,6 @@ function appendSocketListeners() {
       dynamicTableZone.innerHTML = html;
     }
   });
-
   // 🎯 【確定版】美人入学式の乾杯モーダルを受信して大画面に表示（「と」で繋ぐプレイヤー名仕様）
   socket.on("openBijinKanpaiModal", (data) => {
     console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
@@ -481,64 +474,6 @@ function appendSocketListeners() {
     io.to(roomCode).emit("showGoalModal", data);
   });
 
-  // 🎓 卒業判定スピン受信部
-  socket.on("requestGraduateSpin", (data) => {
-    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    const resultNum = Math.floor(Math.random() * 10) + 1;
-    const isPass = (resultNum >= 6);
-    const p = room.gamePlayers[room.activePlayerIndex];
-
-    console.log(`\n🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格(99番GOALへワープ)" : "💀 留年(地獄ルート開通)"}`);
-
-    // PC・スマホへ回転指示
-    io.to(roomCode).emit("spinGraduateRoulette", {
-      result: resultNum,
-      isPass: isPass
-    });
-
-    // 演出完了後（3.5秒後）に分岐処理を実行
-    setTimeout(() => {
-      if (isPass) {
-        // 🌸 6以上（合格）：位置を99（GOAL）にして到着確認フェーズ（4.END_CHECK）へ！
-        // これによりスマホ側が sq_99.js を自動起動し、共通ゴール演出が発火します
-        p.position = 99;
-        p.location = "㊗️ 卒業式(GOAL)";
-        room.currentPhase = "4.END_CHECK";
-
-        io.to(roomCode).emit("syncGameState", {
-          players: room.gamePlayers,
-          activePlayerIndex: room.activePlayerIndex,
-          currentPhase: room.currentPhase
-        });
-      } else {
-        // 💀 5以下（留年）：isRepeat を付与して通常移動可能フェーズへ戻す
-        p.isRepeat = true;
-        p.location = "留年（5年生）";
-        room.currentPhase = "1-2.START_CHECK";
-
-        // PC側をダークモード化
-        io.to(roomCode).emit("applyRepeatDarkTheme", {
-          playerId: p.id,
-          playerName: p.name
-        });
-
-        // スマホ側へ絶望ルーレット復活指示
-        io.to(roomCode).emit("graduateFailedRepeat", {
-          message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`
-        });
-
-        io.to(roomCode).emit("syncGameState", {
-          players: room.gamePlayers,
-          activePlayerIndex: room.activePlayerIndex,
-          currentPhase: room.currentPhase
-        });
-      }
-    }, 3500);
-  });
-
   // 💀 4. 留年：画面ダークモード化（暗黒演出）
   socket.on("applyRepeatDarkTheme", (data) => {
     isPCEventMode = false;
@@ -607,7 +542,6 @@ function switchScreen(targetId) {
     target.classList.add("active");
   }
 }
-
 function renderPlayerWaitingList() {
   const ul = document.getElementById("player-list");
   if (!ul) return;
@@ -883,7 +817,6 @@ function executeSyncedRoulette(resultNum) {
       if (window.boardManager)
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
-
     // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
     function finalizeMovement() {
       console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
