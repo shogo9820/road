@@ -131,19 +131,28 @@ function initSocketListeners() {
 
 function appendSocketListeners() {
   // ==========================================================================
-  // 🧭 【ルーティン行程③：ルーレットを回して駒を進める（3.MOVING）】
-  // 順序：3.0 スマホがrequest発射 ➔ 3.1 サーバーが決定・出目配信 ➔ 3.2 スマホ回転 ➔ 3.3 PC大画面回転・トコトコ移動 ★
+  // 🧭 【基本ルーティン：行程③】サーバーから出目配信を受信した瞬間
+  // 通常移動時・デバッグワープ時のどちらでも、送られてきた最新のプレイヤー位置データを
+  // 最優先で手元メモリに同期し、Canvas盤面をその瞬間に強制再描画（draw）させます。
+  // これにより、出目0が走る前に駒のグラフィックが目的地へ一瞬でパッとジャンプします！
   // ==========================================================================
   socket.on("spinRoulette", (data) => {
     if (data) {
       if (data.activePlayerIndex !== undefined)
         activePlayerIndex = data.activePlayerIndex;
-      const resultNum = data.result !== undefined ? data.result : 1;
+      
+      // 🎯 【重要追加】サーバーから同乗して届いた最新のプレイヤーデータを手元メモリに即時同期！
+      if (data.players && Array.isArray(data.players)) {
+        players = data.players;
+      }
+      
+      // 🎯 【重要追加】トコトコ歩き（または出目0）が始まる前に、Canvas盤面を強制再描画してピンをワープさせる！
+      if (window.boardManager) {
+        window.boardManager.draw(players, activePlayerIndex);
+      }
 
-      // 🎯 【リレー番号：3.3】サーバー(3.1)から出目を受け取り、PC大画面が物理回転とトコトコ移動を開始する瞬間！
-      console.log(
-        `💻 [3.3 PC受信] ➔ サーバーから出目 ${resultNum} を受信。大画面のルーレット回転とピンのトコトコ前進を開始します！`,
-      );
+      const resultNum = data.result !== undefined ? data.result : 1;
+      console.log(`💻 [3.3 PC受信] ➔ サーバーから出目 ${resultNum} を受信。大画面のルーレット回転とピンのトコトコ前進を開始します！`);
       executeSyncedRoulette(resultNum);
     }
   });

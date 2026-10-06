@@ -557,10 +557,11 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：最終確定・PC位置先行解決型 出目0合流エンジン】
-  // PC側が「古い0番マス」の着地報告を送り返してメモリを巻き戻してしまうバグを完全粉砕！
-  // スピン合図の中にあらかじめ目的地ID(targetSquareId)を梱包して送ることで、
-  // PC側が1ミリも歩く前（出目0の着地処理が走る前）に確実にピンの位置を目的地へジャンプさせます。
+  // 🛠️ 【デバッグ機能：最終確定・PC位置強制ワープ型 出目0合流エンジン】
+  // PC側が古い0番マスの着地報告を送り返してフリーズしてしまうバグを完全粉砕！
+  // スピン合図(spinRoulette)の中に、目的地「2番マス」に書き換わった最新のプレイヤー配列を
+  // そのまま同乗させて送ることで、PC側が1歩も歩く前に確実にピンを目的地へジャンプさせます。
+  // これにより、目的のマスの位置で100%正規の到着リレー(次のプレイヤーボタン点灯)が走ります。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -571,26 +572,29 @@ io.on("connection", (socket) => {
 
       if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
         console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動します。`);
-        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} の位置を直接 ${targetId}番マスに更新。`);
         
-        // 1. サーバーメモリ上の座標を目的地に上書き
+        // 1. サーバーメモリ上の座標を目的地（2番マスなど）に直接書き換え
         p.position = targetId;
 
-        // 大元のマスタデータから目的地の正しい場所名を取得してセット
+        // 大元のマスタデータから目的地の正しい場所名(location)を取得してセット
         if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
           p.location = MAP_SQUARES[targetId].location || "家";
+        } else {
+          p.location = "家";
         }
 
         // 2. 移動中フェーズをセット
         room.currentPhase = "MOVING";
 
-        // 3. 🎯 【重要】通常のルーレット電波に「目的地ID(targetSquareId)」を乗せて、出目0でPCへ発射！
-        // これにより、pc.js側が101行目で出目を受け取った瞬間に、ピンを確実にそのマスへ配置させます。
+        console.log(`📡 [SERVER DEBUG-WARP] プレイヤー: ${p.name} の位置を直接 ${targetId}番マス（場所: ${p.location}）にジャンプ同期します。`);
+
+        // 3. 🎯 【ここが核心の配線！】通常のルーレット電波に「最新の位置に書き換わった players 配列」をドッキングさせ、
+        // さらに「出目 0」としてPC大画面へ直撃発射！
+        // これにより、pc.jsは1歩も歩く前の段階で2番マスへピンをワープさせ、その場所で本物の finalizeMovement() を安全にキックします。
         io.to(roomCode).emit("spinRoulette", {
-          result: 0, 
-          targetSquareId: targetId, // 👈 🎯 PC側に目的地を伝えるために確実にパッキング！
+          result: 0, // 強制的に出目0を流し込む（その場に固定）
           activePlayerIndex: room.activePlayerIndex,
-          players: room.gamePlayers,
+          players: room.gamePlayers, // 🎯 目的地に書き換わった最新のプレイヤー位置データを同乗させる！
           currentPhase: room.currentPhase
         });
       }
