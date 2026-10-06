@@ -589,7 +589,10 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグワープ】
+  // 🛠️ 【デバッグ機能：4.SQUARE_LANDED 直接発行型・高速ワープエンジン】
+  // 出目0のルーレット偽装や3秒タイマーを完全撤廃！
+  // 目的地のマスIDへサーバーメモリを即時書き換え、直接 SQUARE_LANDED フェーズへ移行。
+  // PC・スマホへダイレクトに着地信号を発信し、待機時間0ミリ秒でイベントを起動します。
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -599,19 +602,33 @@ io.on("connection", (socket) => {
       const targetId = parseInt(data.targetSquareId, 10);
 
       if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
+        console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動: ${targetId}番マス`);
+        
+        // 1. 座標を目的地に即時書き換え
         p.position = targetId;
+
+        // 2. マスタデータから最新の場所名を取得して同期
         if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
           p.location = MAP_SQUARES[targetId].location || "家";
         } else {
           p.location = "家";
         }
 
-        room.currentPhase = PHASES.PIECE_MOVING;
+        // 3. フェーズを「着地完了（4.SQUARE_LANDED）」へ直接昇格！
+        room.currentPhase = PHASES.SQUARE_LANDED;
 
-        io.to(roomCode).emit("spinRoulette", {
-          result: 0,
-          activePlayerIndex: room.activePlayerIndex,
+        console.log(`📡 [SERVER DEBUG-WARP] ${p.name} 氏を ${targetId}番マス（場所: ${p.location}）へ直接着地同期します。`);
+
+        // 4. PC大画面側へ直接着地イベント（squareLanded）を発行
+        io.to(roomCode).emit("squareLanded", {
+          position: targetId,
+          location: p.location
+        });
+
+        // 5. 全員へ最新ステート（SQUARE_LANDED）を一斉ブロードキャスト
+        io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
           currentPhase: room.currentPhase
         });
       }
