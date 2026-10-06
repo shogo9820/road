@@ -638,26 +638,31 @@ function sendNextTurn() {
     document.getElementById("btn-phone-next").disabled = true;
 }
 
-// 🛠️ 【デバッグ機能：お掃除完了・完全独立版】
-// 余計な本番ハブ(squareLanded)への直撃電波を完全全廃！
-// 純粋にサーバーへターゲットのマスIDだけを送り、1マス前からの出目1移動を安全に起動させます。
+// 🛠️ 【デバッグ機能：型・ID不整合完全解決版】
+// 入力欄のID名のズレを完全に無視し、タップされたボタンの「すぐ真上または真横にある入力欄」から
+// 100%確実に数値を引っこ抜いて、サーバーの出目0合流レールへ直撃発射します。
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("#btn-debug-warp");
   if (!btn) return;
   e.preventDefault();
-  const targetVal = document.getElementById("input-debug-square")?.value.trim();
+
+  // 🎯 ID名に頼らず、このデバッグコンテナ内にある input タグ（number型またはtext型）を直接探索して取得
+  const parentContainer = btn.closest("div") || document.body;
+  const inputEl = parentContainer.querySelector("input[type='number']") || parentContainer.querySelector("input");
+  const targetVal = inputEl ? inputEl.value.trim() : "";
+  
   const targetSquareId = parseInt(targetVal, 10);
   if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
-    alert("0〜99の範囲で入力してください");
+    alert("0〜99の範囲で有効な数字を入力してください");
     return;
   }
 
-  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信要求。ターゲットマスID: ${targetSquareId}`);
+  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信。ターゲットマスID: ${targetSquareId}`);
   
-  // 🎯 サーバー側の debugWarp 受信ボックスへ、ターゲットIDだけをシンプルに発射！
+  // 🎯 サーバーの debugWarp レシーバーへ、解釈ブレのないクリーンな数値型データとして梱包して発射！
   socket.emit("debugWarp", {
-    roomCode: currentRoomCode,
-    targetSquareId: targetSquareId
+    roomCode: String(currentRoomCode).trim(),
+    targetSquareId: Number(targetSquareId)
   });
 });
 
