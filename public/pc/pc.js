@@ -136,17 +136,19 @@ function appendSocketListeners() {
     if (data) {
       if (data.activePlayerIndex !== undefined)
         activePlayerIndex = data.activePlayerIndex;
-      
+
       if (data.players && Array.isArray(data.players)) {
         players = data.players;
       }
-      
+
       if (window.boardManager) {
         window.boardManager.draw(players, activePlayerIndex);
       }
 
       const resultNum = data.result !== undefined ? data.result : 1;
-      console.log(`💻 [3.3 PC受信] ➔ サーバーから出目 ${resultNum} を受信。大画面のルーレット回転とピンのトコトコ前進を開始します！`);
+      console.log(
+        `💻 [3.3 PC受信] ➔ サーバーから出目 ${resultNum} を受信。大画面のルーレット回転とピンのトコトコ前進を開始します！`,
+      );
       executeSyncedRoulette(resultNum);
     }
   });
@@ -203,8 +205,8 @@ function appendSocketListeners() {
       // 🎯 手元の全プレイヤー配列から、美人以外の名前だけを抽出し「と」で結合する
       if (membersEl && Array.isArray(players) && players.length > 0) {
         const otherPlayerNames = players
-          .filter(p => p && p.name !== data.playerName)
-          .map(p => p.name);
+          .filter((p) => p && p.name !== data.playerName)
+          .map((p) => p.name);
 
         if (otherPlayerNames.length > 0) {
           // 🎯 カンマではなく「と」で繋ぐことで「プレイヤー1とプレイヤー2」の形にします！
@@ -229,19 +231,32 @@ function appendSocketListeners() {
   socket.on("squareLanded", (data) => {
     const p = players[activePlayerIndex];
     if (p && data && data.position !== undefined) {
-      console.log(`💻 [PC ROUTINE-合流] サーバーから着地完了(squareLanded)を受信。マスID: ${data.position} の本番着地リレーをキックします。`);
-      
+      console.log(
+        `💻 [PC ROUTINE-合流] サーバーから着地完了(squareLanded)を受信。マスID: ${data.position} の本番着地リレーをキックします。`,
+      );
+
       // 1. 手番プレイヤーの現在地を確定
       p.position = Number(data.position);
-      
+
       // 2. 着地先コンポーネントをロードして即時適用
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        let targetSquare =
+          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+            ? MAP_SQUARES[p.position]
+            : null;
         let currentMode = "normal";
-        let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+        let targetModule =
+          window.SQ_MODULES && window.SQ_MODULES[p.position]
+            ? window.SQ_MODULES[p.position][currentMode]
+            : null;
 
         // 場所の解決
-        const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+        const detectedLocation =
+          targetModule && targetModule.location
+            ? targetModule.location
+            : targetSquare && targetSquare.location
+              ? targetSquare.location
+              : "家";
         p.location = detectedLocation;
 
         if (targetSquare && typeof applySquareEffects === "function") {
@@ -249,23 +264,33 @@ function appendSocketListeners() {
         }
 
         // 画面左側の表示（現在地・凡例・エリア表）および盤面Canvasの駒を即座に再描画！
-        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+        if (window.boardManager)
+          window.boardManager.draw(players, activePlayerIndex);
         updateCurrentPlayerDisplay();
 
         // 🍻 【特設：同じ場所乾杯判定ルーチン】
         if (p.location && p.location !== "家" && p.location !== "スタート前") {
           const samePlaceBuddies = players
-            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
-            .map(otherP => otherP.name);
+            .filter(
+              (otherP) =>
+                p &&
+                otherP &&
+                otherP.id !== p.id &&
+                otherP.location === p.location,
+            )
+            .map((otherP) => otherP.name);
 
           if (samePlaceBuddies.length > 0) {
-            console.log(`💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`, samePlaceBuddies);
+            console.log(
+              `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
+              samePlaceBuddies,
+            );
             const allKanpaiMembers = [p.name, ...samePlaceBuddies];
             socket.emit("triggerKanpaiEvent", {
               roomCode: roomCode,
               members: allKanpaiMembers.join("と"),
               location: p.location,
-              title: "🍻 特大乾杯イベント発生！ 🍻"
+              title: "🍻 特大乾杯イベント発生！ 🍻",
             });
           }
         }
@@ -273,15 +298,18 @@ function appendSocketListeners() {
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
         // 最新ステータスを同期
-        const mockSquare = targetSquare || targetModule || { text: "通常マス", location: p.location };
+        const mockSquare = targetSquare ||
+          targetModule || { text: "通常マス", location: p.location };
         triggerDelayedDisplay(1, mockSquare);
       });
     }
   });
 
-    // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
+  // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
   socket.on("showKanpaiModal", (data) => {
-    console.log(`💻 [PC 乾杯モーダル表示] メンバー: ${data.members} / 場所: ${data.location}`);
+    console.log(
+      `💻 [PC 乾杯モーダル表示] メンバー: ${data.members} / 場所: ${data.location}`,
+    );
     const pcModal = document.getElementById("pc-kanpai-modal");
     if (pcModal) {
       const titleEl = pcModal.querySelector(".kanpai-header");
@@ -556,8 +584,14 @@ function renderPlayerWaitingList() {
 
 // 🎯 カラーパレット定義（インデックス順）
 const PLAYER_COLOR_PALETTE = [
-  "#f44336", "#2196f3", "#4caf50", "#ff9800",
-  "#9c27b0", "#00bcd4", "#e91e63", "#795548"
+  "#f44336",
+  "#2196f3",
+  "#4caf50",
+  "#ff9800",
+  "#9c27b0",
+  "#00bcd4",
+  "#e91e63",
+  "#795548",
 ];
 
 // 🗺️ ゲーム内に存在する全ロケーション一覧の定義
@@ -576,7 +610,8 @@ function renderLocationPlayersList() {
   if (legendContainer) {
     legendContainer.innerHTML = "";
     players.forEach((p, idx) => {
-      const pColor = p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length];
+      const pColor =
+        p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length];
       const item = document.createElement("div");
       item.className = "color-legend-item";
       item.innerHTML = `
@@ -594,20 +629,21 @@ function renderLocationPlayersList() {
 
   // 各ロケーションに誰がいるかグループ化
   const locationMap = {};
-  ALL_GAME_LOCATIONS.forEach(loc => locationMap[loc] = []);
+  ALL_GAME_LOCATIONS.forEach((loc) => (locationMap[loc] = []));
 
   players.forEach((p, idx) => {
-    const loc = p.location && p.location.trim() !== "" ? p.location : "スタート前";
+    const loc =
+      p.location && p.location.trim() !== "" ? p.location : "スタート前";
     if (!locationMap[loc]) locationMap[loc] = [];
     locationMap[loc].push({
       index: idx + 1,
       name: p.name,
-      color: p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length]
+      color: p.color || PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length],
     });
   });
 
   // 全場所をループして行を生成
-  ALL_GAME_LOCATIONS.forEach(locName => {
+  ALL_GAME_LOCATIONS.forEach((locName) => {
     const stayingPlayers = locationMap[locName] || [];
     const tr = document.createElement("tr");
 
@@ -621,7 +657,7 @@ function renderLocationPlayersList() {
     tdPieces.className = "location-pieces-cell";
 
     if (stayingPlayers.length > 0) {
-      stayingPlayers.forEach(pObj => {
+      stayingPlayers.forEach((pObj) => {
         const piece = document.createElement("span");
         piece.className = "board-mini-piece";
         piece.style.backgroundColor = pObj.color;
@@ -630,7 +666,8 @@ function renderLocationPlayersList() {
         tdPieces.appendChild(piece);
       });
     } else {
-      tdPieces.innerHTML = '<span style="color:#ccc; font-size:0.75rem;">-</span>';
+      tdPieces.innerHTML =
+        '<span style="color:#ccc; font-size:0.75rem;">-</span>';
     }
 
     tr.appendChild(tdName);
@@ -820,21 +857,35 @@ function executeSyncedRoulette(resultNum) {
     }, 250);
     // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
     function finalizeMovement() {
-      console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`);
+      console.log(
+        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`,
+      );
       loadAndApplySquareComponent(p.position, () => {
-        let targetSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
+        let targetSquare =
+          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+            ? MAP_SQUARES[p.position]
+            : null;
         let currentMode = "normal";
-        let targetModule = (window.SQ_MODULES && window.SQ_MODULES[p.position]) ? window.SQ_MODULES[p.position][currentMode] : null;
+        let targetModule =
+          window.SQ_MODULES && window.SQ_MODULES[p.position]
+            ? window.SQ_MODULES[p.position][currentMode]
+            : null;
 
         // マスタまたは個別モジュールに設定されている場所を確実に代入
-        const detectedLocation = (targetModule && targetModule.location) ? targetModule.location : (targetSquare && targetSquare.location ? targetSquare.location : "家");
+        const detectedLocation =
+          targetModule && targetModule.location
+            ? targetModule.location
+            : targetSquare && targetSquare.location
+              ? targetSquare.location
+              : "家";
         p.location = detectedLocation;
 
         if (targetSquare && typeof applySquareEffects === "function") {
           applySquareEffects(p, targetSquare);
         }
 
-        if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
+        if (window.boardManager)
+          window.boardManager.draw(players, activePlayerIndex);
 
         // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画
         updateCurrentPlayerDisplay();
@@ -846,21 +897,30 @@ function executeSyncedRoulette(resultNum) {
         if (p.location && p.location !== "家" && p.location !== "スタート前") {
           // メモリ上の全プレイヤーから、同じ場所にいる自分以外のメンバーの名前を引っこ抜く
           const samePlaceBuddies = players
-            .filter(otherP => p && otherP && otherP.id !== p.id && otherP.location === p.location)
-            .map(otherP => otherP.name);
+            .filter(
+              (otherP) =>
+                p &&
+                otherP &&
+                otherP.id !== p.id &&
+                otherP.location === p.location,
+            )
+            .map((otherP) => otherP.name);
 
           if (samePlaceBuddies.length > 0) {
-            console.log(`💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`, samePlaceBuddies);
-            
+            console.log(
+              `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
+              samePlaceBuddies,
+            );
+
             // 自分（着地した人）の名前も配列の先頭に追加して全員の名前をドッキング
             const allKanpaiMembers = [p.name, ...samePlaceBuddies];
-            
+
             // サーバーを経由してPC大画面へ「〇〇と〇〇」の乾杯モーダルを命令！
             socket.emit("triggerKanpaiEvent", {
               roomCode: roomCode,
               members: allKanpaiMembers.join("と"), // 「プレイヤー1とプレイヤー2」の形に結合
               location: p.location,
-              title: "🍻 特大乾杯イベント発生！ 🍻"
+              title: "🍻 特大乾杯イベント発生！ 🍻",
             });
           }
         }
@@ -869,12 +929,16 @@ function executeSyncedRoulette(resultNum) {
         if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
         // サーバーへ位置＆最新ステータスを即時送信
-        triggerDelayedDisplay(resultNum, targetSquare || targetModule || { text: "通常マス", location: p.location });
+        triggerDelayedDisplay(
+          resultNum,
+          targetSquare ||
+            targetModule || { text: "通常マス", location: p.location },
+        );
 
         // 着地完了通知
         socket.emit("squareLanded", {
           roomCode: roomCode,
-          position: p.position
+          position: p.position,
         });
       });
     }
@@ -884,11 +948,14 @@ function executeSyncedRoulette(resultNum) {
 function triggerDelayedDisplay(resultNum, targetSquare) {
   const p = players[activePlayerIndex];
   if (!p) return;
-  
+
   // 個別モジュール（sq_X.js）から場所を割り出すための補完
-  const squareText = targetSquare ? (targetSquare.text || "通常マス") : "通常マス";
-  const squareLocation = p.location || (targetSquare ? (targetSquare.location || "家") : "家");
-  
+  const squareText = targetSquare
+    ? targetSquare.text || "通常マス"
+    : "通常マス";
+  const squareLocation =
+    p.location || (targetSquare ? targetSquare.location || "家" : "家");
+
   // プレイヤー側の location も確実に同期用に確定させる
   p.location = squareLocation;
 
@@ -897,7 +964,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
     document.getElementById("event-text").innerHTML =
       `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${squareText}</p>`;
   }
-      
+
   // 🎯 【重要】ガードでリターンさせず、最新の場所（location）を100%確実にサーバーへ送信！
   socket.emit("updateGameState", {
     roomCode: roomCode,
@@ -915,7 +982,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         hasJob: p.hasJob !== undefined ? p.hasJob : false,
         jobId: p.jobId || null,
         job: p.job || "モブ",
-        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false // 留年フラグも安全に同期
+        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false, // 留年フラグも安全に同期
       },
     ],
   });

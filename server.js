@@ -17,12 +17,12 @@ const rooms = {};
 // 🧭 人生ゲーム型ステートマシン・全6フェーズ定数定義
 // ==========================================================================
 const PHASES = {
-  TURN_START:     "1.TURN_START",     // ターン開始前確認（1休み消化・進路選択）
-  WAIT_SPIN:      "2.WAIT_SPIN",      // ルーレットスピン待機
-  PIECE_MOVING:   "3.PIECE_MOVING",   // 移動アニメーション中
-  SQUARE_LANDED:  "4.SQUARE_LANDED",  // マス着地イベント発生
+  TURN_START: "1.TURN_START", // ターン開始前確認（1休み消化・進路選択）
+  WAIT_SPIN: "2.WAIT_SPIN", // ルーレットスピン待機
+  PIECE_MOVING: "3.PIECE_MOVING", // 移動アニメーション中
+  SQUARE_LANDED: "4.SQUARE_LANDED", // マス着地イベント発生
   ACTION_RESOLVE: "5.ACTION_RESOLVE", // イベント数値確定処理（保険・清算）
-  WAIT_NEXT:      "6.WAIT_NEXT"       // 次のプレイヤー交代待機
+  WAIT_NEXT: "6.WAIT_NEXT", // 次のプレイヤー交代待機
 };
 
 // 静的ファイルの公開範囲を「public」フォルダに指定
@@ -50,54 +50,67 @@ function startTurnRoutine(room, roomCode) {
   room.currentPhase = PHASES.TURN_START;
 
   console.log(`\n=========================================`);
-  console.log(`🚨 [SERVER ROUTINE] ➔ 1. 新ターン開始: ${p.name} さん (現在地: ${p.position}番マス)`);
+  console.log(
+    `🚨 [SERVER ROUTINE] ➔ 1. 新ターン開始: ${p.name} さん (現在地: ${p.position}番マス)`,
+  );
 
   // 2. 休み（skipTurn）のチェック
   if (p.skipTurn) {
-    console.log(`💤 [SERVER ROUTINE] ➔ ${p.name} さんは休み状態のためターンをスキップします。`);
+    console.log(
+      `💤 [SERVER ROUTINE] ➔ ${p.name} さんは休み状態のためターンをスキップします。`,
+    );
     p.skipTurn = false;
     room.currentPhase = PHASES.WAIT_NEXT; // 交代待機へジャンプ
 
     io.to(roomCode).emit("applyPlayerAction", {
       action: "turnSkipped",
       activePlayerName: p.name,
-      activePlayerIndex: room.activePlayerIndex
+      activePlayerIndex: room.activePlayerIndex,
     });
     io.to(roomCode).emit("enableNextTurnButton");
     io.to(roomCode).emit("syncGameState", {
       players: room.gamePlayers,
       activePlayerIndex: room.activePlayerIndex,
-      currentPhase: room.currentPhase
+      currentPhase: room.currentPhase,
     });
     return;
   }
 
   // 3. マスタデータから現在地の分岐有無を判定
-  const currentSquare = (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]) ? MAP_SQUARES[p.position] : null;
-  const isBranchSquare = currentSquare && (currentSquare.type === "branch" || p.position === 0 || p.position === 49);
+  const currentSquare =
+    typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+      ? MAP_SQUARES[p.position]
+      : null;
+  const isBranchSquare =
+    currentSquare &&
+    (currentSquare.type === "branch" || p.position === 0 || p.position === 49);
 
   // 4. 手元端末用のアクション通知
   io.to(roomCode).emit("applyPlayerAction", {
     action: "turnUpdated",
     activePlayerIndex: room.activePlayerIndex,
     activePlayerName: p.name,
-    activePlayerId: p.id
+    activePlayerId: p.id,
   });
 
   if (isBranchSquare && !p.hasConfirmedRoute) {
     // 🧭 分岐マス：進路選択が必要なため TURN_START を維持
-    console.log(`🧭 [SERVER ROUTINE] ➔ 分岐マスを検知。進路選択完了を待機します。フェーズ: ${room.currentPhase}`);
+    console.log(
+      `🧭 [SERVER ROUTINE] ➔ 分岐マスを検知。進路選択完了を待機します。フェーズ: ${room.currentPhase}`,
+    );
   } else {
     // 🎯 通常マス（または進路確定済み）：即座にスピン待機フェーズへ自動昇格
     room.currentPhase = PHASES.WAIT_SPIN;
-    console.log(`🎯 [SERVER ROUTINE] ➔ 通常マスのためスピン待機へ自動遷移。フェーズ: ${room.currentPhase}`);
+    console.log(
+      `🎯 [SERVER ROUTINE] ➔ 通常マスのためスピン待機へ自動遷移。フェーズ: ${room.currentPhase}`,
+    );
   }
 
   // 全員へ状態を同期
   io.to(roomCode).emit("syncGameState", {
     players: room.gamePlayers,
     activePlayerIndex: room.activePlayerIndex,
-    currentPhase: room.currentPhase
+    currentPhase: room.currentPhase,
   });
   console.log(`=========================================\n`);
 }
@@ -119,7 +132,7 @@ io.on("connection", (socket) => {
       activePlayerIndex: 0,
       mode: "normal",
       currentCoupleMapping: null,
-      currentPhase: PHASES.WAIT_SPIN
+      currentPhase: PHASES.WAIT_SPIN,
     };
 
     let qrCodeDataUrl = "";
@@ -194,7 +207,7 @@ io.on("connection", (socket) => {
           position: 0,
           location: "スタート前",
           hasConfirmedRoute: false,
-          lovers: []
+          lovers: [],
         };
       });
 
@@ -206,7 +219,7 @@ io.on("connection", (socket) => {
         players: room.gamePlayers,
         mode: room.mode,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: PHASES.TURN_START
+        currentPhase: PHASES.TURN_START,
       });
 
       // 共通ルーティンを実行（0番マス判定により TURN_START を維持）
@@ -225,8 +238,13 @@ io.on("connection", (socket) => {
     // 【次のプレイヤーへ】
     if (data.action === "nextTurn") {
       // 安全ガード：WAIT_NEXT 以外での交代要求をブロック
-      if (room.currentPhase !== PHASES.WAIT_NEXT && room.currentPhase !== "6.WAIT_NEXT") {
-        console.log(`⚠️ [SERVER] 不正なターン交代要求をブロック（現在のフェーズ: ${room.currentPhase}）`);
+      if (
+        room.currentPhase !== PHASES.WAIT_NEXT &&
+        room.currentPhase !== "6.WAIT_NEXT"
+      ) {
+        console.log(
+          `⚠️ [SERVER] 不正なターン交代要求をブロック（現在のフェーズ: ${room.currentPhase}）`,
+        );
         return;
       }
 
@@ -242,7 +260,9 @@ io.on("connection", (socket) => {
         }
 
         if (!found) {
-          console.log("\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！");
+          console.log(
+            "\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！",
+          );
           io.to(roomCode).emit("gameAllFinished");
           return;
         }
@@ -260,26 +280,51 @@ io.on("connection", (socket) => {
       room.currentPhase = PHASES.ACTION_RESOLVE;
 
       if (data.updatedPlayer) {
-        const target = room.gamePlayers.find(p => String(p.id) === String(data.updatedPlayer.id));
+        const target = room.gamePlayers.find(
+          (p) => String(p.id) === String(data.updatedPlayer.id),
+        );
         if (target) {
-          target.drinkCount = data.updatedPlayer.drinkCount !== undefined ? data.updatedPlayer.drinkCount : target.drinkCount;
-          target.happiness  = data.updatedPlayer.happiness  !== undefined ? data.updatedPlayer.happiness  : target.happiness;
-          target.insurance  = data.updatedPlayer.insurance  !== undefined ? data.updatedPlayer.insurance  : target.insurance;
-          target.currentHp  = data.updatedPlayer.currentHp  !== undefined ? data.updatedPlayer.currentHp  : target.currentHp;
-          target.hasJob     = data.updatedPlayer.hasJob     !== undefined ? data.updatedPlayer.hasJob     : target.hasJob;
-          target.jobId      = data.updatedPlayer.jobId      !== undefined ? data.updatedPlayer.jobId      : target.jobId;
-          target.job        = data.updatedPlayer.job        !== undefined ? data.updatedPlayer.job        : target.job;
+          target.drinkCount =
+            data.updatedPlayer.drinkCount !== undefined
+              ? data.updatedPlayer.drinkCount
+              : target.drinkCount;
+          target.happiness =
+            data.updatedPlayer.happiness !== undefined
+              ? data.updatedPlayer.happiness
+              : target.happiness;
+          target.insurance =
+            data.updatedPlayer.insurance !== undefined
+              ? data.updatedPlayer.insurance
+              : target.insurance;
+          target.currentHp =
+            data.updatedPlayer.currentHp !== undefined
+              ? data.updatedPlayer.currentHp
+              : target.currentHp;
+          target.hasJob =
+            data.updatedPlayer.hasJob !== undefined
+              ? data.updatedPlayer.hasJob
+              : target.hasJob;
+          target.jobId =
+            data.updatedPlayer.jobId !== undefined
+              ? data.updatedPlayer.jobId
+              : target.jobId;
+          target.job =
+            data.updatedPlayer.job !== undefined
+              ? data.updatedPlayer.job
+              : target.job;
         }
       }
 
-      console.log(`\n🚨 [SERVER] ➔ 5. イベント数値処理完了。交代待機フェーズ(WAIT_NEXT)へ。`);
+      console.log(
+        `\n🚨 [SERVER] ➔ 5. イベント数値処理完了。交代待機フェーズ(WAIT_NEXT)へ。`,
+      );
       room.currentPhase = PHASES.WAIT_NEXT;
 
       io.to(roomCode).emit("enableNextTurnButton");
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
+        currentPhase: room.currentPhase,
       });
     }
   });
@@ -295,16 +340,20 @@ io.on("connection", (socket) => {
       if (p) {
         p.chosenRouteIdx = Number(data.chosenRouteIdx);
         p.hasConfirmedRoute = true;
-        console.log(`🧭 [SERVER] ${p.name} 氏が進路を確定（ルート: ${data.chosenRouteIdx === 0 ? "A" : "B"}）。`);
+        console.log(
+          `🧭 [SERVER] ${p.name} 氏が進路を確定（ルート: ${data.chosenRouteIdx === 0 ? "A" : "B"}）。`,
+        );
 
         // 進路が決定したため、スピン待機フェーズへ移行
         room.currentPhase = PHASES.WAIT_SPIN;
-        console.log(`🎯 [SERVER] ルーレットスピン待機(WAIT_SPIN)へフェーズ昇格。`);
+        console.log(
+          `🎯 [SERVER] ルーレットスピン待機(WAIT_SPIN)へフェーズ昇格。`,
+        );
 
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
-          currentPhase: room.currentPhase
+          currentPhase: room.currentPhase,
         });
       }
     }
@@ -319,8 +368,13 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     // フェーズ防壁：WAIT_SPIN 状態以外からのスピン要求を遮断
-    if (room.currentPhase !== PHASES.WAIT_SPIN && room.currentPhase !== "2.WAIT_SPIN") {
-      console.log(`⚠️ [SERVER] スピン待機中ではないためリクエストを破棄しました（現在のフェーズ: ${room.currentPhase}）`);
+    if (
+      room.currentPhase !== PHASES.WAIT_SPIN &&
+      room.currentPhase !== "2.WAIT_SPIN"
+    ) {
+      console.log(
+        `⚠️ [SERVER] スピン待機中ではないためリクエストを破棄しました（現在のフェーズ: ${room.currentPhase}）`,
+      );
       return;
     }
 
@@ -328,13 +382,15 @@ io.on("connection", (socket) => {
     room.currentPhase = PHASES.PIECE_MOVING;
     const resultNum = Math.floor(Math.random() * 10) + 1;
 
-    console.log(`🎲 [SERVER] 出目決定: ${resultNum}。移動アニメーション中(PIECE_MOVING)へ移行。`);
+    console.log(
+      `🎲 [SERVER] 出目決定: ${resultNum}。移動アニメーション中(PIECE_MOVING)へ移行。`,
+    );
 
     io.to(roomCode).emit("spinRoulette", {
       result: resultNum,
       activePlayerIndex: room.activePlayerIndex,
       players: room.gamePlayers,
-      currentPhase: room.currentPhase
+      currentPhase: room.currentPhase,
     });
   });
 
@@ -344,7 +400,7 @@ io.on("connection", (socket) => {
     if (room) {
       io.to(data.roomCode).emit("applyRoutePreview", {
         activePlayerIndex: room.activePlayerIndex,
-        selectedRouteIndex: data.selectedRouteIndex
+        selectedRouteIndex: data.selectedRouteIndex,
       });
     }
   });
@@ -378,14 +434,16 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     const resultNum = Math.floor(Math.random() * 10) + 1;
-    const isPass = (resultNum >= 6);
+    const isPass = resultNum >= 6;
     const p = room.gamePlayers[room.activePlayerIndex];
 
-    console.log(`🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`);
+    console.log(
+      `🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`,
+    );
 
     io.to(roomCode).emit("spinGraduateRoulette", {
       result: resultNum,
-      isPass: isPass
+      isPass: isPass,
     });
 
     setTimeout(() => {
@@ -397,11 +455,11 @@ io.on("connection", (socket) => {
 
         io.to(roomCode).emit("triggerGoalCelebration", {
           player: p,
-          result: resultNum
+          result: resultNum,
         });
 
         io.to(roomCode).emit("showGraduateNextButton", {
-          message: `出目: ${resultNum} ➔ 見事単位取得！ストレート卒業GOAL！`
+          message: `出目: ${resultNum} ➔ 見事単位取得！ストレート卒業GOAL！`,
         });
       } else {
         p.isRepeat = true;
@@ -410,18 +468,18 @@ io.on("connection", (socket) => {
 
         io.to(roomCode).emit("applyRepeatDarkTheme", {
           playerId: p.id,
-          playerName: p.name
+          playerName: p.name,
         });
 
         io.to(roomCode).emit("graduateFailedRepeat", {
-          message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`
+          message: `出目: ${resultNum} ➔ 単位不足で留年確定...！留年ルート突入！`,
         });
       }
 
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
+        currentPhase: room.currentPhase,
       });
     }, 3500);
   });
@@ -435,13 +493,16 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     const resultNum = Math.floor(Math.random() * 10) + 1;
-    const outcome = data.mapping && data.mapping[resultNum] ? data.mapping[resultNum] : { name: "結果なし", drinks: 0 };
+    const outcome =
+      data.mapping && data.mapping[resultNum]
+        ? data.mapping[resultNum]
+        : { name: "結果なし", drinks: 0 };
 
     io.to(roomCode).emit("spinCustomRoulette", {
       result: resultNum,
       outcome: outcome,
       eventName: data.eventName,
-      mapping: data.mapping
+      mapping: data.mapping,
     });
 
     setTimeout(() => {
@@ -454,7 +515,7 @@ io.on("connection", (socket) => {
         result: resultNum,
         outcome: outcome,
         eventName: data.eventName,
-        message: outcome.name
+        message: outcome.name,
       });
 
       room.currentPhase = PHASES.WAIT_NEXT;
@@ -462,7 +523,7 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
+        currentPhase: room.currentPhase,
       });
     }, 3500);
   });
@@ -488,30 +549,34 @@ io.on("connection", (socket) => {
 
           io.to(roomCode).emit("squareLanded", {
             position: targetId,
-            location: p.location
+            location: p.location,
           });
         }
       }
 
       room.currentPhase = PHASES.SQUARE_LANDED;
-      console.log(`🚨 [SERVER] ➔ 4. マス着地完了を検知。フェーズ: ${room.currentPhase} を配信！`);
+      console.log(
+        `🚨 [SERVER] ➔ 4. マス着地完了を検知。フェーズ: ${room.currentPhase} を配信！`,
+      );
 
       io.to(roomCode).emit("syncGameState", {
         players: room.gamePlayers,
         activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase
+        currentPhase: room.currentPhase,
       });
     }
   });
 
   socket.on("triggerJobChoice", (data) => {
     const { roomCode, playerId, jobId, jobName } = data;
-    if (roomCode) io.to(roomCode).emit("showJobChoice", { jobId, jobName, playerId });
+    if (roomCode)
+      io.to(roomCode).emit("showJobChoice", { jobId, jobName, playerId });
   });
 
   socket.on("triggerCoupleEvent", (data) => {
     const { roomCode, playerId, playerName } = data;
-    if (roomCode) io.to(roomCode).emit("showCoupleEvent", { playerId, playerName });
+    if (roomCode)
+      io.to(roomCode).emit("showCoupleEvent", { playerId, playerName });
   });
 
   socket.on("customEventFirstSpinResult", (data) => {
@@ -523,7 +588,7 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("startCustomEventSecondSpin", {
       targetPlayerId: playerId,
       nextStepEventName: nextStepEventName,
-      mapping: mapping
+      mapping: mapping,
     });
   });
 
@@ -540,12 +605,12 @@ io.on("connection", (socket) => {
     if (player && hitTarget) {
       io.to(roomCode).emit("customEventFinished", {
         success: true,
-        message: successMessage || "イベント大成功！"
+        message: successMessage || "イベント大成功！",
       });
     } else {
       io.to(roomCode).emit("customEventFinished", {
         success: false,
-        message: failureMessage || "イベント失敗..."
+        message: failureMessage || "イベント失敗...",
       });
     }
 
@@ -553,7 +618,7 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("syncGameState", {
       players: room.gamePlayers,
       activePlayerIndex: room.activePlayerIndex,
-      currentPhase: room.currentPhase
+      currentPhase: room.currentPhase,
     });
   });
 
@@ -562,28 +627,55 @@ io.on("connection", (socket) => {
     if (roomCode && rooms[roomCode]) {
       if (data.players) {
         data.players.forEach((updatedP) => {
-          const target = rooms[roomCode].gamePlayers.find((p) => String(p.id) === String(updatedP.id));
+          const target = rooms[roomCode].gamePlayers.find(
+            (p) => String(p.id) === String(updatedP.id),
+          );
           if (target) {
-            target.position = updatedP.position !== undefined ? updatedP.position : target.position;
-            if (updatedP.location !== undefined) target.location = updatedP.location;
-            target.currentHp = updatedP.currentHp !== undefined ? updatedP.currentHp : target.currentHp;
-            target.drinkCount = updatedP.drinkCount !== undefined ? updatedP.drinkCount : target.drinkCount;
-            target.happiness = updatedP.happiness !== undefined ? updatedP.happiness : target.happiness;
-            target.isLover = updatedP.isLover !== undefined ? updatedP.isLover : target.isLover;
-            target.skipTurn = updatedP.skipTurn !== undefined ? updatedP.skipTurn : target.skipTurn;
-            target.hasJob = updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
-            target.jobId = updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
+            target.position =
+              updatedP.position !== undefined
+                ? updatedP.position
+                : target.position;
+            if (updatedP.location !== undefined)
+              target.location = updatedP.location;
+            target.currentHp =
+              updatedP.currentHp !== undefined
+                ? updatedP.currentHp
+                : target.currentHp;
+            target.drinkCount =
+              updatedP.drinkCount !== undefined
+                ? updatedP.drinkCount
+                : target.drinkCount;
+            target.happiness =
+              updatedP.happiness !== undefined
+                ? updatedP.happiness
+                : target.happiness;
+            target.isLover =
+              updatedP.isLover !== undefined
+                ? updatedP.isLover
+                : target.isLover;
+            target.skipTurn =
+              updatedP.skipTurn !== undefined
+                ? updatedP.skipTurn
+                : target.skipTurn;
+            target.hasJob =
+              updatedP.hasJob !== undefined ? updatedP.hasJob : target.hasJob;
+            target.jobId =
+              updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
             target.job = updatedP.job !== undefined ? updatedP.job : target.job;
-            target.insurance = updatedP.insurance !== undefined ? updatedP.insurance : (target.insurance || 0);
+            target.insurance =
+              updatedP.insurance !== undefined
+                ? updatedP.insurance
+                : target.insurance || 0;
           }
         });
       }
-      if (data.activePlayerIndex !== undefined) rooms[roomCode].activePlayerIndex = data.activePlayerIndex;
+      if (data.activePlayerIndex !== undefined)
+        rooms[roomCode].activePlayerIndex = data.activePlayerIndex;
 
       io.to(roomCode).emit("syncGameState", {
         players: rooms[roomCode].gamePlayers,
         activePlayerIndex: rooms[roomCode].activePlayerIndex,
-        currentPhase: rooms[roomCode].currentPhase
+        currentPhase: rooms[roomCode].currentPhase,
       });
     }
   });
@@ -602,8 +694,10 @@ io.on("connection", (socket) => {
       const targetId = parseInt(data.targetSquareId, 10);
 
       if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
-        console.log(`\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動: ${targetId}番マス`);
-        
+        console.log(
+          `\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動: ${targetId}番マス`,
+        );
+
         // 1. 座標を目的地に即時書き換え
         p.position = targetId;
 
@@ -617,19 +711,21 @@ io.on("connection", (socket) => {
         // 3. フェーズを「着地完了（4.SQUARE_LANDED）」へ直接昇格！
         room.currentPhase = PHASES.SQUARE_LANDED;
 
-        console.log(`📡 [SERVER DEBUG-WARP] ${p.name} 氏を ${targetId}番マス（場所: ${p.location}）へ直接着地同期します。`);
+        console.log(
+          `📡 [SERVER DEBUG-WARP] ${p.name} 氏を ${targetId}番マス（場所: ${p.location}）へ直接着地同期します。`,
+        );
 
         // 4. PC大画面側へ直接着地イベント（squareLanded）を発行
         io.to(roomCode).emit("squareLanded", {
           position: targetId,
-          location: p.location
+          location: p.location,
         });
 
         // 5. 全員へ最新ステート（SQUARE_LANDED）を一斉ブロードキャスト
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
-          currentPhase: room.currentPhase
+          currentPhase: room.currentPhase,
         });
       }
     }

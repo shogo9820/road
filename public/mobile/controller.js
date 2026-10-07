@@ -94,7 +94,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const resultNum = data.result !== undefined ? data.result : 1;
 
     // 🎯 スマホルーレット角度テーブル
-  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+    const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
     currentRotation +=
       1800 +
       ((targetDegrees[resultNum - 1] - (currentRotation % 360) + 360) % 360);
@@ -293,78 +293,108 @@ window.addEventListener("DOMContentLoaded", () => {
     // 🧭 行程②：ターン開始時イベント（進路選択チェック＆スピン待機制御）
     // ------------------------------------------------------------------------
     const pos = Number(p.position);
-    console.log(`📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`);
+    console.log(
+      `📱 [DEBUG] 現在位置: ${pos}番マス, フェーズ: ${window.serverCurrentPhase}`,
+    );
 
     // 🎯 1. ターン開始前確認フェーズ（1.TURN_START）
-    const isStartPhase = (window.serverCurrentPhase === "1.TURN_START" || window.serverCurrentPhase === "1-2.START_CHECK" || window.serverCurrentPhase === "START_CHECK");
+    const isStartPhase =
+      window.serverCurrentPhase === "1.TURN_START" ||
+      window.serverCurrentPhase === "1-2.START_CHECK" ||
+      window.serverCurrentPhase === "START_CHECK";
 
     if (isStartPhase && currentIdx === activePlayerIndex) {
       // 🎓 【89番マス特設】卒業判定マスにいるターン開始時
       if (pos === 89 && !p.isRepeat) {
-        console.log("📱 [89番マス] 運命の卒業判定を検知。独立信号 showGraduateEvent を直撃送信！");
-        if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = true;
+        console.log(
+          "📱 [89番マス] 運命の卒業判定を検知。独立信号 showGraduateEvent を直撃送信！",
+        );
+        if (document.getElementById("btn-phone-spin"))
+          document.getElementById("btn-phone-spin").disabled = true;
 
         setTimeout(() => {
           socket.emit("showGraduateEvent", {
             roomCode: currentRoomCode,
-            playerName: p.name
+            playerName: p.name,
           });
           openGraduateSpinModal();
         }, 150);
         return;
       }
       if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
-        console.log("📱 [DEBUG] 分岐対象マスを検知。進路選択モーダルを表示します。");
+        console.log(
+          "📱 [DEBUG] 分岐対象マスを検知。進路選択モーダルを表示します。",
+        );
         checkBranchSquareOnTurnStart(data);
       }
     }
 
     // 🎯 2. スピン待機フェーズ（2.WAIT_SPIN）
-    const isWaitSpinPhase = (window.serverCurrentPhase === "2.WAIT_SPIN");
+    const isWaitSpinPhase = window.serverCurrentPhase === "2.WAIT_SPIN";
     if (isWaitSpinPhase && currentIdx === activePlayerIndex) {
-      console.log("📱 [DEBUG] スピン待機フェーズを検知。ルーレットボタンを点灯します。");
-      if (document.getElementById("btn-phone-spin")) document.getElementById("btn-phone-spin").disabled = false;
-      if (document.getElementById("roulette-result-display")) document.getElementById("roulette-result-display").textContent = "🎯 タップして回そう！";
+      console.log(
+        "📱 [DEBUG] スピン待機フェーズを検知。ルーレットボタンを点灯します。",
+      );
+      if (document.getElementById("btn-phone-spin"))
+        document.getElementById("btn-phone-spin").disabled = false;
+      if (document.getElementById("roulette-result-display"))
+        document.getElementById("roulette-result-display").textContent =
+          "🎯 タップして回そう！";
     }
     // ------------------------------------------------------------------------
     // 🧭 行程④：到着イベント（4.SQUARE_LANDED）- 最新ルーティン対応版
     // ------------------------------------------------------------------------
-    const isLandedPhase = (
+    const isLandedPhase =
       window.serverCurrentPhase === "4.SQUARE_LANDED" ||
       window.serverCurrentPhase === "4.END_CHECK" ||
-      window.serverCurrentPhase === "END_CHECK"
-    );
+      window.serverCurrentPhase === "END_CHECK";
 
     if (isLandedPhase && !window.isLandedThisTurn) {
       if (currentIdx !== activePlayerIndex) return;
 
       const currentPos = Number(p.position);
 
-      if (window.turnStartPosition !== null && currentPos === window.turnStartPosition) {
-        console.log(`📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`);
+      if (
+        window.turnStartPosition !== null &&
+        currentPos === window.turnStartPosition
+      ) {
+        console.log(
+          `📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`,
+        );
         return;
       }
 
       window.isLandedThisTurn = true;
-      console.log(`📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`);
+      console.log(
+        `📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`,
+      );
 
       if (typeof loadAndApplySquareComponent === "function") {
         loadAndApplySquareComponent(currentPos, () => {
           let currentMode = "normal";
           // 🎯 1. モジュール定義を取得
-          let targetModule = (window.SQ_MODULES && window.SQ_MODULES[currentPos]) ? window.SQ_MODULES[currentPos][currentMode] : null;
+          let targetModule =
+            window.SQ_MODULES && window.SQ_MODULES[currentPos]
+              ? window.SQ_MODULES[currentPos][currentMode]
+              : null;
 
           // 🎯 2. 個別ファイルが無い場合のフォールバック取得
-          if (!targetModule && typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[currentPos]) {
+          if (
+            !targetModule &&
+            typeof MAP_SQUARES !== "undefined" &&
+            MAP_SQUARES[currentPos]
+          ) {
             targetModule = MAP_SQUARES[currentPos];
           }
 
           if (!targetModule) {
-            console.log(`📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。完了通知を送信します。`);
+            console.log(
+              `📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。完了通知を送信します。`,
+            );
             socket.emit("playerAction", {
               roomCode: currentRoomCode,
               action: "squareEventFinished",
-              updatedPlayer: p
+              updatedPlayer: p,
             });
             return;
           }
@@ -372,33 +402,43 @@ window.addEventListener("DOMContentLoaded", () => {
           // 🚀 パターンA：役職マスの場合
           if (targetModule.type === "jobChallenge" && targetModule.jobId) {
             if (p.hasJob === true) {
-              console.log(`📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`);
+              console.log(
+                `📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`,
+              );
               socket.emit("playerAction", {
                 roomCode: currentRoomCode,
                 action: "squareEventFinished",
-                updatedPlayer: p
+                updatedPlayer: p,
               });
               return;
             }
 
-            const jobName = targetModule.text ? targetModule.text.replace(/【役職マス】/g, "").trim() : "新しい役職";
-            console.log(`📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`);
+            const jobName = targetModule.text
+              ? targetModule.text.replace(/【役職マス】/g, "").trim()
+              : "新しい役職";
+            console.log(
+              `📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`,
+            );
             if (typeof showJobChoiceDialog === "function") {
               showJobChoiceDialog(targetModule.jobId, jobName, p.id);
             }
-          } 
+          }
           // 🚀 パターンB：特殊マスの場合
           else if (typeof targetModule.event === "function") {
-            console.log(`📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`);
+            console.log(
+              `📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`,
+            );
             targetModule.event(p, targetModule);
-          } 
+          }
           // 🚀 パターンC：通常マスの場合
           else {
-            console.log(`📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`);
+            console.log(
+              `📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`,
+            );
             socket.emit("playerAction", {
               roomCode: currentRoomCode,
               action: "squareEventFinished",
-              updatedPlayer: p
+              updatedPlayer: p,
             });
           }
         });
@@ -653,21 +693,25 @@ document.addEventListener("click", (e) => {
 
   // 🎯 ID名に頼らず、このデバッグコンテナ内にある input タグ（number型またはtext型）を直接探索して取得
   const parentContainer = btn.closest("div") || document.body;
-  const inputEl = parentContainer.querySelector("input[type='number']") || parentContainer.querySelector("input");
+  const inputEl =
+    parentContainer.querySelector("input[type='number']") ||
+    parentContainer.querySelector("input");
   const targetVal = inputEl ? inputEl.value.trim() : "";
-  
+
   const targetSquareId = parseInt(targetVal, 10);
   if (isNaN(targetSquareId) || targetSquareId < 0 || targetSquareId > 99) {
     alert("0〜99の範囲で有効な数字を入力してください");
     return;
   }
 
-  console.log(`📱 [PHONE ACTION] 🛠️ デバッグワープ送信。ターゲットマスID: ${targetSquareId}`);
-  
+  console.log(
+    `📱 [PHONE ACTION] 🛠️ デバッグワープ送信。ターゲットマスID: ${targetSquareId}`,
+  );
+
   // 🎯 サーバーの debugWarp レシーバーへ、解釈ブレのないクリーンな数値型データとして梱包して発射！
   socket.emit("debugWarp", {
     roomCode: String(currentRoomCode).trim(),
-    targetSquareId: Number(targetSquareId)
+    targetSquareId: Number(targetSquareId),
   });
 });
 function checkBranchSquareOnTurnStart(syncData) {
@@ -835,11 +879,14 @@ function openGraduateSpinModal() {
   const modal = document.getElementById("mobile-couple-event-modal");
   if (!modal) return;
 
-  const titleEl = modal.querySelector("h3") || modal.querySelector(".couple-title");
+  const titleEl =
+    modal.querySelector("h3") || modal.querySelector(".couple-title");
   if (titleEl) titleEl.innerHTML = "🎓 運命の卒業判定 🎓";
 
   const descEl = modal.querySelector(".couple-desc");
-  if (descEl) descEl.innerHTML = "出目 6以上でストレート卒業GOAL！<br>5以下は地獄の留年ルート突入！";
+  if (descEl)
+    descEl.innerHTML =
+      "出目 6以上でストレート卒業GOAL！<br>5以下は地獄の留年ルート突入！";
 
   const btnSpin = document.getElementById("btn-couple-spin");
   if (btnSpin) {
@@ -861,7 +908,8 @@ socket.on("showGraduateNextButton", (data) => {
   if (modal) modal.style.display = "none";
 
   if (document.getElementById("roulette-result-display")) {
-    document.getElementById("roulette-result-display").textContent = `🌸 ${data.message}`;
+    document.getElementById("roulette-result-display").textContent =
+      `🌸 ${data.message}`;
   }
   const btnNext = document.getElementById("btn-phone-next");
   if (btnNext) btnNext.disabled = false;
@@ -881,12 +929,14 @@ socket.on("graduateFailedRepeat", (data) => {
   if (spinBtn) {
     spinBtn.disabled = false;
     spinBtn.textContent = "💀 留年ルートへ進む！";
-    spinBtn.style.background = "linear-gradient(135deg, #4a148c 0%, #000000 100%)";
+    spinBtn.style.background =
+      "linear-gradient(135deg, #4a148c 0%, #000000 100%)";
     spinBtn.style.color = "#ff80ab";
     spinBtn.style.border = "2px solid #ea80fc";
   }
 
   if (document.getElementById("roulette-result-display")) {
-    document.getElementById("roulette-result-display").textContent = "💀 5年生編スタート...";
+    document.getElementById("roulette-result-display").textContent =
+      "💀 5年生編スタート...";
   }
 });
