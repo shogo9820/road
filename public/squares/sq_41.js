@@ -78,8 +78,8 @@ window.SQ_MODULES[41] = {
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             
             const firstMapping = {
-              1: { name: "奇数", drinks: 0 }, 2: { name: "偶数", drinks: 0 }, 3: { name: "奇数", drinks: 0 }, 4: { name: "偶数", drinks: 0 }, 5: { name: "奇数", drinks: 0 },
-              6: { name: "偶数", drinks: 0 }, 7: { name: "奇数", drinks: 0 }, 8: { name: "偶数", drinks: 0 }, 9: { name: "奇数", drinks: 0 }, 10: { name: "偶数", drinks: 0 }
+              1: { name: "タイミングが悪い", drinks: 0 }, 2: { name: "告白チャンス", drinks: 0 }, 3: { name: "タイミングが悪い", drinks: 0 }, 4: { name: "告白チャンス", drinks: 0 }, 5: { name: "タイミングが悪い", drinks: 0 },
+              6: { name: "告白チャンス", drinks: 0 }, 7: { name: "タイミングが悪い", drinks: 0 }, 8: { name: "告白チャンス", drinks: 0 }, 9: { name: "タイミングが悪い", drinks: 0 }, 10: { name: "告白チャンス", drinks: 0 }
             };
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
@@ -205,7 +205,7 @@ window.SQ_MODULES[41] = {
                   action: "customEventSecondSpinResult",
                   playerId: player.id,
                   result: finalRes,
-                  failureMessage: "チャレンジ失敗...！💦"
+                  failureMessage: "振られちゃった...！💦"
                 });
               }
 
