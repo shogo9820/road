@@ -8,7 +8,6 @@ window.SQ_MODULES[18] = {
     text: "【強制ストップ】サークル入学式！", 
     location: "家",
 
-    // 🎯 横展開・再利用のための固有設定カタログ
     config: {
       themeClass: "theme-entrance",
       pcFirstTitle: "🌸 入学式 🌸",
@@ -31,7 +30,6 @@ window.SQ_MODULES[18] = {
         const btnNext = document.getElementById("btn-next-turn");
         if (btnNext) { btnNext.disabled = true; btnNext.style.display = "none"; }
 
-        // パターンA: 美人（bijin）だった場合は、既存のPC乾杯モーダル展開をそのままキック
         if (player.jobId === "bijin") {
           if (typeof socket !== "undefined") {
             socket.emit("openBijinKanpaiModal", { roomCode: targetRoom, playerName: player.name });
@@ -39,7 +37,6 @@ window.SQ_MODULES[18] = {
           return;
         }
 
-        // パターンB: 美人以外は、汎用カタログから文字を流し込んでPCモーダルを展開
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
         document.getElementById("modal-event-desc").textContent = `${player.name} ${cfg.pcFirstDesc}`;
@@ -47,7 +44,6 @@ window.SQ_MODULES[18] = {
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) { resultBox.style.display = "none"; resultBox.className = "event-result-box"; resultBox.textContent = ""; }
 
-        // 1発汎用ルーレットの判定対応表をダイレクト描画
         let tableHTML = `
           <div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div>
           <ul class="event-table-list">`;
@@ -65,12 +61,11 @@ window.SQ_MODULES[18] = {
         return;
       }
 
-      // 📱 ② 【スマホ手元側だった場合の直接処理（通常画面の乗っ取り）】
+      // 📱 ② 【スマホ手元側だった場合の直接処理】
       if (typeof socket !== "undefined") {
         const spinBtn = document.getElementById("btn-phone-spin");
         const resultDisplay = document.getElementById("roulette-result-display");
 
-        // 美人（bijin）の場合はルーレット不要なのでノータイムで完了報告（元仕様通り）
         if (player.jobId === "bijin") {
           if (typeof players !== "undefined" && Array.isArray(players)) {
             players.forEach((p) => { if (p.id !== player.id) p.drinkCount = (p.drinkCount || 0) + 1; });
@@ -79,50 +74,47 @@ window.SQ_MODULES[18] = {
           return;
         }
 
-        // 美人以外：通常ホイールの表示を着せ替え、ボタンを乗っ取る
         document.body.classList.add(cfg.themeClass);
         if (spinBtn) { spinBtn.disabled = false; spinBtn.textContent = cfg.mobileFirstBtn; }
         if (resultDisplay) resultDisplay.textContent = cfg.mobileFirstDisplay;
 
         if (spinBtn) {
-          // 🎯 クローンを生成して controller.js の古い通常スピンリスナーを完全にへし折る！
+          // 重複EventListenerをへし折るためにクローン化
           const newSpinBtn = spinBtn.cloneNode(true);
           spinBtn.parentNode.replaceChild(newSpinBtn, spinBtn);
 
+          // 🎯 【重要】自分で勝手に出目を決めず、通常のルーレット要求をそのままサーバーに頼む！
           newSpinBtn.onclick = function() {
             newSpinBtn.disabled = true;
-            if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転中...";
-
-            const result = Math.floor(Math.random() * 10) + 1;
-            
-            if (typeof currentRotation !== "undefined" && typeof playMobileRouletteAnimation === "function") {
-              const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-              currentRotation += 1800 + ((targetDegrees[result - 1] - (currentRotation % 360) + 360) % 360);
-              
-              playMobileRouletteAnimation(result, currentRotation, (finalSteps) => {
-                // 回転終了後、サーバーの汎用イベント発火（startCustomRouletteEvent）へ流し込む
-                const entranceMapping = {
-                  1: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 2: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 3: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 },
-                  4: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 5: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 6: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 7: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 },
-                  8: { name: "回避！ (0杯)", drinks: 0 }, 9: { name: "回避！ (0杯)", drinks: 0 }, 10: { name: "回避！ (0杯)", drinks: 0 }
-                };
-                
-                socket.emit("startCustomRouletteEvent", {
-                  roomCode: targetRoom,
-                  eventName: "入学式洗礼判定",
-                  mapping: entranceMapping
-                });
-              });
-            } else {
-              socket.emit("startCustomRouletteEvent", { roomCode: targetRoom, eventName: "入学式洗礼判定", mapping: {} });
-            }
+            console.log("📱 [スマホ発信] 18番マスの通常スピン要求をサーバーへ送信します。");
+            socket.emit("requestSpinRoulette", { roomCode: targetRoom });
           };
         }
 
-        // 決着通知（完了時）が来たら、着せ替えテーマを安全に剥がす
-        socket.off("customRouletteFinished");
-        socket.on("customRouletteFinished", () => {
-          document.body.classList.remove(cfg.themeClass);
+        // 🎯 【重要】サーバーからPCと同時に配信されてくる同じ出目（spinRoulette）を捕まえて、ここで最終決着へ回す！
+        socket.off("spinRoulette");
+        socket.on("spinRoulette", (data) => {
+          const resNum = data.result !== undefined ? data.result : 1;
+          console.log(`📱 [スマホ受信] サーバー確定出目 [${resNum}] を受信。同時回転アニメーションの後、結果を確定します。`);
+          
+          const entranceMapping = {
+            1: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 2: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 3: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 },
+            4: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 5: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 6: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 7: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 },
+            8: { name: "回避！ (0杯)", drinks: 0 }, 9: { name: "回避！ (0杯)", drinks: 0 }, 10: { name: "回避！ (0杯)", drinks: 0 }
+          };
+          const outcome = entranceMapping[resNum];
+
+          // 3.5秒後（PCとスマホのルーレットが回りきったタイミング）にサーバーへ結果報告
+          setTimeout(() => {
+            player.drinkCount = (player.drinkCount || 0) + (outcome.drinks || 0);
+            
+            socket.emit("playerAction", {
+              roomCode: targetRoom,
+              action: "squareEventFinished",
+              updatedPlayer: player
+            });
+            document.body.classList.remove(cfg.themeClass);
+          }, 3500);
         });
       }
     }
