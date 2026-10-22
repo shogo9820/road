@@ -1,7 +1,7 @@
 // public/squares/sq_18.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES[18] = {
+window.SQ_MODULES = {
   normal: {
     id: 18,
     type: "force_stop",
@@ -79,46 +79,57 @@ window.SQ_MODULES[18] = {
         if (resultDisplay) resultDisplay.textContent = cfg.mobileFirstDisplay;
 
         if (spinBtn) {
-          // 重複EventListenerをへし折るためにクローン化
           const newSpinBtn = spinBtn.cloneNode(true);
           spinBtn.parentNode.replaceChild(newSpinBtn, spinBtn);
 
-          // 🎯 【重要】自分で勝手に出目を決めず、通常のルーレット要求をそのままサーバーに頼む！
+          // 🎯 ボタンを押した時は、フェーズ防壁のない専用イベント「startCustomRouletteEvent」をキックする！
           newSpinBtn.onclick = function() {
             newSpinBtn.disabled = true;
-            console.log("📱 [スマホ発信] 18番マスの通常スピン要求をサーバーへ送信します。");
-            socket.emit("requestSpinRoulette", { roomCode: targetRoom });
+            if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転要求中...";
+            
+            const entranceMapping = {
+              1: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 2: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 3: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 },
+              4: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 5: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 6: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 7: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 },
+              8: { name: "回避！ (0杯)", drinks: 0 }, 9: { name: "回避！ (0杯)", drinks: 0 }, 10: { name: "回避！ (0杯)", drinks: 0 }
+            };
+
+            socket.emit("startCustomRouletteEvent", {
+              roomCode: targetRoom,
+              eventName: "入学式洗礼判定",
+              mapping: entranceMapping
+            });
           };
         }
 
-        // 🎯 【重要】サーバーからPCと同時に配信されてくる同じ出目（spinRoulette）を捕まえて、ここで最終決着へ回す！
-        socket.off("spinRoulette");
-        socket.on("spinRoulette", (data) => {
+        // 🎯 サーバー側が発行した「物理回転開始の電波（spinCustomRoulette）」をスマホ側でも同時に捕まえる！
+        socket.off("spinCustomRoulette");
+        socket.on("spinCustomRoulette", (data) => {
           const resNum = data.result !== undefined ? data.result : 1;
-          console.log(`📱 [スマホ受信] サーバー確定出目 [${resNum}] を受信。同時回転アニメーションの後、結果を確定します。`);
+          console.log(`📱 [スマホ同期回転] サーバーが確定した共通出目 [${resNum}] でPCと完全に同時に回します！`);
           
-          const entranceMapping = {
-            1: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 2: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 }, 3: { name: "俺ばり飲めるっす！！！ (2杯飲む)", drinks: 2 },
-            4: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 5: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 6: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 }, 7: { name: "とりあえず飲めや！！！ (1杯飲む)", drinks: 1 },
-            8: { name: "回避！ (0杯)", drinks: 0 }, 9: { name: "回避！ (0杯)", drinks: 0 }, 10: { name: "回避！ (0杯)", drinks: 0 }
-          };
-          const outcome = entranceMapping[resNum];
+          if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転中...";
 
-          // 3.5秒後（PCとスマホのルーレットが回りきったタイミング）にサーバーへ結果報告
-          setTimeout(() => {
-            player.drinkCount = (player.drinkCount || 0) + (outcome.drinks || 0);
+          // スマホ手元の通常ルーレットを、PCと全く同じ出目・同じタイミングでシャカシャカ回転させる！
+          if (typeof currentRotation !== "undefined" && typeof playMobileRouletteAnimation === "function") {
+            const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+            currentRotation += 1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
             
-            socket.emit("playerAction", {
-              roomCode: targetRoom,
-              action: "squareEventFinished",
-              updatedPlayer: player
+            playMobileRouletteAnimation(resNum, currentRotation, (finalSteps) => {
+              console.log("📱 スマホ側の回転演出完了。");
             });
-            document.body.classList.remove(cfg.themeClass);
-          }, 3500);
+          }
+        });
+
+        // 🎯 サーバー側で全ての出目処理と数値計算が終わり、「決着がついた合図（customRouletteFinished）」が来たら安全に次のターンへ解放
+        socket.off("customRouletteFinished");
+        socket.on("customRouletteFinished", (data) => {
+          console.log("📱 [イベント決着通知を受信] スマホ画面のロックを安全に解除します。");
+          if (resultDisplay) resultDisplay.textContent = `🎯 結果: ${data.message}`;
+          document.body.classList.remove(cfg.themeClass);
         });
       }
     }
   },
-  salaryman: { id: 18, type: "force_stop", text: "【強制ストップマス】入社式", location: "本社ビル", event: function(player, square) { window.SQ_MODULES[18].normal.event(player, square); } },
-  short: { id: 18, type: "force_stop", text: "【強制ストップマス】爆速入学", location: "家", event: function(player, square) { window.SQ_MODULES[18].normal.event(player, square); } }
+  salaryman: { id: 18, type: "force_stop", text: "【強制ストップマス】入社式", location: "本社ビル", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } },
+  short: { id: 18, type: "force_stop", text: "【強制ストップマス】爆速入学", location: "家", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } }
 };
