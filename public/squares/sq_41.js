@@ -147,7 +147,7 @@ window.SQ_MODULES[41] = {
               finalSpinBtn.disabled = false;
               finalSpinBtn.textContent = cfg.mobileSecondBtn;
               if (resultDisplay) {
-                resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
+                resultDisplay.textContent = `🎯 1回目成功！いざ告白！`;
               }
 
               const newFinalBtn = finalSpinBtn.cloneNode(true);
