@@ -1,7 +1,7 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-// 🎯 41番マスのキー指定を完璧に配置
+// 🎯 41番マスのキー指定を完璧に配置！
 window.SQ_MODULES[41] = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
@@ -11,19 +11,21 @@ window.SQ_MODULES[41] = {
     location: "家",
 
     // 🎯 【再利用のための固有設定カタログ】
+    // 別のゲームに流用するときは、ここを書き換えるだけでPC大画面もスマホも全部自動で変わります
     config: {
-      themeClass: "theme-couple",           
+      themeClass: "theme-couple",           // 適用するCSSテーマクラス
       pcFirstTitle: "💕 カップル成立チャンス 💕",
       pcFirstDesc: "運命 of 1回目スピンを回して【偶数】を狙え！",
-      pcSecondTitle: "カップル告白",        
+      pcSecondTitle: "カップル告白",        // 2回目のイベント名（動的反映用）
       pcSecondDesc: "スマホから最終決着スピンを回して、意中の相手を射止めろ！",
       
+      // スマホ通常画面のテキスト設定
       mobileFirstDisplay: "🎯 偶数（告白チャンス）を狙ってね！",
       mobileFirstBtn: "🎲 運命 of 1回目スピンを回す！",
       mobileSecondBtn: "💘 決着の2回目（告白）スピン！"
     },
     
-    // 🚀 メイン進行ロジック
+    // 🚀 メイン進行ロジック（PC・スマホ両用で完全カプセル化）
     event: function(player, square) {
       const cfg = this.config;
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
@@ -36,6 +38,7 @@ window.SQ_MODULES[41] = {
         const btnNext = document.getElementById("btn-next-turn");
         if (btnNext) { btnNext.disabled = true; btnNext.style.display = "none"; }
 
+        // カタログ(config)から文字を取得してPCモーダルに流し込む
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
         document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
@@ -43,6 +46,7 @@ window.SQ_MODULES[41] = {
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) { resultBox.style.display = "none"; resultBox.className = "event-result-box"; resultBox.textContent = ""; }
 
+        // 1〜10の1回目判定条件表をダイレクト生成（オリジナルの文字表現）
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
           <ul class="event-table-list">`;
@@ -58,13 +62,14 @@ window.SQ_MODULES[41] = {
         return;
       }
 
-      // 📱 ② 【スマホ手元側だった場合の直接処理】
+      // 📱 ② 【スマホ手元側だった場合の直接処理（通常画面の着せ替えと乗っ取り）】
       if (typeof socket !== "undefined") {
         console.log(`📱 [スマホ側] マスID: ${this.id} の進行制御を通常画面にバインドします。`);
 
         const spinBtn = document.getElementById("btn-phone-spin");
         const resultDisplay = document.getElementById("roulette-result-display");
 
+        // カタログで指定したCSSテーマを付与して通常ルーレットを着せ替え
         document.body.classList.add(cfg.themeClass);
 
         if (spinBtn) {
@@ -75,6 +80,9 @@ window.SQ_MODULES[41] = {
           resultDisplay.textContent = cfg.mobileFirstDisplay;
         }
 
+        // ──────────────────────────────────────────────────────────
+        // 🔥 【1回目スピン発火】ボタンをクローン化して古いイベントを完全消去し、乗っ取る
+        // ──────────────────────────────────────────────────────────
         if (spinBtn) {
           const newSpinBtn = spinBtn.cloneNode(true);
           spinBtn.parentNode.replaceChild(newSpinBtn, spinBtn);
@@ -83,22 +91,11 @@ window.SQ_MODULES[41] = {
             newSpinBtn.disabled = true;
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             
-            const firstMapping = {
-              1: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
-              2: { name: "💕 偶数：告白チャンス！", drinks: 0 },
-              3: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
-              4: { name: "💕 偶数：告白チャンス！", drinks: 0 },
-              5: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
-              6: { name: "💕 偶数：告白チャンス！", drinks: 0 },
-              7: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
-              8: { name: "💕 偶数：告白チャンス！", drinks: 0 },
-              9: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
-              10: { name: "💕 偶数：告白チャンス！", drinks: 0 }
-            };
+            // mapping を空にして送ることで、回した瞬間の大画面上書きを完璧に阻止
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
               eventName: "カップル成立チャンス",
-              mapping: firstMapping
+              mapping: {} 
             });
           };
         }
@@ -107,10 +104,6 @@ window.SQ_MODULES[41] = {
         // ──────────────────────────────────────────────────────────
         socket.off("spinCustomRoulette");
         socket.on("spinCustomRoulette", (data) => {
-          // 🎯 【回した瞬間バグの完全修正】
-          // ここで大画面の className やインナーHTMLをいじる処理を一切排除しました。
-          // これにより、ルーレットが回っている間も1枚目のピンク画面の見た目がそのまま完全に固定されます。
-
           if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
           const resNum = data.result !== undefined ? data.result : 1;
           
@@ -142,12 +135,19 @@ window.SQ_MODULES[41] = {
             // 【偶数成功：2回目（告白）スピンの段取りへ移行】
             window.SQ_MODULES[41].normal.isSecondStage = true;
 
+            // 🎯 【誤爆防止ロック】1回目偶数が出た瞬間に、大画面の「次のプレイヤーへ」ボタンを物理的に隠して無効化！
+            const pcNextBtn = document.getElementById("btn-next-turn");
+            if (pcNextBtn) { 
+              pcNextBtn.disabled = true; 
+              pcNextBtn.style.display = "none"; 
+            }
+
             const finalSpinBtn = document.getElementById("btn-phone-spin");
             if (finalSpinBtn) {
               finalSpinBtn.disabled = false;
               finalSpinBtn.textContent = cfg.mobileSecondBtn;
               if (resultDisplay) {
-                resultDisplay.textContent = `🎯 1回目成功！いざ告白！`;
+                resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
               }
 
               const newFinalBtn = finalSpinBtn.cloneNode(true);
@@ -250,28 +250,44 @@ window.SQ_MODULES[41] = {
                 });
               }
 
+              // イベント完全終了時に、次の通常移動スピンができるよう解放＆PC側の「次のプレイヤーへ」を表示！
               setTimeout(() => {
                 document.body.classList.remove(cfg.themeClass);
                 window.SQ_MODULES[41].normal.isSecondStage = false;
+
+                const resetBtn = document.getElementById("btn-phone-spin");
+                if (resetBtn) {
+                  const cleanedBtn = resetBtn.cloneNode(true);
+                  resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
+                  cleanedBtn.disabled = true;
+                  cleanedBtn.textContent = "⚡ ルーレットを回す！";
+                }
+
+                // 🎯 2回目が完全に終わったので、PC側のボタンロックを解除して復活させる！
+                const pcNextBtnFinal = document.getElementById("btn-next-turn");
+                if (pcNextBtnFinal) { 
+                  pcNextBtnFinal.disabled = false; 
+                  pcNextBtnFinal.style.display = "block"; 
+                }
+
                 socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
               }, 3500);
             });
 
           } else {
-            // 🎯 奇数失敗時に、PC側のゴミ表示を完全にねじ伏せて結果をオリジナルの文字表現で流し込み！
+            // 🎯 奇数失敗時
             if (resultDisplay) resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
             
             const modalResultBox = document.getElementById("modal-event-result-box");
             if (modalResultBox) {
               modalResultBox.style.display = "block";
-              modalResultBox.className = "event-result-box failure"; // ピンク/赤系のボックスに固定
+              modalResultBox.className = "event-result-box failure"; 
               modalResultBox.innerHTML = `
                 <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px; color:#d81b60;">出目: ${result}</div>
                 <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：タイミングが悪い...</div>
               `;
             }
 
-            // 大画面を自動で閉じて通常進行へ復帰
             setTimeout(() => {
               const targetModalEl = document.getElementById("pc-event-modal");
               if (targetModalEl) {
@@ -281,18 +297,25 @@ window.SQ_MODULES[41] = {
               const btnNext = document.getElementById("btn-next-turn");
               if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
               
-              document.body.classList.remove(cfg.themeClass);
-              socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
-            }, 3500);
-          }
-        });
+              const resetBtn = document.getElementById("btn-phone-spin");
+              if (resetBtn) {
+                const cleanedBtn = resetBtn.cloneNode(true);
+                resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
+                cleanedBtn.disabled = true;
+                cleanedBtn.textContent = "⚡ ルーレットを回す！";
+              }
 
-        socket.on("startCustomEventSecondSpin", (data) => {
-          window.SQ_MODULES[41].normal.lastMapping = data.mapping;
-        });
-      }
-    }
-  },
-  salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
-  short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
+              document.body.classList.remove(cfg.themeClass);
+socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
+}, 3500);
+}
+});
+socket.on("startCustomEventSecondSpin", (data) => {
+window.SQ_MODULES[41].normal.lastMapping = data.mapping;
+});
+}
+}
+},
+salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
+short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
 };
