@@ -130,6 +130,6 @@ window.SQ_MODULES[18] = {
       }
     }
   },
-  salaryman: { id: 18, type: "force_stop", text: "【強制ストップマス】入社式", location: "本社ビル", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } },
-  short: { id: 18, type: "force_stop", text: "【強制ストップマス】爆速入学", location: "家", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } }
+  salaryman: { id: 18, type: "force_stop", text: "【強制ストップマス】入社式", location: "本社ビル", event: function(player, square) { window.SQ_MODULES[18].normal.event(player, square); } },
+  short: { id: 18, type: "force_stop", text: "【強制ストップマス】爆速入学", location: "家", event: function(player, square) { window.SQ_MODULES[18].normal.event(player, square); } }
 };

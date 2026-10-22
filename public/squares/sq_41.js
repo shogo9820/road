@@ -111,7 +111,7 @@ window.SQ_MODULES[41] = {
 
           if (result % 2 === 0) {
             // 【偶数成功：2回目（告白）スピンの段取りへ移行】
-            window.SQ_MODULES.normal.isSecondStage = true;
+            window.SQ_MODULES[41].normal.isSecondStage = true;
 
             const finalSpinBtn = document.getElementById("btn-phone-spin");
             if (finalSpinBtn) {
@@ -126,7 +126,7 @@ window.SQ_MODULES[41] = {
                 newFinalBtn.disabled = true;
                 if (resultDisplay) resultDisplay.textContent = "🌀 最終ルーレット要求中...";
                 
-                const currentMapping = window.SQ_MODULES.normal.lastMapping || {};
+                const currentMapping = window.SQ_MODULES[41].normal.lastMapping || {};
                 socket.emit("startCustomRouletteEvent", {
                   roomCode: targetRoom,
                   eventName: cfg.pcSecondTitle,
@@ -153,7 +153,7 @@ window.SQ_MODULES[41] = {
               }
             });
 
-            window.SQ_MODULES.normal.lastMapping = mapping;
+            window.SQ_MODULES[41].normal.lastMapping = mapping;
 
             // サーバー経由でPC大画面の対応表をプレイヤー名へ切り替える
             socket.emit("playerAction", {
@@ -183,7 +183,7 @@ window.SQ_MODULES[41] = {
             socket.on("customRouletteFinished", (secondFinishData) => {
               if (!window.SQ_MODULES[41].normal.isSecondStage) return;
               const finalRes = secondFinishData.result;
-              const currentMapping = window.SQ_MODULES.normal.lastMapping;
+              const currentMapping = window.SQ_MODULES[41].normal.lastMapping;
               const hitTarget = currentMapping ? currentMapping[finalRes] : null;
 
               if (hitTarget) {
@@ -212,7 +212,7 @@ window.SQ_MODULES[41] = {
               // 3.5秒の余韻のあと、着せ替えを剥がして安全に交代待機へ完了報告
               setTimeout(() => {
                 document.body.classList.remove(cfg.themeClass);
-                window.SQ_MODULES.normal.isSecondStage = false;
+                window.SQ_MODULES[41].normal.isSecondStage = false;
                 socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
               }, 3500);
             });
@@ -229,6 +229,6 @@ window.SQ_MODULES[41] = {
       }
     }
   },
-  salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } },
-  short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } }
+  salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
+  short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
 };
