@@ -14,7 +14,7 @@ window.SQ_MODULES[41] = {
     // 別のゲームに流用するときは、ここを書き換えるだけでPC大画面もスマホも全部自動で変わります
     config: {
       themeClass: "theme-couple",           // 適用するCSSテーマクラス
-      pcFirstTitle: "💕 カップル成立チャンス！？ 💕",
+      pcFirstTitle: "💕 カップル成立チャンス 💕",
       pcFirstDesc: "運命 of 1回目スピンを回して【偶数】を狙え！",
       pcSecondTitle: "カップル告白",        // 2回目のイベント名（動的反映用）
       pcSecondDesc: "スマホから最終決着スピンを回して、意中の相手を射止めろ！",
@@ -46,14 +46,14 @@ window.SQ_MODULES[41] = {
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) { resultBox.style.display = "none"; resultBox.className = "event-result-box"; resultBox.textContent = ""; }
 
-        // 1〜10の1回目判定条件表をダイレクト生成（偶数・奇数の基本ルール）
+        // 1〜10の1回目判定条件表をダイレクト生成（オリジナルの文字表現）
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
           <ul class="event-table-list">`;
         for (let i = 1; i <= 10; i++) {
           const isEven = i % 2 === 0;
           const badgeBg = isEven ? "#ff4081" : "#78909c";
-          const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：チャンス突入！</span>' : '<span style="color:#546e7a;">💦 奇数：ここで終了...</span>';
+          const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス！</span>' : '<span style="color:#546e7a;">💦 奇数：タイミングが悪い...</span>';
           tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${condText}</div></li>`;
         }
         tableHTML += `</ul>`;
@@ -91,9 +91,18 @@ window.SQ_MODULES[41] = {
             newSpinBtn.disabled = true;
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             
+            // 🎯 【ココを100%修正！】サーバーへ送信する文字を、大画面のオリジナルテキストと完全に一致させる！
             const firstMapping = {
-              1: { name: "奇数", drinks: 0 }, 2: { name: "偶数", drinks: 0 }, 3: { name: "奇数", drinks: 0 }, 4: { name: "偶数", drinks: 0 }, 5: { name: "奇数", drinks: 0 },
-              6: { name: "偶数", drinks: 0 }, 7: { name: "奇数", drinks: 0 }, 8: { name: "偶数", drinks: 0 }, 9: { name: "奇数", drinks: 0 }, 10: { name: "偶数", drinks: 0 }
+              1: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
+              2: { name: "💕 偶数：告白チャンス！", drinks: 0 },
+              3: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
+              4: { name: "💕 偶数：告白チャンス！", drinks: 0 },
+              5: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
+              6: { name: "💕 偶数：告白チャンス！", drinks: 0 },
+              7: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
+              8: { name: "💕 偶数：告白チャンス！", drinks: 0 },
+              9: { name: "💦 奇数：タイミングが悪い...", drinks: 0 },
+              10: { name: "💕 偶数：告白チャンス！", drinks: 0 }
             };
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
@@ -114,14 +123,14 @@ window.SQ_MODULES[41] = {
             document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
             document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
             
-            // 判定条件表（偶数・奇数のピンクのリスト）を再描画して、青い対応表での上書きを完全に防御する！
+            // 🎯 【ココも徹底修正！】回した瞬間に上書きされるテーブルテキストを、オリジナルの本物の文字表現に完全固定する！
             let fixTableHTML = `
               <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
               <ul class="event-table-list">`;
             for (let i = 1; i <= 10; i++) {
               const isEven = i % 2 === 0;
               const badgeBg = isEven ? "#ff4081" : "#78909c";
-              const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：チャンス突入！</span>' : '<span style="color:#546e7a;">💦 奇数：ここで終了...</span>';
+              const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス！</span>' : '<span style="color:#546e7a;">💦 奇数：タイミングが悪い...</span>';
               fixTableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${condText}</div></li>`;
             }
             fixTableHTML += `</ul>`;
@@ -187,7 +196,7 @@ window.SQ_MODULES[41] = {
             // 自分以外のプレイヤーをシャッフル割り当て
             const otherPlayers = players.filter((p) => String(p.id) !== String(player.id));
             const degreeTable = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-            const rollSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const rollSlots =[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             for (let i = rollSlots.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
               [rollSlots[i], rollSlots[j]] = [rollSlots[j], rollSlots[i]];
@@ -277,7 +286,7 @@ window.SQ_MODULES[41] = {
             });
 
           } else {
-            // 🎯 奇数失敗時に、PC側のゴミ表示を完全にねじ伏せて結果を上書き流し込み！
+            // 🎯 奇数失敗時に、PC側のゴミ表示を完全にねじ伏せて結果をオリジナルの文字表現で流し込み！
             if (resultDisplay) resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
             
             const modalResultBox = document.getElementById("modal-event-result-box");
@@ -286,7 +295,7 @@ window.SQ_MODULES[41] = {
               modalResultBox.className = "event-result-box failure"; // ピンク/赤系のボックスに固定
               modalResultBox.innerHTML = `
                 <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px; color:#d81b60;">出目: ${result}</div>
-                <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：フラれて終了...</div>
+                <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：タイミングが悪い...</div>
               `;
             }
 
