@@ -402,7 +402,6 @@ function appendSocketListeners() {
   });
 
   // 🎯 2段階目（または多段階）イベント：モーダルのテーマを維持し、文字・対応表だけを動的差し替え
-  // pc.js: startCustomEventSecondSpin ハンドラ内
   socket.on("startCustomEventSecondSpin", (data) => {
     console.log("💻 [PC HUB] イベント更新通知を受信:", data.nextStepEventName);
 
@@ -414,33 +413,31 @@ function appendSocketListeners() {
 
     // 1. タイトル
     const titleEl = document.getElementById("modal-event-title");
-    if (titleEl && data.nextStepEventName) {
-      titleEl.textContent = `💕 ${data.nextStepEventName} 💕`;
-    }
+    if (titleEl && data.nextStepEventName) titleEl.textContent = `💕 ${data.nextStepEventName} 💕`;
 
     // 2. 説明文
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) {
-      descEl.textContent = data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
-    }
+    if (descEl) descEl.textContent = data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
 
-    // 3. 結果枠：余計な出目を出さず「💕 告白チャンス！」とだけシンプル表示
+    // 🎯 3. 【ここ！】1回目の結果文言を左下にパッと表示！
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
       modalResultBox.className = "event-result-box success";
+      const rollNum = data.result !== undefined ? `【出目:${data.result}】` : "";
       modalResultBox.innerHTML = `
-        <div style="font-size:1.4rem; font-weight:900; color:#d81b60;">💕 告白チャンス！</div>
+        <div style="font-size:1.1rem; color:#d81b60; font-weight:bold;">${rollNum} 💕 偶数達成！</div>
+        <div style="font-size:1.3rem; font-weight:900; color:#e91e63; margin-top:2px;">告白チャンス獲得！</div>
       `;
     }
 
-    // 4. 対応表（プレイヤー割り当て表）
+    // 4. 対応表の差し替え
     const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💘 告白対象スロット</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
-        let targetText = '<span style="color:#aaa;">告白失敗...</span>';
+        let targetText = '<span style="color:#aaa;">(該当なし)</span>';
         if (target && target.name) {
           targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
         }
