@@ -1,7 +1,6 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-// 🎯 41番マスのキー指定を完璧に配置！
 window.SQ_MODULES[41] = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
@@ -11,7 +10,6 @@ window.SQ_MODULES[41] = {
     location: "家",
 
     // 🎯 【再利用のための固有設定カタログ】
-    // 別のゲームに流用するときは、ここを書き換えるだけでPC大画面もスマホも全部自動で変わります
     config: {
       themeClass: "theme-couple",           // 適用するCSSテーマクラス
       pcFirstTitle: "💕 カップル成立チャンス 💕",
@@ -46,7 +44,7 @@ window.SQ_MODULES[41] = {
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) { resultBox.style.display = "none"; resultBox.className = "event-result-box"; resultBox.textContent = ""; }
 
-        // 1〜10の1回目判定条件表をダイレクト生成（オリジナルの文字表現）
+        // 1〜10の1回目判定条件表をダイレクト生成
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
           <ul class="event-table-list">`;
@@ -91,7 +89,7 @@ window.SQ_MODULES[41] = {
             newSpinBtn.disabled = true;
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             
-            // mapping を空にして送ることで、回した瞬間の大画面上書きを完璧に阻止
+            // mappingを空にして送ることで、回した瞬間の大画面上書きを完璧に阻止
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
               eventName: "カップル成立チャンス",
@@ -129,13 +127,16 @@ window.SQ_MODULES[41] = {
         socket.off("customRouletteFinished");
         socket.on("customRouletteFinished", (data) => {
           if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
-          const result = data.result;
+          
+          // サーバーから送られてくる本物の確定出目を安全に取得
+          const result = data && data.result !== undefined ? data.result : 1;
+          console.log(`📱 [スマホイベント判定] 1回目の確定出目: ${result}`);
 
           if (result % 2 === 0) {
             // 【偶数成功：2回目（告白）スピンの段取りへ移行】
             window.SQ_MODULES[41].normal.isSecondStage = true;
 
-            // 🎯 【誤爆防止ロック】1回目偶数が出た瞬間に、大画面の「次のプレイヤーへ」ボタンを物理的に隠して無効化！
+            // 🎯 【誤爆防止ロック】偶数が出た瞬間に、大画面の「次のプレイヤーへ」ボタンを物理的に隠して無効化！
             const pcNextBtn = document.getElementById("btn-next-turn");
             if (pcNextBtn) { 
               pcNextBtn.disabled = true; 
@@ -263,7 +264,7 @@ window.SQ_MODULES[41] = {
                   cleanedBtn.textContent = "⚡ ルーレットを回す！";
                 }
 
-                // 🎯 2回目が完全に終わったので、PC側のボタンロックを解除して復活させる！
+                // 2回目が完全に終わったので、PC側のボタンロックを解除して復活させる！
                 const pcNextBtnFinal = document.getElementById("btn-next-turn");
                 if (pcNextBtnFinal) { 
                   pcNextBtnFinal.disabled = false; 
@@ -302,10 +303,9 @@ window.SQ_MODULES[41] = {
                 const cleanedBtn = resetBtn.cloneNode(true);
                 resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
                 cleanedBtn.disabled = true;
-                cleanedBtn.textContent = "⚡ ルーレットを回す！";
-              }
-
-              document.body.classList.remove(cfg.themeClass);
+cleanedBtn.textContent = "⚡ ルーレットを回す！";
+}
+document.body.classList.remove(cfg.themeClass);
 socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
 }, 3500);
 }
