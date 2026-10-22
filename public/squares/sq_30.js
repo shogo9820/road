@@ -1,70 +1,88 @@
+// public/squares/sq_30.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
 window.SQ_MODULES[30] = {
-  // 🌸 現行：サークル生活モード
   normal: {
     id: 30,
     type: "insurance_shop",
     text: "【強制ストップ】生命保険購入（0〜3枚選択可能）",
-    drink: 0,
-    happiness: 0,
     location: "家",
     
-    // 🎯 マスに止まった瞬間に、PC・スマホそれぞれの環境でダイレクトに実行！
     event: function(player, square) {
-      console.log("[sq_30.js] 30番マスの自前イベントを実行します。");
+      console.log("[sq_30.js] 30番マスの自前インラインイベントを実行します。");
+      const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
 
-      // 💻 【PC大画面側だった場合の直接処理】
+      // 💻 ① 【PC大画面側だった場合の直接処理】
       if (typeof isPCEventMode !== "undefined") {
-        isPCEventMode = true; // 🔓 大画面の自動スキップタイマーをその場で緊急停止
+        isPCEventMode = true; // 大画面の自動スキップタイマーをその場で緊急停止
         return;
       }
 
-      // 📱 【スマホ手元側だった場合の直接処理】
+      // 📱 ② 【スマホ手元側だった場合の直接処理（モーダルを出さずにボタンエリアを乗っ取る）】
+      const resultDisplay = document.getElementById("roulette-result-display");
+      const spinBtn = document.getElementById("btn-phone-spin");
       const playScreen = document.getElementById("phone-screen-play") || document.body;
+
       if (playScreen && typeof currentRoomCode !== "undefined") {
-        let shopHtml = `
-          <div id="insurance-shop-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
-            <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
-              <h3 style="margin-top:0; color:#9c27b0; font-size:1.3rem; font-weight:bold;">🛡️ 生命保険の加入（購入）</h3>
-              <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">今後の飲酒を完全無効化できる命の盾です。<br>何枚購入しますか？</p>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <button class="btn-shop-select" data-count="0" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">0枚（購入しない）</button>
-                <button class="btn-shop-select" data-count="1" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">1枚購入</button>
-                <button class="btn-shop-select" data-count="2" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">2枚購入</button>
-                <button class="btn-shop-select" data-count="3" style="padding:12px; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">3枚購入（最大）</button>
-              </div>
-            </div>
+        // 通常スピンボタン（btn-phone-spin）を一時的に非表示にし、代わりに保険購入用のボタン群を美しく挿入
+        if (spinBtn) spinBtn.style.display = "none";
+        if (resultDisplay) resultDisplay.textContent = "🛡️ 今後の飲酒を完全無効化できる生命保険を購入できます。";
+
+        let inlineShopHtml = `
+          <div id="insurance-inline-zone" style="width:100%; display:flex; flex-direction:column; gap:8px; margin:10px auto; align-items:center;">
+            <div style="font-weight:bold; font-size:1.1rem; color:#9c27b0; margin-bottom:4px;">🛡️ 何枚購入しますか？ (1枚につきHPの盾)</div>
+            <button class="btn-shop-select btn-blue" data-count="0" style="background-color:#78909c !important;">0枚（購入しない）</button>
+            <button class="btn-shop-select btn-orange" data-count="1">1枚購入</button>
+            <button class="btn-shop-select btn-orange" data-count="2">2枚購入</button>
+            <button class="btn-shop-select btn-orange" data-count="3">3枚購入（最大）</button>
           </div>
         `;
 
-        document.getElementById("insurance-shop-modal")?.remove();
-        playScreen.insertAdjacentHTML("beforeend", shopHtml);
+        // 古いインライン残骸があれば掃除して挿入
+        document.getElementById("insurance-inline-zone")?.remove();
+        
+        // 通常ボタンのすぐ真上にインラインショップを展開
+        if (spinBtn) {
+          spinBtn.insertAdjacentHTML("beforebegin", inlineShopHtml);
+        } else {
+          playScreen.insertAdjacentHTML("beforeend", inlineShopHtml);
+        }
 
+        // インライン配置された各ボタンのクリック処理
         playScreen.querySelectorAll(".btn-shop-select").forEach(btn => {
           btn.onclick = (e) => {
-            const buyCount = parseInt(e.target.getAttribute("data-count"), 10);
+            e.preventDefault();
+            const buyCount = parseInt(e.currentTarget.getAttribute("data-count"), 10);
             
             if (!player.insurance) player.insurance = 0;
-            player.insurance += buyCount; // データの加算
+            player.insurance += buyCount; // 枚数の加算
 
-            console.log(`[sq_30.js] 枚数確定。最新データを乗せて PHASE_WAIT_NEXT（手元開放）へ一斉報告します。`);
+            console.log(`[sq_30.js] 保険購入確定: ${buyCount}枚。最新ステータスをサーバーへ報告します。`);
 
-            // 🎯 【ルーティン結合】すべての処理が終わったこの一瞬に、最新の本人のデータを添えてサーバーへ完了を送信！
+            // 購入完了したらインラインショップを消去し、通常スピンボタンの表示を復活させる
+            document.getElementById("insurance-inline-zone")?.remove();
+            if (spinBtn) {
+              spinBtn.style.display = "block";
+              // 新しいターンに備えて次のプレイヤーに回すため、ボタンのイベントなどをクリアしたクローンにする
+              const cleanedSpinBtn = spinBtn.cloneNode(true);
+              spinBtn.parentNode.replaceChild(cleanedSpinBtn, spinBtn);
+              cleanedSpinBtn.disabled = true; // 手番交代を待つため一旦非活性
+            }
+            if (resultDisplay) resultDisplay.textContent = `🛡️ 保険を ${buyCount} 枚購入しました！「次のプレイヤーへ」を押してね！`;
+
+            // 🎯 最新データを乗せて完了報告電波を発射（これで手元の次へボタンが点灯）
             if (typeof socket !== "undefined") {
               socket.emit("playerAction", {
-                roomCode: currentRoomCode || "",
+                roomCode: targetRoom,
                 action: "squareEventFinished",
                 updatedPlayer: player
               });
             }
-
-            document.getElementById("insurance-shop-modal")?.remove();
           };
         });
       }
     }
   },
-  salaryman: { id: 30, type: "insurance_shop", text: "【強制ストップ】生命保険・ライフプラン設計", drink: 0, happiness: 10, location: "オフィス", event: function(player, square) { window.SQ_MODULES[30].normal.event(player, square); } },
-  short: { id: 30, type: "insurance_shop", text: "【強制ストップ】命の盾を闇取引！", drink: 1, happiness: 0, location: "家", event: function(player, square) { window.SQ_MODULES[30].normal.event(player, square); } }
+  salaryman: { id: 30, type: "insurance_shop", text: "【強制ストップ】生命保険・ライフプラン設計", location: "オフィス", event: function(player, square) { window.SQ_MODULES[30].normal.event(player, square); } },
+  short: { id: 30, type: "insurance_shop", text: "【強制ストップ】命の盾を闇取引！", location: "家", event: function(player, square) { window.SQ_MODULES[30].normal.event(player, square); } }
 };
