@@ -262,3 +262,53 @@ body.theme-repeat-dark #board-canvas {
 .theme-insurance .event-table-num-badge {
   background: #9c27b0;
 }
+
+/* 💕 カップル成立専用：特大お祝いボックス */
+.event-result-box.couple-success {
+  background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%) !important;
+  border: 3px solid #ff4081 !important;
+  box-shadow: 0 0 25px rgba(255, 64, 129, 0.45), inset 0 0 10px rgba(255, 105, 180, 0.2) !important;
+  padding: 16px 20px !important;
+  border-radius: 16px !important;
+  animation: coupleCelebrate 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+@keyframes coupleCelebrate {
+  0% { transform: scale(0.85); opacity: 0; }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.couple-congrats-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #d81b60;
+  margin-bottom: 6px;
+  text-shadow: 0 0 8px rgba(255, 64, 129, 0.3);
+}
+
+.couple-names-highlight {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #c2185b;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.couple-kanpai-shout {
+  display: inline-block;
+  background: #ff4081;
+  color: #ffffff;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  animation: pulseKanpai 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulseKanpai {
+  from { transform: scale(0.97); }
+  to { transform: scale(1.05); }
+}

@@ -154,24 +154,26 @@ window.SQ_MODULES[41] = {
             if (hitTarget) {
               player.isLover = true;
               if (!player.lovers) player.lovers = [];
-              if (!player.lovers.includes(hitTarget.name))
-                player.lovers.push(hitTarget.name);
+              if (!player.lovers.includes(hitTarget.name)) player.lovers.push(hitTarget.name);
               player.drinkCount = (player.drinkCount || 0) + 1;
 
-              socket.emit("playerAction", {
+              // 🎯 直接イベント名を発射！名前も一緒に渡す
+              socket.emit("customEventSecondSpinResult", {
                 roomCode: targetRoom,
-                action: "customEventSecondSpinResult",
                 playerId: player.id,
                 result: result,
-                successMessage: `💕 イベント大成功！ ${player.name} と ${hitTarget.name} が結ばれました！ 🍺`,
+                targetA: player.name,
+                targetB: hitTarget.name,
+                success: true,
+                successMessage: `🎉 おめでとう！ ${player.name} と ${hitTarget.name} が成立！全員で乾杯！ 🍻`
               });
             } else {
-              socket.emit("playerAction", {
+              socket.emit("customEventSecondSpinResult", {
                 roomCode: targetRoom,
-                action: "customEventSecondSpinResult",
                 playerId: player.id,
                 result: result,
-                failureMessage: "告白チャレンジ失敗...！💦",
+                success: false,
+                failureMessage: "💔 チャレンジ失敗...！"
               });
             }
 

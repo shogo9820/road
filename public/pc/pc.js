@@ -378,6 +378,14 @@ function appendSocketListeners() {
 
   // 🎯 汎用ルーレット決着（結果テキスト表示）
   socket.on("customRouletteFinished", (data) => {
+    // 🌟 【ここを追加！】カップルイベント（ピンク画面）中は、汎用の「出目:5」で上書きされるのを完全にブロック！
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal && pcModal.classList.contains("theme-couple")) {
+      console.log("💻 [PC GUARD] カップルイベント中のため、汎用テキストの上書きを阻止し、専用の祝賀通知を待ちます。");
+      return; // 👈 ここで処理を打ち切ることで、下の無機質な「出目:5」が画面に出なくなります！
+    }
+
+    // ─── ここから下は通常の入学式マスなどの処理（元のまま） ───
     isPCEventMode = false;
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
@@ -416,13 +424,13 @@ function appendSocketListeners() {
       descEl.textContent = data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
     }
 
-    // 🎯 3. 結果枠：「出目」や「結果なし」を消し、「告白チャンス！」だけを美しく表示
+    // 3. 結果枠：余計な出目を出さず「💕 告白チャンス！」とだけシンプル表示
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
       modalResultBox.className = "event-result-box success";
       modalResultBox.innerHTML = `
-        <div style="font-size:1.5rem; font-weight:bold; color:#d81b60;">💕 告白チャンス！</div>
+        <div style="font-size:1.4rem; font-weight:900; color:#d81b60;">💕 告白チャンス！</div>
       `;
     }
 
@@ -446,28 +454,42 @@ function appendSocketListeners() {
   socket.on("customEventFinished", (data) => {
     console.log("💻 [PC RECEIVE] 2段階カスタムイベントの決着通知を受信:", data);
     isPCEventMode = false;
+
+    const modalResultBox = document.getElementById("modal-event-result-box");
+    if (!modalResultBox) return;
+
+    modalResultBox.style.display = "block";
+
+    if (data.success) {
+      // 🎉 告白大成功：ド派手に盛大なお祝い！
+      modalResultBox.className = "event-result-box couple-success";
+      modalResultBox.innerHTML = `
+        <div class="couple-congrats-title">🎉 おめでとう！！！ 🎉</div>
+        <div class="couple-names-highlight">${data.targetA || "告白者"} と ${data.targetB || "意中の相手"}</div>
+        <div class="couple-kanpai-shout">🍻 成立記念！全員で乾杯！ 🍻</div>
+      `;
+    } else {
+      // 💔 失敗時
+      modalResultBox.className = "event-result-box failure";
+      modalResultBox.innerHTML = `
+        <div style="font-size:1.3rem; font-weight:bold; color:#546e7a;">💔 チャレンジ失敗...</div>
+        <div style="font-size:1rem; color:#78909c; margin-top:4px;">今回はご縁がありませんでした...</div>
+      `;
+    }
+
+    // 5秒間盛大に見せてから次の手番へ解放
     setTimeout(() => {
-      const modalResultBox = document.getElementById("modal-event-result-box");
-      if (modalResultBox) {
-        modalResultBox.style.display = "block";
-        modalResultBox.className = data.success
-          ? "event-result-box success"
-          : "event-result-box failure";
-        modalResultBox.innerHTML = data.message || "";
+      const targetModalEl = document.getElementById("pc-event-modal");
+      if (targetModalEl) {
+        targetModalEl.className = "event-modal-overlay";
+        targetModalEl.style.display = "none";
       }
-      setTimeout(() => {
-        const targetModalEl = document.getElementById("pc-event-modal");
-        if (targetModalEl) {
-          targetModalEl.className = "event-modal-overlay";
-          targetModalEl.style.display = "none";
-        }
-        const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) {
-          btnNext.disabled = false;
-          btnNext.style.display = "block";
-        }
-      }, 3000);
-    }, 3000);
+      const btnNext = document.getElementById("btn-next-turn");
+      if (btnNext) {
+        btnNext.disabled = false;
+        btnNext.style.display = "block";
+      }
+    }, 4500);
   });
 
   // 🎓 1. 卒業判定モーダルの展開

@@ -593,7 +593,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("customEventSecondSpinResult", (data) => {
-    const { roomCode, playerId, result, successMessage, failureMessage } = data;
+    const { roomCode, playerId, result, successMessage, failureMessage, targetA, targetB } = data;
     const room = rooms[roomCode];
     if (!room || !room.currentCustomEventMapping) return;
 
@@ -606,11 +606,13 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("customEventFinished", {
         success: true,
         message: successMessage || "イベント大成功！",
+        targetA: targetA || player.name,
+        targetB: targetB || hitTarget.name
       });
     } else {
       io.to(roomCode).emit("customEventFinished", {
         success: false,
-        message: failureMessage || "イベント失敗...",
+        message: failureMessage || "イベント失敗..."
       });
     }
 
