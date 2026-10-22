@@ -1,7 +1,7 @@
 // public/squares/sq_18.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES = {
+window.SQ_MODULES[18] = {
   normal: {
     id: 18,
     type: "force_stop",

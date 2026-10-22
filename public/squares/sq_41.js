@@ -1,7 +1,7 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES = {
+window.SQ_MODULES[41] = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
     id: 41,
