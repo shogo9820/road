@@ -93,7 +93,7 @@ window.SQ_MODULES[41] = {
         // ──────────────────────────────────────────────────────────
         socket.off("spinCustomRoulette");
         socket.on("spinCustomRoulette", (data) => {
-          if (window.SQ_MODULES.normal.isSecondStage) return; // 2回目用ガード
+          if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
           const resNum = data.result !== undefined ? data.result : 1;
           
           if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット回転中...";
@@ -106,7 +106,7 @@ window.SQ_MODULES[41] = {
 
         socket.off("customRouletteFinished");
         socket.on("customRouletteFinished", (data) => {
-          if (window.SQ_MODULES.normal.isSecondStage) return; // 2回目用ガード
+          if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
           const result = data.result;
 
           if (result % 2 === 0) {
@@ -168,7 +168,7 @@ window.SQ_MODULES[41] = {
 
             // 🎯 2回目のスピンがサーバーで開始された電波をスマホでもキャッチして同時回転！
             socket.on("spinCustomRoulette", (secondData) => {
-              if (!window.SQ_MODULES.normal.isSecondStage) return;
+              if (!window.SQ_MODULES[41].normal.isSecondStage) return;
               const secNum = secondData.result !== undefined ? secondData.result : 1;
               
               if (resultDisplay) resultDisplay.textContent = "🌀 最終判定ルーレット回転中...";
@@ -181,7 +181,7 @@ window.SQ_MODULES[41] = {
 
             // 🎯 2回目の最終決着通知を受け取ったら、成否判定を行い、通常状態へ戻す
             socket.on("customRouletteFinished", (secondFinishData) => {
-              if (!window.SQ_MODULES.normal.isSecondStage) return;
+              if (!window.SQ_MODULES[41].normal.isSecondStage) return;
               const finalRes = secondFinishData.result;
               const currentMapping = window.SQ_MODULES.normal.lastMapping;
               const hitTarget = currentMapping ? currentMapping[finalRes] : null;
