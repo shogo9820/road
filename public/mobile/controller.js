@@ -111,6 +111,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // 🎯 【基本ルーティン：行程①】サーバーから手番交代のバトンを受信した瞬間
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
+      // 🎯 次のターンになったら、カップルマスのピンク着せ替えクラスを安全に剥がして通常色に戻す
+      document.body.classList.remove("theme-couple");
+
+      // いつものボタンテキストに戻す
+      const spinBtn = document.getElementById("btn-phone-spin");
+      if (spinBtn) spinBtn.textContent = "⚡ ルーレットを回す！";
+      
       window.hasConfirmedThisTurn = false;
       window.isLandedThisTurn = false;
 
