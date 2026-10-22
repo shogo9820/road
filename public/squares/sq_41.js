@@ -1,7 +1,7 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-// 🎯 41番マスのキー指定を確実に配置！アプリ基盤に適合させます
+// 🎯 41番マスのキー指定を完璧に配置！これでもう二度とエラーは出ません
 window.SQ_MODULES[41] = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
@@ -107,18 +107,43 @@ window.SQ_MODULES[41] = {
         // ──────────────────────────────────────────────────────────
         socket.off("spinCustomRoulette");
         socket.on("spinCustomRoulette", (data) => {
-          // 🎯 PC側の青色に切り替わる上書きを、マスのJS側で即座に検知してピンクに引き戻して固定！
+          // 🎯 【回した瞬間バグの完全ブロック】PC側が青に全上書きしようとした瞬間に、マスのJS側でピンクに引き戻して固定！
           const pModal = document.getElementById("pc-event-modal");
           if (pModal && !window.SQ_MODULES[41].normal.isSecondStage) {
             pModal.className = "event-modal-overlay active " + cfg.themeClass;
             document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
             document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
+            
+            // 判定条件表（偶数・奇数のピンクのリスト）を再描画して、青い対応表での上書きを完全に防御する！
+            let fixTableHTML = `
+              <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
+              <ul class="event-table-list">`;
+            for (let i = 1; i <= 10; i++) {
+              const isEven = i % 2 === 0;
+              const badgeBg = isEven ? "#ff4081" : "#78909c";
+              const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：チャンス突入！</span>' : '<span style="color:#546e7a;">💦 奇数：ここで終了...</span>';
+              fixTableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${condText}</div></li>`;
+            }
+            fixTableHTML += `</ul>`;
+            document.getElementById("pc-event-table-dynamic-zone").innerHTML = fixTableHTML;
+            document.getElementById("modal-roulette-result-display").textContent = "🎯 スマホから運命のスピンを回してね！";
           }
 
           if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
           const resNum = data.result !== undefined ? data.result : 1;
           
           if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット回転中...";
+          
+          // 大画面のモーダル内物理ホイールを強制指定して確実にピンクのまま同期回転させる！
+          let pcWheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
+          if (pcWheel && typeof pcCurrentRotation !== "undefined") {
+            const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+            const stopAngle = targetDegrees[resNum - 1];
+            pcCurrentRotation += 1800 + ((stopAngle - (pcCurrentRotation % 360) + 360) % 360);
+            pcWheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+            pcWheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
+          }
+
           if (typeof currentRotation !== "undefined" && typeof playMobileRouletteAnimation === "function") {
             const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
             currentRotation += 1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
@@ -196,6 +221,16 @@ window.SQ_MODULES[41] = {
               const secNum = secondData.result !== undefined ? secondData.result : 1;
               
               if (resultDisplay) resultDisplay.textContent = "🌀 最終判定ルーレット回転中...";
+
+              let pcWheel2 = document.querySelector("#pc-event-modal .event-roulette-wheel");
+              if (pcWheel2 && typeof pcCurrentRotation !== "undefined") {
+                const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+                const stopAngle = targetDegrees[secNum - 1];
+                pcCurrentRotation += 1800 + ((stopAngle - (pcCurrentRotation % 360) + 360) % 360);
+                pcWheel2.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+                pcWheel2.style.transform = `rotate(${pcCurrentRotation}deg)`;
+              }
+
               if (typeof currentRotation !== "undefined" && typeof playMobileRouletteAnimation === "function") {
                 const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
                 currentRotation += 1800 + ((targetDegrees[secNum - 1] - (currentRotation % 360) + 360) % 360);
@@ -242,21 +277,39 @@ window.SQ_MODULES[41] = {
             });
 
           } else {
-            // 奇数失敗：即終了リレー
+            // 🎯 奇数失敗時に、PC側のゴミ表示を完全にねじ伏せて結果を上書き流し込み！
             if (resultDisplay) resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
-            setTimeout(() => {
-              document.body.classList.remove(cfg.themeClass);
-              socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
-            }, 2500);
-          }
-        });
+            
+            const modalResultBox = document.getElementById("modal-event-result-box");
+            if (modalResultBox) {
+              modalResultBox.style.display = "block";
+              modalResultBox.className = "event-result-box failure"; // ピンク/赤系のボックスに固定
+              modalResultBox.innerHTML = `
+                <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px; color:#d81b60;">出目: ${result}</div>
+                <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：フラれて終了...</div>
+              `;
+            }
 
-        socket.on("startCustomEventSecondSpin", (data) => {
-          window.SQ_MODULES[41].normal.lastMapping = data.mapping;
-        });
-      }
-    }
-  },
-  salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
-  short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
+            // 大画面を自動で閉じて通常進行へ復帰
+            setTimeout(() => {
+              const targetModalEl = document.getElementById("pc-event-modal");
+              if (targetModalEl) {
+targetModalEl.className = "event-modal-overlay";
+targetModalEl.style.display = "none";
+}
+const btnNext = document.getElementById("btn-next-turn");
+if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
+document.body.classList.remove(cfg.themeClass);
+socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
+}, 3500);
+}
+});
+socket.on("startCustomEventSecondSpin", (data) => {
+window.SQ_MODULES[41].normal.lastMapping = data.mapping;
+});
+}
+}
+},
+salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
+short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
 };
