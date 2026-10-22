@@ -263,6 +263,11 @@ function appendSocketListeners() {
           applySquareEffects(p, targetSquare);
         }
 
+        if (targetModule && typeof targetModule.event === "function") {
+          console.log(`💻 [sq_${p.position}.js] 固有の event() を起動します。`);
+          targetModule.event(p, targetSquare || targetModule);
+        }
+
         // 画面左側の表示（現在地・凡例・エリア表）および盤面Canvasの駒を即座に再描画！
         if (window.boardManager)
           window.boardManager.draw(players, activePlayerIndex);
@@ -882,6 +887,11 @@ function executeSyncedRoulette(resultNum) {
 
         if (targetSquare && typeof applySquareEffects === "function") {
           applySquareEffects(p, targetSquare);
+        }
+
+        if (targetModule && typeof targetModule.event === "function") {
+          console.log(`💻 [sq_${p.position}.js] 固有の event() を起動します。`);
+          targetModule.event(p, targetSquare || targetModule);
         }
 
         if (window.boardManager)
