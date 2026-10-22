@@ -337,7 +337,20 @@ function appendSocketListeners() {
     );
     isPCEventMode = true;
 
+    // 🎯 【ここを追加】カップルイベント中の場合は、HTMLやクラスの初期化を完全スキップ！
+    // 1枚目の画像の綺麗なピンクのデザイン・文字表現をそのまま無傷で100%固定します。
     const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal && pcModal.classList.contains("theme-couple")) {
+      console.log("💻 [PC GUARD] カップルイベント中のため、回した瞬間の青画面上書きをブロックし、物理回転のみを実行します。");
+      
+      // 文字や表の上書き（破壊処理）はすべてスルーして、ホイールの物理回転だけをスマホと連動させてキックする！
+      if (typeof executeSyncedRoulette === "function") {
+        executeSyncedRoulette(data.result);
+      }
+      return; // 処理をここで終了させて、下層の青色上書き（theme-entrance化）へ進ませない！
+    }
+
+    // 🌸 ─── 以下、既存の「入学式マス」などの通常イベント用の処理（1ミリも変えずに残す） ───
     if (pcModal) {
       pcModal.className = "event-modal-overlay active theme-entrance";
       pcModal.style.display = "flex";
@@ -347,7 +360,9 @@ function appendSocketListeners() {
     if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
 
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) descEl.textContent = "出目に応じて結果が決まる！";
+    if (descEl) {
+      descEl.textContent = "出目に応じて結果が決まる！";
+    }
 
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) modalResultBox.style.display = "none";
