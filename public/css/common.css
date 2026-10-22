@@ -236,3 +236,29 @@ body.theme-repeat-dark .phone-card {
 body.theme-repeat-dark #board-canvas {
   filter: drop-shadow(0 0 10px #7b1fa2) contrast(1.1);
 }
+
+/* 🌊 入学式イベント（theme-entrance）用カラー連動 */
+.theme-entrance .roulette-wheel-board,
+.theme-entrance .event-roulette-wheel {
+  background: conic-gradient(
+    #bbdefb 0deg 36deg,  #90caf9 36deg 72deg,  #64b5f6 72deg 108deg, #42a5f5 108deg 144deg, #2196f3 144deg 180deg,
+    #1e88e5 180deg 216deg, #1976d2 216deg 252deg, #1565c0 252deg 288deg, #0d47a1 288deg 324deg, #002171 324deg 360deg
+  ) !important;
+  border-color: #2196f3 !important;
+}
+
+.theme-entrance .event-roulette-pointer {
+  border-top-color: #2196f3 !important;
+}
+
+/* 🛡️ 生命保険イベント（theme-insurance）用モーダルテーマ */
+.theme-insurance .event-card-container {
+  background: linear-gradient(135deg, #f3e5f5 0%, #ede7f6 100%);
+  border-color: #ab47bc;
+}
+.theme-insurance .event-title {
+  color: #7b1fa2;
+}
+.theme-insurance .event-table-num-badge {
+  background: #9c27b0;
+}

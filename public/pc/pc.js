@@ -330,29 +330,24 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 汎用ルーレット開始（大画面モーダル展開＆ホイール回転）
+  // 🎯 汎用ルーレット開始（画面を壊さず、物理回転を最優先）
   socket.on("spinCustomRoulette", (data) => {
-    console.log(
-      `💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`,
-    );
+    console.log(`💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`);
     isPCEventMode = true;
 
-    // 🎯 【ここを追加】カップルイベント中の場合は、HTMLやクラスの初期化を完全スキップ！
-    // 1枚目の画像の綺麗なピンクのデザイン・文字表現をそのまま無傷で100%固定します。
     const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal && pcModal.classList.contains("theme-couple")) {
-      console.log("💻 [PC GUARD] カップルイベント中のため、回した瞬間の青画面上書きをブロックし、物理回転のみを実行します。");
-      
-      // 文字や表の上書き（破壊処理）はすべてスルーして、ホイールの物理回転だけをスマホと連動させてキックする！
-      if (typeof executeSyncedRoulette === "function") {
-        executeSyncedRoulette(data.result);
-      }
-      return; // 処理をここで終了させて、下層の青色上書き（theme-entrance化）へ進ませない！
+
+    // 🌟 すでにモーダルが開いている場合（41番マスなど）は、デザインを維持して回転のみ実行
+    if (pcModal && pcModal.classList.contains("active")) {
+      console.log("💻 [PC HUB] モーダル表示中のため、デザインを保持したままホイール回転のみを実行します。");
+      executeSyncedRoulette(data.result);
+      return;
     }
 
-    // 🌸 ─── 以下、既存の「入学式マス」などの通常イベント用の処理（1ミリも変えずに残す） ───
+    // 🌸 モーダルがまだ開いていない単発イベント用のフォールバック処理
     if (pcModal) {
-      pcModal.className = "event-modal-overlay active theme-entrance";
+      const themeClass = data.themeClass || "theme-entrance";
+      pcModal.className = `event-modal-overlay active ${themeClass}`;
       pcModal.style.display = "flex";
     }
 
@@ -360,31 +355,24 @@ function appendSocketListeners() {
     if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
 
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) {
-      descEl.textContent = "出目に応じて結果が決まる！";
-    }
+    if (descEl) descEl.textContent = "出目に応じて結果が決まる！";
 
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) modalResultBox.style.display = "none";
 
-    // 対応表を描画
-    const dynamicTableZone = document.getElementById(
-      "pc-event-table-dynamic-zone",
-    );
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
         let targetText = '<span style="color:#aaa;">-</span>';
-        if (target)
-          targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
       dynamicTableZone.innerHTML = html;
     }
 
-    // 大画面ルーレット物理回転
     executeSyncedRoulette(data.result);
   });
 
@@ -405,42 +393,46 @@ function appendSocketListeners() {
     }
   });
 
+  // 🎯 2段階目（または多段階）イベント：モーダルのテーマを維持し、文字・対応表だけを動的差し替え
   socket.on("startCustomEventSecondSpin", (data) => {
-    console.log(
-      "💻 [PC RECEIVE] 2段階カスタムイベント開始合図を受信:",
-      data.nextStepEventName,
-    );
+    console.log("💻 [PC HUB] イベント更新通知を受信:", data.nextStepEventName);
 
-    // 🎯 【重要】大元のモーダル要素を表示状態にする
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
-      pcModal.className = "event-modal-overlay active theme-entrance";
+      // 🌟 クラスを初期化せず、active と display: flex だけを保証
+      pcModal.classList.add("active");
       pcModal.style.display = "flex";
     }
 
+    // 1. タイトルの差し替え
     const titleEl = document.getElementById("modal-event-title");
-    if (titleEl)
-      titleEl.textContent = `🌸 ${data.nextStepEventName || "入学式イベント"} 🌸`;
+    if (titleEl && data.nextStepEventName) {
+      titleEl.textContent = `💕 ${data.nextStepEventName} 💕`;
+    }
 
+    // 2. 説明文の差し替え
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl)
-      descEl.textContent = "出目に応じて洗礼が決まる！スマホから回してね！";
+    if (descEl) {
+      descEl.textContent = data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
+    }
 
+    // 3. 結果枠を非表示にしてリセット
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "none";
+      modalResultBox.textContent = "";
     }
 
-    const dynamicTableZone = document.getElementById(
-      "pc-event-table-dynamic-zone",
-    );
+    // 4. 対応表（プレイヤー割り当て表）の中身だけを安全に差し替え
+    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
     if (dynamicTableZone && data.mapping) {
-      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
+      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💘 告白対象スロット</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
         const target = data.mapping[i];
-        let targetText = '<span style="color:#aaa;">-</span>';
-        if (target)
+        let targetText = '<span style="color:#aaa;">(該当なし)</span>';
+        if (target && target.name) {
           targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
+        }
         html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
       }
       html += `</ul>`;
