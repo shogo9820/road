@@ -1,6 +1,7 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
+// 🎯 41番マスのキー指定を確実に配置！アプリ基盤に適合させます
 window.SQ_MODULES[41] = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
@@ -9,18 +10,22 @@ window.SQ_MODULES[41] = {
     text: "【強制ストップ】カップル成立！？", 
     location: "家",
 
+    // 🎯 【再利用のための固有設定カタログ】
+    // 別のゲームに流用するときは、ここを書き換えるだけでPC大画面もスマホも全部自動で変わります
     config: {
-      themeClass: "theme-couple",
+      themeClass: "theme-couple",           // 適用するCSSテーマクラス
       pcFirstTitle: "💕 カップル成立チャンス！？ 💕",
       pcFirstDesc: "運命 of 1回目スピンを回して【偶数】を狙え！",
-      pcSecondTitle: "カップル告白",
+      pcSecondTitle: "カップル告白",        // 2回目のイベント名（動的反映用）
       pcSecondDesc: "スマホから最終決着スピンを回して、意中の相手を射止めろ！",
       
+      // スマホ通常画面のテキスト設定
       mobileFirstDisplay: "🎯 偶数（告白チャンス）を狙ってね！",
       mobileFirstBtn: "🎲 運命 of 1回目スピンを回す！",
       mobileSecondBtn: "💘 決着の2回目（告白）スピン！"
     },
     
+    // 🚀 メイン進行ロジック（PC・スマホ両用で完全カプセル化）
     event: function(player, square) {
       const cfg = this.config;
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
@@ -33,6 +38,7 @@ window.SQ_MODULES[41] = {
         const btnNext = document.getElementById("btn-next-turn");
         if (btnNext) { btnNext.disabled = true; btnNext.style.display = "none"; }
 
+        // カタログ(config)から文字を取得してPCモーダルに流し込む
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
         document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
@@ -40,6 +46,7 @@ window.SQ_MODULES[41] = {
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) { resultBox.style.display = "none"; resultBox.className = "event-result-box"; resultBox.textContent = ""; }
 
+        // 1〜10の1回目判定条件表をダイレクト生成（偶数・奇数の基本ルール）
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
           <ul class="event-table-list">`;
@@ -55,19 +62,26 @@ window.SQ_MODULES[41] = {
         return;
       }
 
-      // 📱 ② 【スマホ手元側だった場合の直接処理】
+      // 📱 ② 【スマホ手元側だった場合の直接処理（通常画面の着せ替えと乗っ取り）】
       if (typeof socket !== "undefined") {
         console.log(`📱 [スマホ側] マスID: ${this.id} の進行制御を通常画面にバインドします。`);
 
         const spinBtn = document.getElementById("btn-phone-spin");
         const resultDisplay = document.getElementById("roulette-result-display");
 
+        // カタログで指定したCSSテーマを付与して通常ルーレットを着せ替え
         document.body.classList.add(cfg.themeClass);
-        if (spinBtn) { spinBtn.disabled = false; spinBtn.textContent = cfg.mobileFirstBtn; }
-        if (resultDisplay) resultDisplay.textContent = cfg.mobileFirstDisplay;
+
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.textContent = cfg.mobileFirstBtn;
+        }
+        if (resultDisplay) {
+          resultDisplay.textContent = cfg.mobileFirstDisplay;
+        }
 
         // ──────────────────────────────────────────────────────────
-        // 🔥 【1回目スピン発火】
+        // 🔥 【1回目スピン発火】ボタンをクローン化して古いイベントを完全消去し、乗っ取る
         // ──────────────────────────────────────────────────────────
         if (spinBtn) {
           const newSpinBtn = spinBtn.cloneNode(true);
@@ -78,8 +92,8 @@ window.SQ_MODULES[41] = {
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             
             const firstMapping = {
-              1: { name: "タイミングが悪い", drinks: 0 }, 2: { name: "告白チャンス", drinks: 0 }, 3: { name: "タイミングが悪い", drinks: 0 }, 4: { name: "告白チャンス", drinks: 0 }, 5: { name: "タイミングが悪い", drinks: 0 },
-              6: { name: "告白チャンス", drinks: 0 }, 7: { name: "タイミングが悪い", drinks: 0 }, 8: { name: "告白チャンス", drinks: 0 }, 9: { name: "タイミングが悪い", drinks: 0 }, 10: { name: "告白チャンス", drinks: 0 }
+              1: { name: "奇数", drinks: 0 }, 2: { name: "偶数", drinks: 0 }, 3: { name: "奇数", drinks: 0 }, 4: { name: "偶数", drinks: 0 }, 5: { name: "奇数", drinks: 0 },
+              6: { name: "偶数", drinks: 0 }, 7: { name: "奇数", drinks: 0 }, 8: { name: "偶数", drinks: 0 }, 9: { name: "奇数", drinks: 0 }, 10: { name: "偶数", drinks: 0 }
             };
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
@@ -93,6 +107,14 @@ window.SQ_MODULES[41] = {
         // ──────────────────────────────────────────────────────────
         socket.off("spinCustomRoulette");
         socket.on("spinCustomRoulette", (data) => {
+          // 🎯 PC側の青色に切り替わる上書きを、マスのJS側で即座に検知してピンクに引き戻して固定！
+          const pModal = document.getElementById("pc-event-modal");
+          if (pModal && !window.SQ_MODULES[41].normal.isSecondStage) {
+            pModal.className = "event-modal-overlay active " + cfg.themeClass;
+            document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
+            document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
+          }
+
           if (window.SQ_MODULES[41].normal.isSecondStage) return; // 2回目用ガード
           const resNum = data.result !== undefined ? data.result : 1;
           
@@ -117,7 +139,9 @@ window.SQ_MODULES[41] = {
             if (finalSpinBtn) {
               finalSpinBtn.disabled = false;
               finalSpinBtn.textContent = cfg.mobileSecondBtn;
-              if (resultDisplay) resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
+              if (resultDisplay) {
+                resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
+              }
 
               const newFinalBtn = finalSpinBtn.cloneNode(true);
               finalSpinBtn.parentNode.replaceChild(newFinalBtn, finalSpinBtn);
@@ -205,7 +229,7 @@ window.SQ_MODULES[41] = {
                   action: "customEventSecondSpinResult",
                   playerId: player.id,
                   result: finalRes,
-                  failureMessage: "振られちゃった...！💦"
+                  failureMessage: "チャレンジ失敗...！💦"
                 });
               }
 
@@ -225,6 +249,10 @@ window.SQ_MODULES[41] = {
               socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
             }, 2500);
           }
+        });
+
+        socket.on("startCustomEventSecondSpin", (data) => {
+          window.SQ_MODULES[41].normal.lastMapping = data.mapping;
         });
       }
     }
