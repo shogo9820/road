@@ -944,28 +944,50 @@ function executeSyncedRoulette(resultNum) {
     }
   }, 3000);
 }
-// 🎯 【確定版】プレイヤーの最新ステータス（現在地含む）をサーバーへ確実に同期する関数
+// pc.js
 function triggerDelayedDisplay(resultNum, targetSquare) {
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  // 個別モジュール（sq_X.js）から場所を割り出すための補完
-  const squareText = targetSquare
-    ? targetSquare.text || "通常マス"
-    : "通常マス";
-  const squareLocation =
-    p.location || (targetSquare ? targetSquare.location || "家" : "家");
+  // 1. 現在のモードの個別モジュール（sq_XX.js）を取得
+  const currentMode = (typeof rooms !== "undefined" && rooms[roomCode] && rooms[roomCode].mode) || "normal";
+  const targetModule =
+    window.SQ_MODULES && window.SQ_MODULES[p.position]
+      ? window.SQ_MODULES[p.position][currentMode]
+      : null;
 
-  // プレイヤー側の location も確実に同期用に確定させる
-  p.location = squareLocation;
+  // 2. 【場所と同様のロジック】個別JS ➔ マスタ ➔ デフォルト値 の順で text を抽出！
+  const detectedText =
+    targetModule && targetModule.text
+      ? targetModule.text
+      : targetSquare && targetSquare.text
+        ? targetSquare.text
+        : "通常マス";
 
-  // 大画面中央のイベントテキストを更新
-  if (document.getElementById("event-text")) {
-    document.getElementById("event-text").innerHTML =
-      `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem;">🎲 ${squareText}</p>`;
+  // 場所の確定（既存と同様）
+  const detectedLocation =
+    targetModule && targetModule.location
+      ? targetModule.location
+      : targetSquare && targetSquare.location
+        ? targetSquare.location
+        : "家";
+  p.location = detectedLocation;
+
+  // 3. 右下の「現在のマスの内容」枠（.tile-event-card）にテキストを反映
+  // id="event-text" がある場合はそこへ、無い場合は .tile-event-card 全体を安全に書き換え
+  const eventTextEl = document.getElementById("event-text");
+  const eventCardEl = document.querySelector(".tile-event-card");
+
+  if (eventTextEl) {
+    eventTextEl.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p>`;
+  } else if (eventCardEl) {
+    eventCardEl.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 8px; color: #555;">📢 現在のマスの内容</div>
+      <p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p>
+    `;
   }
 
-  // 🎯 【重要】ガードでリターンさせず、最新の場所（location）を100%確実にサーバーへ送信！
+  // 4. サーバーへ最新ステート（位置・場所など）を同期
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -973,7 +995,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
       {
         id: p.id,
         position: p.position,
-        location: p.location, // 確定した最新の場所文字列
+        location: p.location,
         currentHp: p.currentHp,
         drinkCount: p.drinkCount,
         happiness: p.happiness !== undefined ? p.happiness : 100,
@@ -982,7 +1004,7 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         hasJob: p.hasJob !== undefined ? p.hasJob : false,
         jobId: p.jobId || null,
         job: p.job || "モブ",
-        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false, // 留年フラグも安全に同期
+        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false,
       },
     ],
   });
