@@ -17,12 +17,17 @@ window.SQ_MODULES[41] = {
 
       mobileFirstDisplay: "🎯 偶数（告白チャンス）を狙ってね！",
       mobileFirstBtn: "🎲 運命 of 1回目スピンを回す！",
-      mobileSecondBtn: "💘 決着の2回目（告白）スピン！"
+      mobileSecondBtn: "💘 決着の2回目（告白）スピン！",
     },
 
-    event: function(player, square) {
+    event: function (player, square) {
       const cfg = this.config;
-      const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
+      const targetRoom =
+        typeof currentRoomCode !== "undefined"
+          ? currentRoomCode
+          : typeof roomCode !== "undefined"
+            ? roomCode
+            : "";
       this.isSecondStage = false;
       this.lastMapping = null;
 
@@ -32,15 +37,23 @@ window.SQ_MODULES[41] = {
         if (typeof isPCEventMode !== "undefined") isPCEventMode = true;
 
         const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) { btnNext.disabled = true; btnNext.style.display = "none"; }
+        if (btnNext) {
+          btnNext.disabled = true;
+          btnNext.style.display = "none";
+        }
 
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         pcModal.style.display = "flex";
-        document.getElementById("modal-event-title").textContent = cfg.pcFirstTitle;
-        document.getElementById("modal-event-desc").textContent = `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
+        document.getElementById("modal-event-title").textContent =
+          cfg.pcFirstTitle;
+        document.getElementById("modal-event-desc").textContent =
+          `${player.name} さんがマスに到着！ ${cfg.pcFirstDesc}`;
 
         const resultBox = document.getElementById("modal-event-result-box");
-        if (resultBox) { resultBox.style.display = "none"; resultBox.textContent = ""; }
+        if (resultBox) {
+          resultBox.style.display = "none";
+          resultBox.textContent = "";
+        }
 
         let tableHTML = `
           <div class="event-table-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">🎯 1回目スピン：運命 of 判定条件表</div>
@@ -48,19 +61,25 @@ window.SQ_MODULES[41] = {
         for (let i = 1; i <= 10; i++) {
           const isEven = i % 2 === 0;
           const badgeBg = isEven ? "#ff4081" : "#78909c";
-          const condText = isEven ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス！</span>' : '<span style="color:#546e7a;">💦 奇数：タイミングが悪い...</span>';
+          const condText = isEven
+            ? '<span style="color:#d81b60; font-weight:bold;">💕 偶数：告白チャンス！</span>'
+            : '<span style="color:#546e7a;">💦 奇数：タイミングが悪い...</span>';
           tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${condText}</div></li>`;
         }
         tableHTML += `</ul>`;
-        document.getElementById("pc-event-table-dynamic-zone").innerHTML = tableHTML;
-        document.getElementById("modal-roulette-result-display").textContent = "🎯 スマホから運命のスピンを回してね！";
+        document.getElementById("pc-event-table-dynamic-zone").innerHTML =
+          tableHTML;
+        document.getElementById("modal-roulette-result-display").textContent =
+          "🎯 スマホから運命のスピンを回してね！";
         return;
       }
 
       // 📱 ② 【スマホ手元側の制御】
       if (typeof socket !== "undefined") {
         const spinBtn = document.getElementById("btn-phone-spin");
-        const resultDisplay = document.getElementById("roulette-result-display");
+        const resultDisplay = document.getElementById(
+          "roulette-result-display",
+        );
 
         document.body.classList.add(cfg.themeClass);
         if (resultDisplay) resultDisplay.textContent = cfg.mobileFirstDisplay;
@@ -74,11 +93,12 @@ window.SQ_MODULES[41] = {
 
           newSpinBtn.onclick = () => {
             newSpinBtn.disabled = true;
-            if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
+            if (resultDisplay)
+              resultDisplay.textContent = "🌀 1回目ルーレット要求中...";
             socket.emit("startCustomRouletteEvent", {
               roomCode: targetRoom,
               eventName: cfg.pcFirstTitle,
-              mapping: {}
+              mapping: {},
             });
           };
         }
@@ -87,19 +107,36 @@ window.SQ_MODULES[41] = {
         socket.off("spinCustomRoulette");
         socket.on("spinCustomRoulette", (data) => {
           const resNum = data.result !== undefined ? data.result : 1;
-          if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転中...";
+          if (resultDisplay)
+            resultDisplay.textContent = "🌀 ルーレット回転中...";
 
-          let pcWheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
+          let pcWheel = document.querySelector(
+            "#pc-event-modal .event-roulette-wheel",
+          );
           if (pcWheel && typeof pcCurrentRotation !== "undefined") {
-            const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-            pcCurrentRotation += 1800 + ((targetDegrees[resNum - 1] - (pcCurrentRotation % 360) + 360) % 360);
-            pcWheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+            const targetDegrees = [
+              342, 306, 270, 234, 198, 162, 126, 90, 54, 18,
+            ];
+            pcCurrentRotation +=
+              1800 +
+              ((targetDegrees[resNum - 1] - (pcCurrentRotation % 360) + 360) %
+                360);
+            pcWheel.style.transition =
+              "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
             pcWheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
           }
 
-          if (typeof currentRotation !== "undefined" && typeof playMobileRouletteAnimation === "function") {
-            const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
-            currentRotation += 1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
+          if (
+            typeof currentRotation !== "undefined" &&
+            typeof playMobileRouletteAnimation === "function"
+          ) {
+            const targetDegrees = [
+              342, 306, 270, 234, 198, 162, 126, 90, 54, 18,
+            ];
+            currentRotation +=
+              1800 +
+              ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) %
+                360);
             playMobileRouletteAnimation(resNum, currentRotation, () => {});
           }
         });
@@ -117,7 +154,8 @@ window.SQ_MODULES[41] = {
             if (hitTarget) {
               player.isLover = true;
               if (!player.lovers) player.lovers = [];
-              if (!player.lovers.includes(hitTarget.name)) player.lovers.push(hitTarget.name);
+              if (!player.lovers.includes(hitTarget.name))
+                player.lovers.push(hitTarget.name);
               player.drinkCount = (player.drinkCount || 0) + 1;
 
               socket.emit("playerAction", {
@@ -125,7 +163,7 @@ window.SQ_MODULES[41] = {
                 action: "customEventSecondSpinResult",
                 playerId: player.id,
                 result: result,
-                successMessage: `💕 イベント大成功！ ${player.name} と ${hitTarget.name} が結ばれました！ 🍺`
+                successMessage: `💕 イベント大成功！ ${player.name} と ${hitTarget.name} が結ばれました！ 🍺`,
               });
             } else {
               socket.emit("playerAction", {
@@ -133,7 +171,7 @@ window.SQ_MODULES[41] = {
                 action: "customEventSecondSpinResult",
                 playerId: player.id,
                 result: result,
-                failureMessage: "告白チャレンジ失敗...！💦"
+                failureMessage: "告白チャレンジ失敗...！💦",
               });
             }
 
@@ -156,7 +194,11 @@ window.SQ_MODULES[41] = {
                 pcNextBtnFinal.style.display = "block";
               }
 
-              socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
+              socket.emit("playerAction", {
+                roomCode: targetRoom,
+                action: "squareEventFinished",
+                updatedPlayer: player,
+              });
             }, 3500);
             return;
           }
@@ -172,21 +214,25 @@ window.SQ_MODULES[41] = {
               finalSpinBtn.parentNode.replaceChild(newFinalBtn, finalSpinBtn);
               newFinalBtn.disabled = false;
               newFinalBtn.textContent = cfg.mobileSecondBtn;
-              if (resultDisplay) resultDisplay.textContent = `🎯 1回目 [出目:${result}] 成功！相手を狙え！`;
+              if (resultDisplay)
+                resultDisplay.textContent = `🎯 1回目 [出目:${result}] 成功！相手を狙え！`;
 
               newFinalBtn.onclick = () => {
                 newFinalBtn.disabled = true;
-                if (resultDisplay) resultDisplay.textContent = "🌀 告白ルーレット回転要求中...";
+                if (resultDisplay)
+                  resultDisplay.textContent = "🌀 告白ルーレット回転要求中...";
                 socket.emit("startCustomRouletteEvent", {
                   roomCode: targetRoom,
                   eventName: cfg.pcSecondTitle,
-                  mapping: mod.lastMapping || {}
+                  mapping: mod.lastMapping || {},
                 });
               };
             }
 
             // 他プレイヤーを1〜10へシャッフル割り当て
-            const otherPlayers = (typeof players !== "undefined" ? players : []).filter((p) => String(p.id) !== String(player.id));
+            const otherPlayers = (
+              typeof players !== "undefined" ? players : []
+            ).filter((p) => String(p.id) !== String(player.id));
             const rollSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             for (let i = rollSlots.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
@@ -203,20 +249,24 @@ window.SQ_MODULES[41] = {
             mod.lastMapping = mapping;
 
             // PC側の文字・対応表だけを切り替える電波を発信
-            socket.emit("playerAction", {
+            // sq_41.js: 偶数（result % 2 === 0）のブロック内
+            // 🎯 サーバーの独立レシーバー customEventFirstSpinResult へ直撃送信！
+            socket.emit("customEventFirstSpinResult", {
               roomCode: targetRoom,
-              action: "customEventFirstSpinResult",
               playerId: player.id,
               result: result,
               mapping: mapping,
               nextStepEventName: cfg.pcSecondTitle,
-              pcSecondDesc: cfg.pcSecondDesc
+              pcSecondDesc: cfg.pcSecondDesc,
             });
           } else {
             // 奇数失敗：終了
-            if (resultDisplay) resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
+            if (resultDisplay)
+              resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
 
-            const modalResultBox = document.getElementById("modal-event-result-box");
+            const modalResultBox = document.getElementById(
+              "modal-event-result-box",
+            );
             if (modalResultBox) {
               modalResultBox.style.display = "block";
               modalResultBox.className = "event-result-box failure";
@@ -228,27 +278,50 @@ window.SQ_MODULES[41] = {
 
             setTimeout(() => {
               const targetModalEl = document.getElementById("pc-event-modal");
-if (targetModalEl) {
-targetModalEl.className = "event-modal-overlay";
-targetModalEl.style.display = "none";
-}
-const btnNext = document.getElementById("btn-next-turn");
-if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
-const resetBtn = document.getElementById("btn-phone-spin");
-if (resetBtn) {
-const cleanedBtn = resetBtn.cloneNode(true);
-resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
-cleanedBtn.disabled = true;
-cleanedBtn.textContent = "⚡ ルーレットを回す！";
-}
-document.body.classList.remove(cfg.themeClass);
-socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
-}, 3500);
-}
-});
-}
-}
-},
-salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(p, s) { window.SQ_MODULES[41].normal.event(p, s); } },
-short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(p, s) { window.SQ_MODULES[41].normal.event(p, s); } }
+              if (targetModalEl) {
+                targetModalEl.className = "event-modal-overlay";
+                targetModalEl.style.display = "none";
+              }
+              const btnNext = document.getElementById("btn-next-turn");
+              if (btnNext) {
+                btnNext.disabled = false;
+                btnNext.style.display = "block";
+              }
+              const resetBtn = document.getElementById("btn-phone-spin");
+              if (resetBtn) {
+                const cleanedBtn = resetBtn.cloneNode(true);
+                resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
+                cleanedBtn.disabled = true;
+                cleanedBtn.textContent = "⚡ ルーレットを回す！";
+              }
+              document.body.classList.remove(cfg.themeClass);
+              socket.emit("playerAction", {
+                roomCode: targetRoom,
+                action: "squareEventFinished",
+                updatedPlayer: player,
+              });
+            }, 3500);
+          }
+        });
+      }
+    },
+  },
+  salaryman: {
+    id: 41,
+    type: "force_stop",
+    text: "【強制ストップ】社内恋愛勃発！？",
+    location: "オフィス",
+    event: function (p, s) {
+      window.SQ_MODULES[41].normal.event(p, s);
+    },
+  },
+  short: {
+    id: 41,
+    type: "force_stop",
+    text: "【強制ストップ】スピード婚活チャンス！",
+    location: "家",
+    event: function (p, s) {
+      window.SQ_MODULES[41].normal.event(p, s);
+    },
+  },
 };
