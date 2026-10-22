@@ -1,7 +1,7 @@
 // public/squares/sq_41.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES[41] = {
+window.SQ_MODULES = {
   // 🌸 横展開・再利用可能な汎用データ構造
   normal: {
     id: 41,
@@ -79,11 +79,14 @@ window.SQ_MODULES[41] = {
         }
 
         // ──────────────────────────────────────────────────────────
-        // 🔥 【1回目スピン発火】いつもの通常ボタンを「1回目用」に乗っ取る
+        // 🔥 【1回目スピン発火】ボタンをクローン化して古いイベントを完全消去し、乗っ取る
         // ──────────────────────────────────────────────────────────
         if (spinBtn) {
-          spinBtn.onclick = function() {
-            spinBtn.disabled = true;
+          const newSpinBtn = spinBtn.cloneNode(true);
+          spinBtn.parentNode.replaceChild(newSpinBtn, spinBtn);
+
+          newSpinBtn.onclick = function() {
+            newSpinBtn.disabled = true;
             if (resultDisplay) resultDisplay.textContent = "🌀 1回目ルーレット回転中...";
 
             const result = Math.floor(Math.random() * 10) + 1;
@@ -110,15 +113,6 @@ window.SQ_MODULES[41] = {
           const result = data.result;
 
           if (result % 2 === 0) {
-            // 偶数成功：通常ボタンを「2回目（決着）用」に再アップデート
-            if (spinBtn) {
-              spinBtn.disabled = false;
-              spinBtn.textContent = cfg.mobileSecondBtn;
-            }
-            if (resultDisplay) {
-              resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
-            }
-
             // 自分以外のプレイヤーを割り当てるマップを生成
             const otherPlayers = players.filter((p) => String(p.id) !== String(player.id));
             const degreeTable = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
@@ -138,7 +132,6 @@ window.SQ_MODULES[41] = {
             });
 
             // 🌟 サーバー経由でPC大画面へ2回目のタイトル・割り当てマップをブロードキャスト！
-            // pc.js側の変数受け取り（nextStepEventName と pcSecondDesc）に完全に一致させて送信
             socket.emit("playerAction", {
               roomCode: currentRoomCode || "",
               action: "customEventFirstSpinResult",
@@ -149,10 +142,20 @@ window.SQ_MODULES[41] = {
               pcSecondDesc: cfg.pcSecondDesc
             });
 
-            // 通常ボタンのクリックイベントを「2回目スピン」にバインド
-            if (spinBtn) {
-              spinBtn.onclick = function() {
-                spinBtn.disabled = true;
+            // ボタンの状態を更新して2回目用にクローン化して乗っ取る
+            const finalSpinBtn = document.getElementById("btn-phone-spin");
+            if (finalSpinBtn) {
+              finalSpinBtn.disabled = false;
+              finalSpinBtn.textContent = cfg.mobileSecondBtn;
+              if (resultDisplay) {
+                resultDisplay.textContent = `🎯 1回目 [出目:${result}] で成功！最終決着へ！`;
+              }
+
+              const newFinalBtn = finalSpinBtn.cloneNode(true);
+              finalSpinBtn.parentNode.replaceChild(newFinalBtn, finalSpinBtn);
+
+              newFinalBtn.onclick = function() {
+                newFinalBtn.disabled = true;
                 if (resultDisplay) resultDisplay.textContent = "🌀 運命の最終判定中...";
 
                 const secondResult = Math.floor(Math.random() * 10) + 1;
@@ -184,7 +187,7 @@ window.SQ_MODULES[41] = {
         socket.off("coupleSecondRouletteResult");
         socket.on("coupleSecondRouletteResult", (data) => {
           const result = data.result;
-          const currentMapping = window.SQ_MODULES[41].normal.lastMapping;
+          const currentMapping = window.SQ_MODULES.normal.lastMapping;
           const hitTarget = currentMapping ? currentMapping[result] : null;
 
           if (hitTarget) {
@@ -219,11 +222,11 @@ window.SQ_MODULES[41] = {
         });
 
         socket.on("startCustomEventSecondSpin", (data) => {
-          window.SQ_MODULES[41].normal.lastMapping = data.mapping;
+          window.SQ_MODULES.normal.lastMapping = data.mapping;
         });
       }
     }
   },
-  salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } },
-short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES[41].normal.event(player, square); } }
+salaryman: { id: 41, type: "force_stop", text: "【強制ストップ】社内恋愛勃発！？", location: "オフィス", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } },
+short: { id: 41, type: "force_stop", text: "【強制ストップ】スピード婚活チャンス！", location: "家", event: function(player, square) { window.SQ_MODULES.normal.event(player, square); } }
 };
