@@ -330,50 +330,16 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 汎用ルーレット開始（画面を壊さず、物理回転を最優先）
+  // 🎯 汎用ルーレット回転同期（モーダル生成・書き換えは一切行わず、回転のみ実行！）
   socket.on("spinCustomRoulette", (data) => {
-    console.log(`💻 [PC 汎用ルーレット開始] イベント: ${data.eventName}, 出目: ${data.result}`);
+    console.log(`💻 [PC ROUTINE] ルーレット回転同期を受信: 出目 ${data.result}`);
     isPCEventMode = true;
 
-    const pcModal = document.getElementById("pc-event-modal");
-
-    // 🌟 すでにモーダルが開いている場合（41番マスなど）は、デザインを維持して回転のみ実行
-    if (pcModal && pcModal.classList.contains("active")) {
-      console.log("💻 [PC HUB] モーダル表示中のため、デザインを保持したままホイール回転のみを実行します。");
+    // 🌟 余計なモーダル再生成やテキスト上書き処理は全廃！
+    // 純粋に大画面側のホイールを物理回転させるだけに専念させます。
+    if (typeof executeSyncedRoulette === "function") {
       executeSyncedRoulette(data.result);
-      return;
     }
-
-    // 🌸 モーダルがまだ開いていない単発イベント用のフォールバック処理
-    if (pcModal) {
-      const themeClass = data.themeClass || "theme-entrance";
-      pcModal.className = `event-modal-overlay active ${themeClass}`;
-      pcModal.style.display = "flex";
-    }
-
-    const titleEl = document.getElementById("modal-event-title");
-    if (titleEl) titleEl.textContent = `🌸 ${data.eventName} 🌸`;
-
-    const descEl = document.getElementById("modal-event-desc");
-    if (descEl) descEl.textContent = "出目に応じて結果が決まる！";
-
-    const modalResultBox = document.getElementById("modal-event-result-box");
-    if (modalResultBox) modalResultBox.style.display = "none";
-
-    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
-    if (dynamicTableZone && data.mapping) {
-      let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💖 判定対応表</div><ul class="event-table-list">`;
-      for (let i = 1; i <= 10; i++) {
-        const target = data.mapping[i];
-        let targetText = '<span style="color:#aaa;">-</span>';
-        if (target) targetText = `<span style="color:#e91e63; font-weight:bold;">${target.name}</span>`;
-        html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:#ff4081;">${i}</div><div>${targetText}</div></li>`;
-      }
-      html += `</ul>`;
-      dynamicTableZone.innerHTML = html;
-    }
-
-    executeSyncedRoulette(data.result);
   });
 
   // 🎯 汎用ルーレット決着（結果テキスト表示）
@@ -1107,56 +1073,18 @@ function handleForceStopSquare(player, square) {
   if (!square) return;
   if (Number(square.id) === 89) return;
 
-  let currentMode = "normal";
-  if (
-    typeof roomCode !== "undefined" &&
-    typeof rooms !== "undefined" &&
-    rooms[roomCode]
-  ) {
-    currentMode = rooms[roomCode].mode || "normal";
-  }
-
+  const currentMode = "normal";
   const targetModule =
     window.SQ_MODULES &&
     window.SQ_MODULES[square.id] &&
     window.SQ_MODULES[square.id][currentMode];
+
+  // 🌟 ここでマス固有の event() を叩いてピンクモーダルを即座に開かせる
   if (targetModule && typeof targetModule.event === "function") {
     console.log(`💻 [PC SIGNAL] sq_${square.id}.js の固有event()を起動。`);
     targetModule.event(player, square);
     return;
   }
-
-  // 🎯 【型ガード確立】すでに仕様確定マスなら、下の古い引退式モーダルのdefaultへは流さず待機ロック！
-  const squareType =
-    targetModule && targetModule.type ? targetModule.type : square.type;
-  if (
-    squareType === "branch" ||
-    squareType === "insurance_shop" ||
-    squareType === "jobChallenge" ||
-    squareType === "force_stop" ||
-    // squareType === "force_stop_rankup" ||
-    // squareType === "force_stop_retirement" ||
-    targetModule
-  ) {
-    console.log(
-      `💻 [PC RELEY-LOCK] マスID: ${square.id} (${squareType}) 正常待機。誤爆を防止。`,
-    );
-    return;
-  }
-
-  console.log(
-    `💻 [PC TIME-SKIP] マスID: ${square.id} は未定義。0.3秒自動進行。`,
-  );
-  let fallbackType =
-    square.id === 18 ? "入学式" : square.id === 49 ? "ランクアップ" : "引退";
-  openPCEventModal(fallbackType, player.name, player.id);
-
-  setTimeout(() => {
-    socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
-    if (document.getElementById("pc-event-modal"))
-      document.getElementById("pc-event-modal").style.display = "none";
-    isPCEventMode = false;
-  }, 300);
 }
 
 function loadAndApplySquareComponent(squareId, callback) {
