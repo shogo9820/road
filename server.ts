@@ -34,38 +34,71 @@ const PHASES = {
   WAIT_NEXT: "6.WAIT_NEXT", // 次のプレイヤー交代待機
 };
 
-// 🎯 プロジェクトルート直下の public / master フォルダを確実に参照
-const publicPath = path.join(process.cwd(), "public");
+// 🎯 1. コンパイル後のファイル群(dist/public)と、元の静的ファイル群(public)の両方を公開
+const distPublicPath = path.join(process.cwd(), "dist", "public");
+const rawPublicPath = path.join(process.cwd(), "public");
 
-// 静的ファイルの基本配信
-app.use(express.static(publicPath));
+// dist配下にコンパイル済みJSがあれば優先配信
+if (fs.existsSync(distPublicPath)) {
+  app.use(express.static(distPublicPath));
+}
+// 通常のHTMLやCSS、画像などを配信
+app.use(express.static(rawPublicPath));
 
-// PC画面の明示的ルーティング
+// 🎯 2. 明示的なHTMLルーティング
 app.get(["/pc", "/pc/", "/pc/index.html"], (req, res) => {
-  res.sendFile(path.join(publicPath, "pc", "index.html"));
+  const filePath = fs.existsSync(path.join(distPublicPath, "pc", "index.html"))
+    ? path.join(distPublicPath, "pc", "index.html")
+    : path.join(rawPublicPath, "pc", "index.html");
+  res.sendFile(filePath);
 });
 
-// スマホ画面の明示的ルーティング
 app.get(["/mobile", "/mobile/", "/mobile/index.html"], (req, res) => {
-  res.sendFile(path.join(publicPath, "mobile", "index.html"));
+  const filePath = fs.existsSync(path.join(distPublicPath, "mobile", "index.html"))
+    ? path.join(distPublicPath, "mobile", "index.html")
+    : path.join(rawPublicPath, "mobile", "index.html");
+  res.sendFile(filePath);
 });
 
-// 個別マスJS（sq_XX.js）配信の安全ルート
-app.get("/squares/:file", (req, res) => {
+// 🎯 3. /pc 配下の JSファイル（board.js や pc.js）を確実に届けるルート
+app.get("/pc/:file", (req, res) => {
+  const fileName = req.params.file;
+  const distFile = path.join(distPublicPath, "pc", fileName);
+  const rawFile = path.join(rawPublicPath, "pc", fileName);
+
   res.type("application/javascript");
-  res.sendFile(path.join(publicPath, "squares", req.params.file));
+  if (fs.existsSync(distFile)) {
+    return res.sendFile(distFile);
+  }
+  if (fs.existsSync(rawFile)) {
+    return res.sendFile(rawFile);
+  }
+  res.status(404).send("File not found");
 });
 
-// master/gameMaster.js の配信
+// 🎯 4. /squares/ 配下のJS配信
+app.get("/squares/:file", (req, res) => {
+  const fileName = req.params.file;
+  const distFile = path.join(distPublicPath, "squares", fileName);
+  const rawFile = path.join(rawPublicPath, "squares", fileName);
+
+  res.type("application/javascript");
+  if (fs.existsSync(distFile)) {
+    return res.sendFile(distFile);
+  }
+  if (fs.existsSync(rawFile)) {
+    return res.sendFile(rawFile);
+  }
+  res.status(404).send("File not found");
+});
+
+// 🎯 5. マスタデータ配信
 app.get("/master/gameMaster.js", (req, res) => {
   res.type("application/javascript");
-  res.sendFile(path.join(process.cwd(), "master", "gameMaster.js"));
-});
-
-// common.css の配信
-app.get("/css/common.css", (req, res) => {
-  res.type("text/css");
-  res.sendFile(path.join(publicPath, "css", "common.css"));
+  const distMaster = path.join(process.cwd(), "dist", "master", "gameMaster.js");
+  const rawMaster = path.join(process.cwd(), "master", "gameMaster.js");
+  if (fs.existsSync(distMaster)) return res.sendFile(distMaster);
+  res.sendFile(rawMaster);
 });
 
 
