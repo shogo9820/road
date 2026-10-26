@@ -3,6 +3,7 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import path from "path";
+import fs from "fs";
 
 // 🎯 createPlayer, JOBS, MAP_SQUARES の読み込み
 // （nodenextのルールに従い、末尾の「.js」は残したままで大丈夫です）
@@ -33,18 +34,26 @@ const PHASES = {
   WAIT_NEXT: "6.WAIT_NEXT", // 次のプレイヤー交代待機
 };
 
-// 静的ファイルの公開範囲を「public」フォルダに指定
-app.use(express.static(path.join(__dirname, "public")));
+// ⭕ 修正後
+// 🎯 public フォルダの絶対パスを解決（dist環境・ルート環境の両対応）
+const publicPath = fs.existsSync(path.join(__dirname, "public"))
+  ? path.join(__dirname, "public")
+  : path.join(process.cwd(), "public");
+
+app.use(express.static(publicPath));
 
 // MIMEタイプを明示して安全に配信
 app.get("/master/gameMaster.js", (req, res) => {
   res.type("application/javascript");
-  res.sendFile(path.join(__dirname, "master", "gameMaster.js"));
+  const masterPath = fs.existsSync(path.join(__dirname, "master", "gameMaster.js"))
+    ? path.join(__dirname, "master", "gameMaster.js")
+    : path.join(process.cwd(), "master", "gameMaster.js");
+  res.sendFile(masterPath);
 });
 
 app.get("/css/common.css", (req, res) => {
   res.type("text/css");
-  res.sendFile(path.join(__dirname, "public", "css", "common.css"));
+  res.sendFile(path.join(publicPath, "css", "common.css"));
 });
 
 // ==========================================================================
