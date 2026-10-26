@@ -1,28 +1,28 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    // 📂 【変更点①】ファイルレイアウトの設定（コメントアウトを解除）
+    "rootDir": "./src",
+    "outDir": "./dist",
 
     // Environment Settings
-    // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
     "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+
+    // 🤝 【変更点②】JavaScriptファイルを混ぜて動かすための設定（追加）
+    "allowJs": true,                             /* JavaScriptファイルの存在を許す */
+    "checkJs": false,                            /* 既存のJSファイル自体の型チェックはまだしない */
+    "esModuleInterop": true,                     /* 既存のJSライブラリをインポートしやすくする */
 
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
 
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    // 🛡️ 【変更点③】移行をスムーズにするため、厳しい型チェックを一旦「false」にする
+    "strict": false,                             /* ★最初はユルく始めてエラー爆発を防ぐ */
+    "noUncheckedIndexedAccess": false,           /* 配列やオブジェクトの厳しい未定義チェックを一時OFF */
+    "exactOptionalPropertyTypes": false,         /* オプショナルプロパティの厳密チェックを一時OFF */
 
     // Style Options
     // "noImplicitReturns": true,
@@ -33,12 +33,13 @@
     // "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
-    "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,               /* 移行期は型 elision を許容するためfalse推奨 */
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  // 🎯 【追加】コンパイル対象にするフォルダを指定
+  "include": ["src/**/*"]
 }
