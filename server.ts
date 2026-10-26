@@ -56,6 +56,27 @@ app.get("/css/common.css", (req, res) => {
   res.sendFile(path.join(publicPath, "css", "common.css"));
 });
 
+// 🎯 /pc や /pc/index.html への直接アクセスを確実に受けてファイルを返す
+app.get(["/pc", "/pc/", "/pc/index.html"], (req, res) => {
+  const filePath = path.join(publicPath, "pc", "index.html");
+  res.sendFile(filePath);
+});
+
+// 🎯 スマホ側も同様に直接アクセスを保証
+app.get(["/mobile", "/mobile/", "/mobile/index.html"], (req, res) => {
+  const filePath = path.join(publicPath, "mobile", "index.html");
+  res.sendFile(filePath);
+});
+
+// 🎯 /squares/ 配下のJSファイルを確実に配信する安全フォールバック
+app.get("/squares/:file", (req, res) => {
+  const fileName = req.params.file;
+  const filePath = path.join(publicPath, "squares", fileName);
+  res.type("application/javascript");
+  res.sendFile(filePath);
+});
+
+
 // ==========================================================================
 // 🧭 ターン開始時共通ルーティン（休み消化・分岐判定・フェーズ自動決定）
 // ==========================================================================
