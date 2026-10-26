@@ -97,6 +97,107 @@ window.addEventListener("DOMContentLoaded", () => {
       ).checked = true;
   });
 
+    // ==========================================================================
+  // 🧭 【一本道リレー：行程④】サーバーからの着地号令（startSquareEvent）受信
+  // スマホ側は「操作専任」として、役職モーダルやボタンUIを手元に展開します。
+  // ==========================================================================
+  socket.on("startSquareEvent", (data) => {
+    if (!data || data.position === undefined) return;
+
+    if (data.activePlayerIndex !== undefined) {
+      activePlayerIndex = data.activePlayerIndex;
+    }
+
+    const currentIdx = activePlayerIndex;
+    const p = players[currentIdx];
+    if (!p) return;
+
+    // 手番プレイヤー以外は何もしない
+    if (p.id !== data.playerId) return;
+
+    const currentPos = Number(data.position);
+    p.position = currentPos;
+    if (data.location) p.location = data.location;
+
+    console.log(
+      `📱 [4.0 到着イベント開始] サーバー号令を受信。マスID: ${currentPos} のコンポーネントをロードします...`,
+    );
+
+    loadAndApplySquareComponent(currentPos, () => {
+      let currentMode = "normal";
+
+      // 1. 個別モジュール（sq_XX.js）を取得
+      let targetModule =
+        window.SQ_MODULES && window.SQ_MODULES[currentPos]
+          ? window.SQ_MODULES[currentPos][currentMode]
+          : null;
+
+      // 2. マスタデータ（MAP_SQUARES）からのフォールバック取得
+      if (
+        !targetModule &&
+        typeof MAP_SQUARES !== "undefined" &&
+        MAP_SQUARES[currentPos]
+      ) {
+        targetModule = MAP_SQUARES[currentPos];
+      }
+
+      if (!targetModule) {
+        console.log(
+          `📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。完了通知を送信します。`,
+        );
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "squareEventFinished",
+          updatedPlayer: p,
+        });
+        return;
+      }
+
+      // 🚀 パターンA：役職マスの場合（就職ダイアログを確実に展開）
+      if (targetModule.type === "jobChallenge" && targetModule.jobId) {
+        if (p.hasJob === true) {
+          console.log(
+            `📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`,
+          );
+          socket.emit("playerAction", {
+            roomCode: currentRoomCode,
+            action: "squareEventFinished",
+            updatedPlayer: p,
+          });
+          return;
+        }
+
+        const jobName = targetModule.text
+          ? targetModule.text.replace(/【役職マス】/g, "").trim()
+          : "新しい役職";
+        console.log(
+          `📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`,
+        );
+        if (typeof showJobChoiceDialog === "function") {
+          showJobChoiceDialog(targetModule.jobId, jobName, p.id);
+        }
+      }
+      // 🚀 パターンB：特殊イベントマスの場合（各sq_XX.jsのevent()を実行）
+      else if (typeof targetModule.event === "function") {
+        console.log(
+          `📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`,
+        );
+        targetModule.event(p, targetModule);
+      }
+      // 🚀 パターンC：通常マスの扱い（完了通知を返して次へ）
+      else {
+        console.log(
+          `📱 [4.2 通常マス] 特殊イベント無しのマスです。完了通知を送信します。`,
+        );
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "squareEventFinished",
+          updatedPlayer: p,
+        });
+      }
+    });
+  });
+
   socket.on("spinRoulette", (data) => {
     if (!data) return;
     const resultNum = data.result !== undefined ? data.result : 1;
@@ -281,7 +382,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================================================
-  // 🧭 syncGameState 受信部（最新6フェーズ定数・完全連動版）
+  // 🧭 syncGameState 受信部（ステータス同期・ターン開始制御 専用版）
   // ==========================================================================
   socket.on("syncGameState", (data) => {
     console.log("📱 [DEBUG] syncGameState 受信成功:", data);
@@ -375,109 +476,6 @@ window.addEventListener("DOMContentLoaded", () => {
         document.getElementById("roulette-result-display").textContent =
           "🎯 タップして回そう！";
     }
-    // ------------------------------------------------------------------------
-    // 🧭 行程④：到着イベント（4.SQUARE_LANDED）- 最新ルーティン対応版
-    // ------------------------------------------------------------------------
-    const isLandedPhase =
-      window.serverCurrentPhase === "4.SQUARE_LANDED" ||
-      window.serverCurrentPhase === "4.END_CHECK" ||
-      window.serverCurrentPhase === "END_CHECK";
-
-    if (isLandedPhase && !window.isLandedThisTurn) {
-      if (currentIdx !== activePlayerIndex) return;
-
-      const currentPos = Number(p.position);
-
-      if (
-        window.turnStartPosition !== null &&
-        currentPos === window.turnStartPosition
-      ) {
-        console.log(
-          `📱 [到着待機] まだ移動前(位置: ${currentPos})のため、到着判定を保留します。`,
-        );
-        return;
-      }
-
-      window.isLandedThisTurn = true;
-      console.log(
-        `📱 [4.0 到着イベント] マスID: ${currentPos} のコンポーネント(sq_${currentPos}.js)をロードします...`,
-      );
-
-      if (typeof loadAndApplySquareComponent === "function") {
-        loadAndApplySquareComponent(currentPos, () => {
-          let currentMode = "normal";
-          // 🎯 1. モジュール定義を取得
-          let targetModule =
-            window.SQ_MODULES && window.SQ_MODULES[currentPos]
-              ? window.SQ_MODULES[currentPos][currentMode]
-              : null;
-
-          // 🎯 2. 個別ファイルが無い場合のフォールバック取得
-          if (
-            !targetModule &&
-            typeof MAP_SQUARES !== "undefined" &&
-            MAP_SQUARES[currentPos]
-          ) {
-            targetModule = MAP_SQUARES[currentPos];
-          }
-
-          if (!targetModule) {
-            console.log(
-              `📱 [4.2 スキップ] マスID: ${currentPos} のモジュールが存在しません。完了通知を送信します。`,
-            );
-            socket.emit("playerAction", {
-              roomCode: currentRoomCode,
-              action: "squareEventFinished",
-              updatedPlayer: p,
-            });
-            return;
-          }
-
-          // 🚀 パターンA：役職マスの場合
-          if (targetModule.type === "jobChallenge" && targetModule.jobId) {
-            if (p.hasJob === true) {
-              console.log(
-                `📱 [役職スキップ] 既に「${p.job}」に就職済みのためスルー。`,
-              );
-              socket.emit("playerAction", {
-                roomCode: currentRoomCode,
-                action: "squareEventFinished",
-                updatedPlayer: p,
-              });
-              return;
-            }
-
-            const jobName = targetModule.text
-              ? targetModule.text.replace(/【役職マス】/g, "").trim()
-              : "新しい役職";
-            console.log(
-              `📱 [4.2 就職モーダル表示] 役職: ${jobName} (ID: ${targetModule.jobId}) を展開！`,
-            );
-            if (typeof showJobChoiceDialog === "function") {
-              showJobChoiceDialog(targetModule.jobId, jobName, p.id);
-            }
-          }
-          // 🚀 パターンB：特殊マスの場合
-          else if (typeof targetModule.event === "function") {
-            console.log(
-              `📱 [4.2 固有イベント実行] sq_${currentPos}.js の event() を起動！`,
-            );
-            targetModule.event(p, targetModule);
-          }
-          // 🚀 パターンC：通常マスの場合
-          else {
-            console.log(
-              `📱 [4.2 通常マス] イベント無しのマスです。完了通知を送信します。`,
-            );
-            socket.emit("playerAction", {
-              roomCode: currentRoomCode,
-              action: "squareEventFinished",
-              updatedPlayer: p,
-            });
-          }
-        });
-      }
-    }
   });
 
   socket.on("enableNextTurnButton", () => {
@@ -492,6 +490,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
 // 🧭 【一本道リレー：手順1】スマホで「ゲーム開始」が手動タップされた瞬間
 socket.on("gameStarted", (data) => {
   if (data && data.players) players = data.players;

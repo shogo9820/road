@@ -226,89 +226,83 @@ function appendSocketListeners() {
     }
   });
 
-  // 🎯 【一本道リレー：行程④】サーバーから「目的地着地完了（squareLanded）」の合図を受信した瞬間
-  // 通常移動・デバッグワープ共通の着地ハブ。0ミリ秒で盤面ピンを目的地へワープさせ、
-  // コンポーネントロード・場所更新・乾杯判定を安全にキックします。
-  socket.on("squareLanded", (data) => {
-    const p = players[activePlayerIndex];
-    if (p && data && data.position !== undefined) {
-      console.log(
-        `💻 [PC ROUTINE-合流] サーバーから着地完了(squareLanded)を受信。マスID: ${data.position} の本番着地リレーをキックします。`,
-      );
+  // ==========================================================================
+  // 🧭 【一本道リレー：行程④】サーバーからの着地号令（startSquareEvent）受信
+  // PC側は「表示・演出」専任として、マスのロードと画面更新のみを行います。
+  // ==========================================================================
+  socket.on("startSquareEvent", (data) => {
+    if (!data || data.position === undefined) return;
 
-      // 1. 手番プレイヤーの現在地を確定
-      p.position = Number(data.position);
-
-      // 2. 着地先コンポーネントをロードして即時適用
-      loadAndApplySquareComponent(p.position, () => {
-        let targetSquare =
-          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
-            ? MAP_SQUARES[p.position]
-            : null;
-        let currentMode = "normal";
-        let targetModule =
-          window.SQ_MODULES && window.SQ_MODULES[p.position]
-            ? window.SQ_MODULES[p.position][currentMode]
-            : null;
-
-        // 場所の解決
-        const detectedLocation =
-          targetModule && targetModule.location
-            ? targetModule.location
-            : targetSquare && targetSquare.location
-              ? targetSquare.location
-              : "家";
-        p.location = detectedLocation;
-
-        if (targetSquare && typeof applySquareEffects === "function") {
-          applySquareEffects(p, targetSquare);
-        }
-
-        if (targetModule && typeof targetModule.event === "function") {
-          console.log(`💻 [sq_${p.position}.js] 固有の event() を起動します。`);
-          targetModule.event(p, targetSquare || targetModule);
-        }
-
-        // 画面左側の表示（現在地・凡例・エリア表）および盤面Canvasの駒を即座に再描画！
-        if (window.boardManager)
-          window.boardManager.draw(players, activePlayerIndex);
-        updateCurrentPlayerDisplay();
-
-        // 🍻 【特設：同じ場所乾杯判定ルーチン】
-        if (p.location && p.location !== "家" && p.location !== "スタート前") {
-          const samePlaceBuddies = players
-            .filter(
-              (otherP) =>
-                p &&
-                otherP &&
-                otherP.id !== p.id &&
-                otherP.location === p.location,
-            )
-            .map((otherP) => otherP.name);
-
-          if (samePlaceBuddies.length > 0) {
-            console.log(
-              `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
-              samePlaceBuddies,
-            );
-            const allKanpaiMembers = [p.name, ...samePlaceBuddies];
-            socket.emit("triggerKanpaiEvent", {
-              roomCode: roomCode,
-              members: allKanpaiMembers.join("と"),
-              location: p.location,
-              title: "🍻 特大乾杯イベント発生！ 🍻",
-            });
-          }
-        }
-
-        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
-
-        // 最新ステータスを同期
-        const mockSquare = targetSquare ||
-          targetModule || { text: "通常マス", location: p.location };
-        triggerDelayedDisplay(1, mockSquare);
-      });
+    if (data.activePlayerIndex !== undefined) {
+      activePlayerIndex = data.activePlayerIndex;
     }
+
+    const p = players[activePlayerIndex];
+    if (!p) return;
+
+    p.position = Number(data.position);
+    p.location = data.location || "家";
+
+    console.log(
+      `💻 [PC ROUTINE-演出開始] サーバーから着地号令(startSquareEvent)を受信。マスID: ${p.position}`,
+    );
+
+    // 着地先コンポーネントをロードして表示を更新
+    loadAndApplySquareComponent(p.position, () => {
+      let currentMode = "normal";
+      let targetModule =
+        window.SQ_MODULES && window.SQ_MODULES[p.position]
+          ? window.SQ_MODULES[p.position][currentMode]
+          : null;
+      let targetSquare =
+        typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+          ? MAP_SQUARES[p.position]
+          : null;
+
+      // 1. マス固有のイベント表示があれば起動（PC側のモーダル展開など）
+      if (targetModule && typeof targetModule.event === "function") {
+        console.log(`💻 [sq_${p.position}.js] 大画面側 event() を起動します。`);
+        targetModule.event(p, targetSquare || targetModule);
+      }
+
+      // 2. 盤面Canvas、ステータス、凡例・エリア表を即座に再描画
+      if (window.boardManager) {
+        window.boardManager.draw(players, activePlayerIndex);
+      }
+      updateCurrentPlayerDisplay();
+
+      // 3. 🍻 同じ場所乾杯判定
+      if (p.location && p.location !== "家" && p.location !== "スタート前") {
+        const samePlaceBuddies = players
+          .filter(
+            (otherP) =>
+              otherP &&
+              otherP.id !== p.id &&
+              otherP.location === p.location,
+          )
+          .map((otherP) => otherP.name);
+
+        if (samePlaceBuddies.length > 0) {
+          console.log(
+            `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
+            samePlaceBuddies,
+          );
+          const allKanpaiMembers = [p.name, ...samePlaceBuddies];
+          socket.emit("triggerKanpaiEvent", {
+            roomCode: roomCode,
+            members: allKanpaiMembers.join("と"),
+            location: p.location,
+            title: "🍻 特大乾杯イベント発生！ 🍻",
+          });
+        }
+      }
+
+      if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
+
+      // 4. 右下の「現在のマスの内容」枠にテキストを反映
+      const mockSquare = targetSquare || targetModule || { text: "通常マス", location: p.location };
+      triggerDelayedDisplay(1, mockSquare);
+    });
   });
 
   // 🎯 【復元】サーバーから乾杯合図を受け取り、PC大画面の乾杯モーダルを表示！
@@ -873,95 +867,14 @@ function executeSyncedRoulette(resultNum) {
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
     // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
+    // 🎯 pc.ts の executeSyncedRoulette 内：歩行完了時の処理
     function finalizeMovement() {
-      console.log(
-        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に着地。JSをロード。`,
-      );
-      loadAndApplySquareComponent(p.position, () => {
-        let targetSquare =
-          typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
-            ? MAP_SQUARES[p.position]
-            : null;
-        let currentMode = "normal";
-        let targetModule =
-          window.SQ_MODULES && window.SQ_MODULES[p.position]
-            ? window.SQ_MODULES[p.position][currentMode]
-            : null;
-
-        // マスタまたは個別モジュールに設定されている場所を確実に代入
-        const detectedLocation =
-          targetModule && targetModule.location
-            ? targetModule.location
-            : targetSquare && targetSquare.location
-              ? targetSquare.location
-              : "家";
-        p.location = detectedLocation;
-
-        if (targetSquare && typeof applySquareEffects === "function") {
-          applySquareEffects(p, targetSquare);
-        }
-
-        if (targetModule && typeof targetModule.event === "function") {
-          console.log(`💻 [sq_${p.position}.js] 固有の event() を起動します。`);
-          targetModule.event(p, targetSquare || targetModule);
-        }
-
-        if (window.boardManager)
-          window.boardManager.draw(players, activePlayerIndex);
-
-        // 🎯 画面左側の表示（現在地・凡例・エリア表）を即座に再描画
-        updateCurrentPlayerDisplay();
-
-        // ──────────────────────────────────────────────────────────────────
-        // 🍻 【特設：同じ場所乾杯判定ルーチン】
-        // 「家」と「スタート前」以外の場所で、自分以外に同じ場所にいるプレイヤーを全員抽出！
-        // ──────────────────────────────────────────────────────────────────
-        if (p.location && p.location !== "家" && p.location !== "スタート前") {
-          // メモリ上の全プレイヤーから、同じ場所にいる自分以外のメンバーの名前を引っこ抜く
-          const samePlaceBuddies = players
-            .filter(
-              (otherP) =>
-                p &&
-                otherP &&
-                otherP.id !== p.id &&
-                otherP.location === p.location,
-            )
-            .map((otherP) => otherP.name);
-
-          if (samePlaceBuddies.length > 0) {
-            console.log(
-              `💻 [PC 乾杯検知] 場所「${p.location}」に先客を発見:`,
-              samePlaceBuddies,
-            );
-
-            // 自分（着地した人）の名前も配列の先頭に追加して全員の名前をドッキング
-            const allKanpaiMembers = [p.name, ...samePlaceBuddies];
-
-            // サーバーを経由してPC大画面へ「〇〇と〇〇」の乾杯モーダルを命令！
-            socket.emit("triggerKanpaiEvent", {
-              roomCode: roomCode,
-              members: allKanpaiMembers.join("と"), // 「プレイヤー1とプレイヤー2」の形に結合
-              location: p.location,
-              title: "🍻 特大乾杯イベント発生！ 🍻",
-            });
-          }
-        }
-        // ──────────────────────────────────────────────────────────────────
-
-        if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
-
-        // サーバーへ位置＆最新ステータスを即時送信
-        triggerDelayedDisplay(
-          resultNum,
-          targetSquare ||
-            targetModule || { text: "通常マス", location: p.location },
-        );
-
-        // 着地完了通知
-        socket.emit("squareLanded", {
-          roomCode: roomCode,
-          position: p.position,
-        });
+      console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に到着。サーバーへ着地通知を送信します。`);
+      
+      // サーバーへ着地完了を通知（サーバー側から startSquareEvent が返ってきます）
+      socket.emit("squareLanded", {
+        roomCode: roomCode,
+        position: p.position,
       });
     }
   }, 3000);

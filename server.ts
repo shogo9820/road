@@ -537,42 +537,51 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🧭 【着地完了ハブ】
+  // 🧭 【着地完了ハブ：完全一本道化版】
+  // PCの移動完了、またはデバッグワープから着地通知を受信した瞬間、
+  // サーバー主導で PC・スマホ双方へ同時に startSquareEvent を一斉ブロードキャストします。
   // ==========================================================================
   socket.on("squareLanded", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
-    if (room) {
-      if (data && data.position !== undefined) {
-        const p = room.gamePlayers[room.activePlayerIndex];
-        if (p) {
-          const targetId = parseInt(data.position, 10);
-          p.position = targetId;
+    if (!room) return;
 
-          let detectedLoc = data.location || "家";
-          if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
-            detectedLoc = MAP_SQUARES[targetId].location || "家";
-          }
-          p.location = detectedLoc;
+    const p = room.gamePlayers[room.activePlayerIndex];
+    if (!p) return;
 
-          io.to(roomCode).emit("squareLanded", {
-            position: targetId,
-            location: p.location,
-          });
-        }
+    if (data && data.position !== undefined) {
+      const targetId = parseInt(data.position, 10);
+      p.position = targetId;
+
+      let detectedLoc = data.location || "家";
+      if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
+        detectedLoc = MAP_SQUARES[targetId].location || "家";
       }
-
-      room.currentPhase = PHASES.SQUARE_LANDED;
-      console.log(
-        `🚨 [SERVER] ➔ 4. マス着地完了を検知。フェーズ: ${room.currentPhase} を配信！`,
-      );
-
-      io.to(roomCode).emit("syncGameState", {
-        players: room.gamePlayers,
-        activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase,
-      });
+      p.location = detectedLoc;
     }
+
+    // フェーズを着地イベント発生(SQUARE_LANDED)へ遷移
+    room.currentPhase = PHASES.SQUARE_LANDED;
+
+    console.log(
+      `🚨 [SERVER ROUTINE] ➔ 4. マス着地確定: ${p.name} 氏 (マスID: ${p.position}, 場所: ${p.location})`,
+    );
+
+    // 🎯 1. PC・スマホ双方へ「マスイベント開始」を同時に号令
+    io.to(roomCode).emit("startSquareEvent", {
+      position: p.position,
+      location: p.location,
+      playerId: p.id,
+      playerName: p.name,
+      activePlayerIndex: room.activePlayerIndex,
+    });
+
+    // 🎯 2. 最新の盤面ステータスを全員へ同期
+    io.to(roomCode).emit("syncGameState", {
+      players: room.gamePlayers,
+      activePlayerIndex: room.activePlayerIndex,
+      currentPhase: room.currentPhase,
+    });
   });
 
   socket.on("triggerJobChoice", (data) => {
@@ -691,10 +700,7 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================================================
-  // 🛠️ 【デバッグ機能：4.SQUARE_LANDED 直接発行型・高速ワープエンジン】
-  // 出目0のルーレット偽装や3秒タイマーを完全撤廃！
-  // 目的地のマスIDへサーバーメモリを即時書き換え、直接 SQUARE_LANDED フェーズへ移行。
-  // PC・スマホへダイレクトに着地信号を発信し、待機時間0ミリ秒でイベントを起動します。
+  // 🛠️ 【デバッグ機能：着地ハブ直結型】
   // ==========================================================================
   socket.on("debugWarp", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -705,33 +711,27 @@ io.on("connection", (socket) => {
 
       if (p && !isNaN(targetId) && targetId >= 0 && targetId <= 99) {
         console.log(
-          `\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンスを起動: ${targetId}番マス`,
+          `\n🛠️ [SERVER DEBUG-WARP] 目的地直撃シーケンス起動: ${targetId}番マス`,
         );
 
-        // 1. 座標を目的地に即時書き換え
         p.position = targetId;
-
-        // 2. マスタデータから最新の場所名を取得して同期
         if (typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[targetId]) {
           p.location = MAP_SQUARES[targetId].location || "家";
         } else {
           p.location = "家";
         }
 
-        // 3. フェーズを「着地完了（4.SQUARE_LANDED）」へ直接昇格！
+        // 🎯 サーバーの着地ハブと同じ合図を即時発行
         room.currentPhase = PHASES.SQUARE_LANDED;
 
-        console.log(
-          `📡 [SERVER DEBUG-WARP] ${p.name} 氏を ${targetId}番マス（場所: ${p.location}）へ直接着地同期します。`,
-        );
-
-        // 4. PC大画面側へ直接着地イベント（squareLanded）を発行
-        io.to(roomCode).emit("squareLanded", {
+        io.to(roomCode).emit("startSquareEvent", {
           position: targetId,
           location: p.location,
+          playerId: p.id,
+          playerName: p.name,
+          activePlayerIndex: room.activePlayerIndex,
         });
 
-        // 5. 全員へ最新ステート（SQUARE_LANDED）を一斉ブロードキャスト
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
