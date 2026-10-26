@@ -16,6 +16,7 @@ declare global {
   var socket: Socket;
   var io: any;
   var roomCode: string;
+  var rooms: any;
   var currentRoomCode: string;
   var players: any[];
   var activePlayerIndex: number;

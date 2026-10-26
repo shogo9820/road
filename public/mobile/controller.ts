@@ -10,7 +10,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const roomParam = urlParams.get("room");
 
   if (roomParam) {
-    const inputEl = document.getElementById("input-room-code");
+    const inputEl = document.getElementById(
+      "input-room-code",
+    ) as HTMLInputElement;
     if (inputEl) inputEl.value = roomParam;
     currentRoomCode = String(roomParam).trim();
     const doJoin = () => {
@@ -45,7 +47,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
     radio.addEventListener("change", (e) => {
-      e.target.checked = true;
+      // 💡 e.target を HTMLInputElement として型を教える
+      if (e.target) {
+        (e.target as HTMLInputElement).checked = true;
+      }
       syncSettingsToServer();
     });
   });
@@ -84,8 +89,11 @@ window.addEventListener("DOMContentLoaded", () => {
       targetMode &&
       document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`)
     )
-      document.querySelector(
-        `input[name="phone-mode"][value="${targetMode}"]`,
+      // 💡 全体をカッコで囲って as HTMLInputElement をつけます
+      (
+        document.querySelector(
+          `input[name="phone-mode"][value="${targetMode}"]`,
+        ) as HTMLInputElement
       ).checked = true;
   });
 
@@ -117,7 +125,7 @@ window.addEventListener("DOMContentLoaded", () => {
       // いつものボタンテキストに戻す
       const spinBtn = document.getElementById("btn-phone-spin");
       if (spinBtn) spinBtn.textContent = "⚡ ルーレットを回す！";
-      
+
       window.hasConfirmedThisTurn = false;
       window.isLandedThisTurn = false;
 
@@ -151,9 +159,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
 
       if (document.getElementById("btn-phone-spin"))
-        document.getElementById("btn-phone-spin").disabled = true;
+        (
+          document.getElementById("btn-phone-spin") as HTMLButtonElement
+        ).disabled = true;
+
       if (document.getElementById("btn-phone-next"))
-        document.getElementById("btn-phone-next").disabled = true;
+        (
+          document.getElementById("btn-phone-next") as HTMLButtonElement
+        ).disabled = true;
       if (document.getElementById("roulette-result-display"))
         document.getElementById("roulette-result-display").textContent =
           "進路を選択してください";
@@ -162,18 +175,24 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // 🎯 汎用モーダルの展開指示を受信
-  socket.on("openCustomRouletteModal", (data) => {
+  socket.on("openCustomRouletteModal", (data: any) => {
+    // 💡 引数に : any を追加して安全に
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
-    const titleEl =
-      modal.querySelector("h3") || modal.querySelector(".couple-title");
+
+    // 💡 スタイルの警告を防ぐため、HTMLElementとしてキャスト
+    const titleEl = (modal.querySelector("h3") ||
+      modal.querySelector(".couple-title")) as HTMLElement;
     if (titleEl) titleEl.innerHTML = `🌸 ${data.eventName} 🌸`;
 
-    const descEl = modal.querySelector(".couple-desc");
+    const descEl = modal.querySelector(".couple-desc") as HTMLElement;
     if (descEl)
       descEl.innerHTML = `出目に応じて結果が決まる！<br>ボタンをタップしてルーレットを回そう！`;
 
-    const btnSpin = document.getElementById("btn-couple-spin");
+    // 🎯【最重要】ここを as HTMLButtonElement に変更します！
+    const btnSpin = document.getElementById(
+      "btn-couple-spin",
+    ) as HTMLButtonElement;
     if (btnSpin) {
       btnSpin.style.display = "block";
       btnSpin.textContent = "⚡ ルーレットを回す！";
@@ -193,7 +212,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // 🎯 決着通知（手元のモーダルを閉じる）
-  socket.on("customRouletteFinished", (data) => {
+  socket.on("customRouletteFinished", (data: any) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
     if (document.getElementById("roulette-result-display")) {
@@ -215,7 +234,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (descEl)
       descEl.innerHTML = `運命の判定スピン！<br>ルーレットを回して結果を決定せよ！`;
 
-    const btnSpin = document.getElementById("btn-couple-spin");
+    const btnSpin = document.getElementById(
+      "btn-couple-spin",
+    ) as HTMLButtonElement;
     if (btnSpin) {
       btnSpin.style.display = "block";
       btnSpin.textContent = "🎲 判定ルーレットを回す！";
@@ -284,7 +305,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // 保険ボタンの更新
-    const insuranceBtn = document.getElementById("btn-phone-use-insurance");
+    const insuranceBtn = document.getElementById(
+      "btn-phone-use-insurance",
+    ) as HTMLButtonElement;
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
       if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
@@ -317,7 +340,9 @@ window.addEventListener("DOMContentLoaded", () => {
           "📱 [89番マス] 運命の卒業判定を検知。独立信号 showGraduateEvent を直撃送信！",
         );
         if (document.getElementById("btn-phone-spin"))
-          document.getElementById("btn-phone-spin").disabled = true;
+          (
+            document.getElementById("btn-phone-spin") as HTMLButtonElement
+          ).disabled = true;
 
         setTimeout(() => {
           socket.emit("showGraduateEvent", {
@@ -343,7 +368,9 @@ window.addEventListener("DOMContentLoaded", () => {
         "📱 [DEBUG] スピン待機フェーズを検知。ルーレットボタンを点灯します。",
       );
       if (document.getElementById("btn-phone-spin"))
-        document.getElementById("btn-phone-spin").disabled = false;
+        (
+          document.getElementById("btn-phone-spin") as HTMLButtonElement
+        ).disabled = false;
       if (document.getElementById("roulette-result-display"))
         document.getElementById("roulette-result-display").textContent =
           "🎯 タップして回そう！";
@@ -454,7 +481,9 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   socket.on("enableNextTurnButton", () => {
-    const btnNext = document.getElementById("btn-phone-next");
+    const btnNext = document.getElementById(
+      "btn-phone-next",
+    ) as HTMLButtonElement;
     if (btnNext) {
       console.log(
         "📱 [⑥. 手動進行ボタン大点灯] ➔ ➔ サーバーから点灯合図(enableNextTurnButton)を受信！ロックマスクを安全に解除しました。",
@@ -474,7 +503,9 @@ socket.on("gameStarted", (data) => {
 });
 
 function joinRoom() {
-  const inputEl = document.getElementById("input-room-code");
+  const inputEl = document.getElementById(
+    "input-room-code",
+  ) as HTMLButtonElement;
   if (!inputEl) return;
   const codeInput = inputEl.value.trim();
   if (!codeInput) {
@@ -522,7 +553,10 @@ function renderPlayerInputs() {
     input.style.borderRadius = "6px";
     input.style.border = "1px solid #ccc";
     input.addEventListener("input", (e) => {
-      players[idx].name = e.target.value;
+      // 💡 e.target の後ろに as HTMLInputElement を付け足す
+      if (e.target) {
+        players[idx].name = (e.target as HTMLInputElement).value;
+      }
       syncSettingsToServer();
     });
     const delBtn = document.createElement("button");
@@ -556,9 +590,12 @@ function addPlayerRow() {
 }
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
+  
+  // 💡 全体をカッコで囲って as HTMLInputElement をつけます（オプショナルチェイニング「?.」の前にキャスト）
   const selectedMode =
-    document.querySelector('input[name="phone-mode"]:checked')?.value ||
+    (document.querySelector('input[name="phone-mode"]:checked') as HTMLInputElement)?.value ||
     "normal";
+    
   socket.emit("updateSettings", {
     roomCode: currentRoomCode,
     players: players,
@@ -587,7 +624,8 @@ function sendStartGame() {
 function requestSpin() {
   if (isSpinning) return;
   if (document.getElementById("btn-phone-spin"))
-    document.getElementById("btn-phone-spin").disabled = true;
+    (document.getElementById("btn-phone-spin") as HTMLButtonElement).disabled =
+      true;
   if (document.getElementById("mobile-couple-event-modal"))
     document.getElementById("mobile-couple-event-modal").style.display = "none";
   console.log(
@@ -600,7 +638,8 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
   const wheel = document.getElementById("controller-roulette-wheel");
   const resultDisplay = document.getElementById("roulette-result-display");
   if (document.getElementById("btn-phone-next"))
-    document.getElementById("btn-phone-next").disabled = true;
+    (document.getElementById("btn-phone-next") as HTMLButtonElement).disabled =
+      true;
   if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
   if (wheel) {
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
@@ -687,22 +726,26 @@ function sendNextTurn() {
     action: "nextTurn",
   });
   if (document.getElementById("btn-phone-next"))
-    document.getElementById("btn-phone-next").disabled = true;
+    (document.getElementById("btn-phone-next") as HTMLButtonElement).disabled =
+      true;
 }
 
 // 🛠️ 【デバッグ機能：型・ID不整合完全解決版】
 // 入力欄のID名のズレを完全に無視し、タップされたボタンの「すぐ真上または真横にある入力欄」から
 // 100%確実に数値を引っこ抜いて、サーバーの出目0合流レールへ直撃発射します。
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest("#btn-debug-warp");
+  // 💡 e.target を HTMLElement として型を教えてあげる
+  const btn = (e.target as HTMLElement).closest("#btn-debug-warp");
   if (!btn) return;
   e.preventDefault();
 
   // 🎯 ID名に頼らず、このデバッグコンテナ内にある input タグ（number型またはtext型）を直接探索して取得
   const parentContainer = btn.closest("div") || document.body;
-  const inputEl =
-    parentContainer.querySelector("input[type='number']") ||
-    parentContainer.querySelector("input");
+  
+  // 💡 querySelector で探してきた inputEl も、後ろに as HTMLInputElement をつけて入力欄だと教えてあげる
+  const inputEl = (parentContainer.querySelector("input[type='number']") ||
+    parentContainer.querySelector("input")) as HTMLInputElement; // 💡ここにも追加しておくと、下の .value のエラーも同時に防げます！
+    
   const targetVal = inputEl ? inputEl.value.trim() : "";
 
   const targetSquareId = parseInt(targetVal, 10);
@@ -721,6 +764,7 @@ document.addEventListener("click", (e) => {
     targetSquareId: Number(targetSquareId),
   });
 });
+
 function checkBranchSquareOnTurnStart(syncData) {
   console.log("🔍 [DEBUG] checkBranchSquareOnTurnStart 実行開始");
 
@@ -793,7 +837,9 @@ function checkBranchSquareOnTurnStart(syncData) {
 
   const btnA = document.getElementById("btn-route-a");
   const btnB = document.getElementById("btn-route-b");
-  const btnConfirm = document.getElementById("btn-route-confirm");
+  const btnConfirm = document.getElementById(
+    "btn-route-confirm",
+  ) as HTMLButtonElement;
   let tempSelectedIdx = null;
 
   btnA.onclick = () => {
@@ -842,7 +888,9 @@ function checkBranchSquareOnTurnStart(syncData) {
 
     // 確定したのでルーレットボタンを点灯
     if (document.getElementById("btn-phone-spin"))
-      document.getElementById("btn-phone-spin").disabled = false;
+      (
+        document.getElementById("btn-phone-spin") as HTMLButtonElement
+      ).disabled = false;
     if (document.getElementById("roulette-result-display"))
       document.getElementById("roulette-result-display").textContent =
         "🎯 タップして回そう！";
@@ -895,7 +943,9 @@ function openGraduateSpinModal() {
     descEl.innerHTML =
       "出目 6以上でストレート卒業GOAL！<br>5以下は地獄の留年ルート突入！";
 
-  const btnSpin = document.getElementById("btn-couple-spin");
+  const btnSpin = document.getElementById(
+    "btn-couple-spin",
+  ) as HTMLButtonElement;
   if (btnSpin) {
     btnSpin.style.display = "block";
     btnSpin.textContent = "⚡ 卒業判定ルーレットを回す！";
@@ -918,7 +968,9 @@ socket.on("showGraduateNextButton", (data) => {
     document.getElementById("roulette-result-display").textContent =
       `🌸 ${data.message}`;
   }
-  const btnNext = document.getElementById("btn-phone-next");
+  const btnNext = document.getElementById(
+    "btn-phone-next",
+  ) as HTMLButtonElement;
   if (btnNext) btnNext.disabled = false;
 });
 
@@ -932,7 +984,9 @@ socket.on("graduateFailedRepeat", (data) => {
   // 手元画面もダークモード化
   document.body.classList.add("theme-repeat-dark");
 
-  const spinBtn = document.getElementById("btn-phone-spin");
+  const spinBtn = document.getElementById(
+    "btn-phone-spin",
+  ) as HTMLButtonElement;
   if (spinBtn) {
     spinBtn.disabled = false;
     spinBtn.textContent = "💀 留年ルートへ進む！";

@@ -29,7 +29,9 @@ function initEventListeners() {
 
 function handleCreateRoom(e) {
   if (e) e.preventDefault();
-  const hostNameInput = document.getElementById("pc-host-name");
+  const hostNameInput = document.getElementById(
+    "pc-host-name",
+  ) as HTMLInputElement;
   const hostName =
     hostNameInput && hostNameInput.value ? hostNameInput.value : "やじま";
   console.log(`💻 [PC ACTION] ルーム作成要求を発射。ホスト名: ${hostName}`);
@@ -62,9 +64,8 @@ function initSocketListeners() {
 
     const roomCodeEl = document.getElementById("display-room-code");
     if (roomCodeEl) roomCodeEl.textContent = roomCode;
-    const qrImgEl = document.getElementById("qrcode-img");
+    const qrImgEl = document.getElementById("qrcode-img") as HTMLImageElement;
     if (qrImgEl && data.qrCodeDataUrl) qrImgEl.src = data.qrCodeDataUrl;
-
     switchScreen("screen-waiting");
     renderPlayerWaitingList();
     updateCurrentPlayerDisplay();
@@ -332,7 +333,9 @@ function appendSocketListeners() {
 
   // 🎯 汎用ルーレット回転同期（モーダル生成・書き換えは一切行わず、回転のみ実行！）
   socket.on("spinCustomRoulette", (data) => {
-    console.log(`💻 [PC ROUTINE] ルーレット回転同期を受信: 出目 ${data.result}`);
+    console.log(
+      `💻 [PC ROUTINE] ルーレット回転同期を受信: 出目 ${data.result}`,
+    );
     isPCEventMode = true;
 
     // 🌟 余計なモーダル再生成やテキスト上書き処理は全廃！
@@ -347,7 +350,9 @@ function appendSocketListeners() {
     // 🌟 【ここを追加！】カップルイベント（ピンク画面）中は、汎用の「出目:5」で上書きされるのを完全にブロック！
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal && pcModal.classList.contains("theme-couple")) {
-      console.log("💻 [PC GUARD] カップルイベント中のため、汎用テキストの上書きを阻止し、専用の祝賀通知を待ちます。");
+      console.log(
+        "💻 [PC GUARD] カップルイベント中のため、汎用テキストの上書きを阻止し、専用の祝賀通知を待ちます。",
+      );
       return; // 👈 ここで処理を打ち切ることで、下の無機質な「出目:5」が画面に出なくなります！
     }
 
@@ -379,18 +384,22 @@ function appendSocketListeners() {
 
     // 1. タイトル
     const titleEl = document.getElementById("modal-event-title");
-    if (titleEl && data.nextStepEventName) titleEl.textContent = `💕 ${data.nextStepEventName} 💕`;
+    if (titleEl && data.nextStepEventName)
+      titleEl.textContent = `💕 ${data.nextStepEventName} 💕`;
 
     // 2. 説明文
     const descEl = document.getElementById("modal-event-desc");
-    if (descEl) descEl.textContent = data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
+    if (descEl)
+      descEl.textContent =
+        data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
 
     // 🎯 3. 【ここ！】1回目の結果文言を左下にパッと表示！
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
       modalResultBox.className = "event-result-box success";
-      const rollNum = data.result !== undefined ? `【出目:${data.result}】` : "";
+      const rollNum =
+        data.result !== undefined ? `【出目:${data.result}】` : "";
       modalResultBox.innerHTML = `
         <div style="font-size:1.1rem; color:#d81b60; font-weight:bold;">${rollNum} 💕 偶数達成！</div>
         <div style="font-size:1.3rem; font-weight:900; color:#e91e63; margin-top:2px;">告白チャンス獲得！</div>
@@ -398,7 +407,9 @@ function appendSocketListeners() {
     }
 
     // 4. 対応表の差し替え
-    const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
+    const dynamicTableZone = document.getElementById(
+      "pc-event-table-dynamic-zone",
+    );
     if (dynamicTableZone && data.mapping) {
       let html = `<div class="event-title" style="font-size:1.3rem; color:#d81b60; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff69b4; padding-bottom:4px;">💘 告白対象スロット</div><ul class="event-table-list">`;
       for (let i = 1; i <= 10; i++) {
@@ -447,10 +458,11 @@ function appendSocketListeners() {
         targetModalEl.className = "event-modal-overlay";
         targetModalEl.style.display = "none";
       }
-      const btnNext = document.getElementById("btn-next-turn");
+      const btnNext = document.getElementById(
+        "btn-next-turn",
+      ) as HTMLButtonElement;
       if (btnNext) {
         btnNext.disabled = false;
-        btnNext.style.display = "block";
       }
     }, 4500);
   });
@@ -709,7 +721,10 @@ function updateCurrentPlayerDisplay() {
     "#e91e63",
     "#795548",
   ];
-  const playerCardEl = document.querySelector(".current-player-card");
+  const playerCardEl = document.querySelector(
+    ".current-player-card",
+  ) as HTMLElement;
+
   if (playerCardEl) {
     const playerColor =
       p.color || playerColors[activePlayerIndex % playerColors.length];
@@ -783,11 +798,13 @@ function executeSyncedRoulette(resultNum) {
   pcCurrentRotation +=
     1800 + ((stopAngle - (pcCurrentRotation % 360) + 360) % 360);
 
-  let wheel = isPCEventMode
-    ? document.querySelector("#pc-event-modal .event-roulette-wheel") ||
-      document.querySelector("#pc-couple-event-modal .event-roulette-wheel")
-    : document.getElementById("controller-roulette-wheel") ||
-      document.getElementById("pc-roulette-wheel");
+  let wheel = (
+    isPCEventMode
+      ? document.querySelector("#pc-event-modal .event-roulette-wheel") ||
+        document.querySelector("#pc-couple-event-modal .event-roulette-wheel")
+      : document.getElementById("controller-roulette-wheel") ||
+        document.getElementById("pc-roulette-wheel")
+  ) as HTMLElement;
   if (wheel) {
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
@@ -955,7 +972,9 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
   if (!p) return;
 
   // 1. 現在のモードの個別モジュール（sq_XX.js）を取得
-  const currentMode = (typeof rooms !== "undefined" && rooms[roomCode] && rooms[roomCode].mode) || "normal";
+  const currentMode =
+    (typeof rooms !== "undefined" && rooms[roomCode] && rooms[roomCode].mode) ||
+    "normal";
   const targetModule =
     window.SQ_MODULES && window.SQ_MODULES[p.position]
       ? window.SQ_MODULES[p.position][currentMode]
@@ -1049,24 +1068,34 @@ const GAME_EVENTS = {
   },
 };
 
-function openPCEventModal(eventType, playerName, activePlayerId) {
+function openPCEventModal(eventType: string, playerName: string, activePlayerId: any) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
-  if (document.getElementById("btn-next-turn")) {
-    document.getElementById("btn-next-turn").disabled = true;
-    document.getElementById("btn-next-turn").style.display = "none";
+
+  // 💡 ボタン要素として型を教えて変数に受ける
+  const btnNext = document.getElementById("btn-next-turn") as HTMLButtonElement;
+  if (btnNext) {
+    btnNext.disabled = true;
+    btnNext.style.display = "none";
   }
+
   const config = GAME_EVENTS[eventType];
   if (!config) return;
   pcModal.className = "event-modal-overlay active " + config.class;
+  
   if (document.getElementById("modal-event-title"))
     document.getElementById("modal-event-title").textContent = config.title;
+    
   if (document.getElementById("modal-event-desc"))
     document.getElementById("modal-event-desc").textContent =
       config.desc(playerName);
-  if (document.getElementById("modal-event-result-box"))
-    document.getElementById("modal-event-result-box").style.display = "none";
+
+  // 💡 HTMLElement として型を教えて style を操作する
+  const resultBox = document.getElementById("modal-event-result-box") as HTMLElement;
+  if (resultBox) {
+    resultBox.style.display = "none";
+  }
 }
 
 function handleForceStopSquare(player, square) {
