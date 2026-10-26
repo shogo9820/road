@@ -34,46 +34,38 @@ const PHASES = {
   WAIT_NEXT: "6.WAIT_NEXT", // 次のプレイヤー交代待機
 };
 
-// ⭕ 修正後
-// 🎯 public フォルダの絶対パスを解決（dist環境・ルート環境の両対応）
-const publicPath = fs.existsSync(path.join(__dirname, "public"))
-  ? path.join(__dirname, "public")
-  : path.join(process.cwd(), "public");
+// 🎯 プロジェクトルート直下の public / master フォルダを確実に参照
+const publicPath = path.join(process.cwd(), "public");
 
+// 静的ファイルの基本配信
 app.use(express.static(publicPath));
 
-// MIMEタイプを明示して安全に配信
-app.get("/master/gameMaster.js", (req, res) => {
-  res.type("application/javascript");
-  const masterPath = fs.existsSync(path.join(__dirname, "master", "gameMaster.js"))
-    ? path.join(__dirname, "master", "gameMaster.js")
-    : path.join(process.cwd(), "master", "gameMaster.js");
-  res.sendFile(masterPath);
+// PC画面の明示的ルーティング
+app.get(["/pc", "/pc/", "/pc/index.html"], (req, res) => {
+  res.sendFile(path.join(publicPath, "pc", "index.html"));
 });
 
+// スマホ画面の明示的ルーティング
+app.get(["/mobile", "/mobile/", "/mobile/index.html"], (req, res) => {
+  res.sendFile(path.join(publicPath, "mobile", "index.html"));
+});
+
+// 個別マスJS（sq_XX.js）配信の安全ルート
+app.get("/squares/:file", (req, res) => {
+  res.type("application/javascript");
+  res.sendFile(path.join(publicPath, "squares", req.params.file));
+});
+
+// master/gameMaster.js の配信
+app.get("/master/gameMaster.js", (req, res) => {
+  res.type("application/javascript");
+  res.sendFile(path.join(process.cwd(), "master", "gameMaster.js"));
+});
+
+// common.css の配信
 app.get("/css/common.css", (req, res) => {
   res.type("text/css");
   res.sendFile(path.join(publicPath, "css", "common.css"));
-});
-
-// 🎯 /pc や /pc/index.html への直接アクセスを確実に受けてファイルを返す
-app.get(["/pc", "/pc/", "/pc/index.html"], (req, res) => {
-  const filePath = path.join(publicPath, "pc", "index.html");
-  res.sendFile(filePath);
-});
-
-// 🎯 スマホ側も同様に直接アクセスを保証
-app.get(["/mobile", "/mobile/", "/mobile/index.html"], (req, res) => {
-  const filePath = path.join(publicPath, "mobile", "index.html");
-  res.sendFile(filePath);
-});
-
-// 🎯 /squares/ 配下のJSファイルを確実に配信する安全フォールバック
-app.get("/squares/:file", (req, res) => {
-  const fileName = req.params.file;
-  const filePath = path.join(publicPath, "squares", fileName);
-  res.type("application/javascript");
-  res.sendFile(filePath);
 });
 
 
