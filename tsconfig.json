@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    // 📂 【変更点①】ファイルレイアウトの設定（コメントアウトを解除）
-    "rootDir": "./src",
-    "outDir": "./dist",
+    // 📂 【最適化】現在のフォルダ構成に合わせたレイアウト設定
+    "rootDir": "./",                             /* プロジェクトのルート（全JS/TSファイルの基点） */
+    "outDir": "./dist",                          /* コンパイル後の出力先フォルダ */
 
     // Environment Settings
     "module": "nodenext",
     "target": "esnext",
     "types": [],
 
-    // 🤝 【変更点②】JavaScriptファイルを混ぜて動かすための設定（追加）
+    // 🤝 JavaScriptファイルを混ぜて動かすための設定
     "allowJs": true,                             /* JavaScriptファイルの存在を許す */
     "checkJs": false,                            /* 既存のJSファイル自体の型チェックはまだしない */
     "esModuleInterop": true,                     /* 既存のJSライブラリをインポートしやすくする */
@@ -19,18 +19,10 @@
     "declaration": true,
     "declarationMap": true,
 
-    // 🛡️ 【変更点③】移行をスムーズにするため、厳しい型チェックを一旦「false」にする
+    // 🛡️ 移行をスムーズにするため、厳しい型チェックを一旦「false」にする
     "strict": false,                             /* ★最初はユルく始めてエラー爆発を防ぐ */
     "noUncheckedIndexedAccess": false,           /* 配列やオブジェクトの厳しい未定義チェックを一時OFF */
     "exactOptionalPropertyTypes": false,         /* オプショナルプロパティの厳密チェックを一時OFF */
-
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
     "jsx": "react-jsx",
@@ -40,6 +32,16 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
-  // 🎯 【追加】コンパイル対象にするフォルダを指定
-  "include": ["src/**/*"]
+  // 🎯 【最適化】コンパイル対象と除外対象を現在のフォルダ構成に指定
+  "include": [
+    "server.ts",
+    "./master/**/*",
+    "./public/**/*",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

@@ -1,17 +1,25 @@
-const QRCode = require("qrcode");
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
+import qrcode from "qrcode";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import path from "path";
 
 // 🎯 createPlayer, JOBS, MAP_SQUARES の読み込み
-const { JOBS, MAP_SQUARES, createPlayer } = require("./master/gameMaster.js");
+// （nodenextのルールに従い、末尾の「.js」は残したままで大丈夫です）
+import { JOBS, MAP_SQUARES, createPlayer } from "./master/gameMaster.js";
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const rooms = {};
+const rooms: Record<string, any> = {}; // とりあえず空のオブジェクトには型をつけておきます
+
+// 💡 socket.roomCode を TypeScript に公式に認めさせる魔法のコード
+declare module "socket.io" {
+  interface Socket {
+    roomCode?: string | null;
+  }
+}
 
 // ==========================================================================
 // 🧭 人生ゲーム型ステートマシン・全6フェーズ定数定義
@@ -124,7 +132,7 @@ io.on("connection", (socket) => {
     const hostName = data && data.hostName ? data.hostName : "やじま";
 
     socket.join(roomCode);
-    socket.roomCode = roomCode;
+    (socket as any).roomCode = roomCode;
 
     rooms[roomCode] = {
       players: [],
@@ -140,7 +148,7 @@ io.on("connection", (socket) => {
       const host = socket.handshake.headers.host;
       const protocol = socket.handshake.headers["x-forwarded-proto"] || "http";
       const joinUrl = `${protocol}://${host}/mobile/index.html?room=${roomCode}`;
-      qrCodeDataUrl = await QRCode.toDataURL(joinUrl, {
+      qrCodeDataUrl = await qrcode.toDataURL(joinUrl, {
         width: 150,
         margin: 1,
       });
@@ -162,7 +170,7 @@ io.on("connection", (socket) => {
     const roomCode = data && data.roomCode ? data.roomCode : null;
     if (roomCode && rooms[roomCode]) {
       socket.join(roomCode);
-      socket.roomCode = roomCode;
+      (socket as any).roomCode = roomCode;
       console.log(`ルーム参加 [${roomCode}]:`, socket.id);
 
       socket.emit("joinedSuccess", { roomCode });
