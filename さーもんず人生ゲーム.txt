@@ -1,3 +1,29 @@
+Antigravity IDE（スタンドアロン）v2.6.0
+x64版をダウンロード
+
+code --install-extension esbenp.prettier-vscode
+code --install-extension bradlc.vscode-tailwindcss
+code --install-extension dbaeumer.vscode-eslint
+code --install-extension eamodio.gitlens
+
+• Japanese Language Pack for Visual Studio Code
+
+
+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
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 さーもんず人生ゲーム
 
 仕様
