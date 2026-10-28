@@ -20,6 +20,7 @@ code --install-extension eamodio.gitlens
 
 
 
+  const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
 
 
 
