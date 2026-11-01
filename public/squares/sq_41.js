@@ -22,12 +22,15 @@ window.SQ_MODULES[41] = {
 
     event: function(player, square) {
       const cfg = this.config;
+      const mod = this;
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
       this.isSecondStage = false;
       this.lastMapping = null;
 
       // 共通で安全に通常ボタンへ復元する内部ヘルパー
       const restoreNormalSpinButton = () => {
+        if (mod._onSpin) socket.off("spinCustomRoulette", mod._onSpin);
+        if (mod._onFinished) socket.off("customRouletteFinished", mod._onFinished);
         const resetBtn = document.getElementById("btn-phone-spin");
         if (resetBtn) {
           const cleanedBtn = resetBtn.cloneNode(true);
@@ -98,8 +101,8 @@ window.SQ_MODULES[41] = {
         }
 
         // ホイール同期回転リスナー
-        socket.off("spinCustomRoulette");
-        socket.on("spinCustomRoulette", (data) => {
+        if (mod._onSpin) socket.off("spinCustomRoulette", mod._onSpin);
+        mod._onSpin = (data) => {
           const resNum = data.result !== undefined ? data.result : 1;
           if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転中...";
 
@@ -116,11 +119,12 @@ window.SQ_MODULES[41] = {
             currentRotation += 1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
             playMobileRouletteAnimation(resNum, currentRotation, () => {});
           }
-        });
+        };
+        socket.on("spinCustomRoulette", mod._onSpin);
+
         // 決着通知リスナー（1回目と2回目を分岐処理）
-        socket.off("customRouletteFinished");
-        socket.on("customRouletteFinished", (data) => {
-          const mod = window.SQ_MODULES[41].normal;
+        if (mod._onFinished) socket.off("customRouletteFinished", mod._onFinished);
+        mod._onFinished = (data) => {
           const result = data && data.result !== undefined ? data.result : 1;
 
           // ─── 【第2段階（告白）の判定】 ───
@@ -153,13 +157,13 @@ window.SQ_MODULES[41] = {
               });
             }
 
+            // 🎯 通常スピンボタンを安全に復元（requestSpin を再バインド）
+            restoreNormalSpinButton();
+
             // 終了クリーンアップ
             setTimeout(() => {
               document.body.classList.remove(cfg.themeClass);
               mod.isSecondStage = false;
-
-              // 🎯 通常スピンボタンを安全に復元（requestSpin を再バインド）
-              restoreNormalSpinButton();
 
               const pcNextBtnFinal = document.getElementById("btn-next-turn");
               if (pcNextBtnFinal) {
@@ -226,6 +230,9 @@ window.SQ_MODULES[41] = {
             // 奇数失敗：終了
             if (resultDisplay) resultDisplay.textContent = `💦 奇数 [出目:${result}] でフラれて終了…`;
 
+            // 🎯 通常スピンボタンを安全に復元（requestSpin を再バインド）
+            restoreNormalSpinButton();
+
             const modalResultBox = document.getElementById("modal-event-result-box");
             if (modalResultBox) {
               modalResultBox.style.display = "block";
@@ -245,14 +252,12 @@ window.SQ_MODULES[41] = {
               const btnNext = document.getElementById("btn-next-turn");
               if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
 
-              // 🎯 通常スピンボタンを安全に復元（requestSpin を再バインド）
-              restoreNormalSpinButton();
-
               document.body.classList.remove(cfg.themeClass);
               socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
             }, 3500);
           }
-        });
+        };
+        socket.on("customRouletteFinished", mod._onFinished);
       }
     }
   },

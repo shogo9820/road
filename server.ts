@@ -60,13 +60,34 @@ app.get(["/mobile", "/mobile/", "/mobile/index.html"], (req, res) => {
   res.sendFile(filePath);
 });
 
-// 🎯 3. /pc 配下の JSファイル（board.js や pc.js）を確実に届けるルート
+// 🎯 3. /pc および /mobile 配下のファイルを適切なMIMEタイプで確実に届けるルート
 app.get("/pc/:file", (req, res) => {
   const fileName = req.params.file;
   const distFile = path.join(distPublicPath, "pc", fileName);
   const rawFile = path.join(rawPublicPath, "pc", fileName);
 
-  res.type("application/javascript");
+  if (fileName.endsWith(".js")) res.type("application/javascript");
+  else if (fileName.endsWith(".css")) res.type("text/css");
+  else if (fileName.endsWith(".html")) res.type("text/html");
+
+  if (fs.existsSync(distFile)) {
+    return res.sendFile(distFile);
+  }
+  if (fs.existsSync(rawFile)) {
+    return res.sendFile(rawFile);
+  }
+  res.status(404).send("File not found");
+});
+
+app.get("/mobile/:file", (req, res) => {
+  const fileName = req.params.file;
+  const distFile = path.join(distPublicPath, "mobile", fileName);
+  const rawFile = path.join(rawPublicPath, "mobile", fileName);
+
+  if (fileName.endsWith(".js")) res.type("application/javascript");
+  else if (fileName.endsWith(".css")) res.type("text/css");
+  else if (fileName.endsWith(".html")) res.type("text/html");
+
   if (fs.existsSync(distFile)) {
     return res.sendFile(distFile);
   }
@@ -139,7 +160,7 @@ function startTurnRoutine(room, roomCode) {
     return;
   }
 
-  // 3. マスタデータから現在地の分岐有無を判定
+  // 3. マスタデータから現在地の分岐有無・89番卒業判定有無を判定
   const currentSquare =
     typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
       ? MAP_SQUARES[p.position]
@@ -147,6 +168,7 @@ function startTurnRoutine(room, roomCode) {
   const isBranchSquare =
     currentSquare &&
     (currentSquare.type === "branch" || p.position === 0 || p.position === 49);
+  const isGraduateSquare = Number(p.position) === 89 && !p.isRepeat;
 
   // 4. 手元端末用のアクション通知
   io.to(roomCode).emit("applyPlayerAction", {
@@ -156,10 +178,10 @@ function startTurnRoutine(room, roomCode) {
     activePlayerId: p.id,
   });
 
-  if (isBranchSquare && !p.hasConfirmedRoute) {
-    // 🧭 分岐マス：進路選択が必要なため TURN_START を維持
+  if ((isBranchSquare && !p.hasConfirmedRoute) || isGraduateSquare) {
+    // 🧭 分岐マスまたは89番卒業判定マス：開始時イベント完了を待機するため TURN_START を維持
     console.log(
-      `🧭 [SERVER ROUTINE] ➔ 分岐マスを検知。進路選択完了を待機します。フェーズ: ${room.currentPhase}`,
+      `🧭 [SERVER ROUTINE] ➔ ターン開始時確認マス(${p.position}番)を検知。完了を待機します。フェーズ: ${room.currentPhase}`,
     );
   } else {
     // 🎯 通常マス（または進路確定済み）：即座にスピン待機フェーズへ自動昇格
@@ -262,6 +284,13 @@ io.on("connection", (socket) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
     const room = rooms[roomCode];
     if (room) {
+      if (!room.players || room.players.length === 0) {
+        room.players = [
+          { id: "p_1", name: "プレイヤー1", hasJob: false },
+          { id: "p_2", name: "プレイヤー2", hasJob: false },
+        ];
+      }
+
       room.gamePlayers = (room.players || []).map((p, idx) => {
         const base = createPlayer(p.id, p.name);
         return {
@@ -326,7 +355,9 @@ io.on("connection", (socket) => {
           console.log(
             "\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！",
           );
-          io.to(roomCode).emit("gameAllFinished");
+          io.to(roomCode).emit("gameAllFinished", {
+            players: room.gamePlayers,
+          });
           return;
         }
 
@@ -347,6 +378,9 @@ io.on("connection", (socket) => {
           (p) => String(p.id) === String(data.updatedPlayer.id),
         );
         if (target) {
+          const prevJobId = target.jobId;
+          const prevHasJob = target.hasJob;
+
           target.drinkCount =
             data.updatedPlayer.drinkCount !== undefined
               ? data.updatedPlayer.drinkCount
@@ -375,6 +409,32 @@ io.on("connection", (socket) => {
             data.updatedPlayer.job !== undefined
               ? data.updatedPlayer.job
               : target.job;
+          if (data.updatedPlayer.position !== undefined)
+            target.position = data.updatedPlayer.position;
+          if (data.updatedPlayer.location !== undefined)
+            target.location = data.updatedPlayer.location;
+          if (data.updatedPlayer.isLover !== undefined)
+            target.isLover = data.updatedPlayer.isLover;
+          if (data.updatedPlayer.lovers !== undefined)
+            target.lovers = data.updatedPlayer.lovers;
+          if (data.updatedPlayer.skipTurn !== undefined)
+            target.skipTurn = data.updatedPlayer.skipTurn;
+          if (data.updatedPlayer.isRepeat !== undefined)
+            target.isRepeat = data.updatedPlayer.isRepeat;
+          if (data.updatedPlayer.hasFinished !== undefined)
+            target.hasFinished = data.updatedPlayer.hasFinished;
+
+          // 役職が決定した場合、JOBSマスタのcap(最大HP)を反映
+          if (target.hasJob && target.jobId && typeof JOBS !== "undefined") {
+            const jobObj = JOBS.find((j) => j.id === target.jobId);
+            if (jobObj) {
+              target.baseCap = jobObj.cap;
+              target.job = jobObj.label || target.job;
+              if (!prevHasJob || prevJobId !== target.jobId) {
+                target.currentHp = jobObj.cap + (target.bonusCap || 0);
+              }
+            }
+          }
         }
       }
 
@@ -389,6 +449,52 @@ io.on("connection", (socket) => {
         activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase,
       });
+    }
+    // 🛡️ 【生命保険使用】
+    else if (data.action === "insuranceUsed") {
+      const target =
+        room.gamePlayers.find((p) => String(p.id) === String(data.playerId)) ||
+        room.gamePlayers[room.activePlayerIndex];
+      if (target) {
+        target.insurance =
+          data.nextInsuranceCount !== undefined
+            ? data.nextInsuranceCount
+            : Math.max(0, (target.insurance || 1) - 1);
+
+        if (target.drinkCount && target.drinkCount > 0) {
+          target.drinkCount = Math.max(0, target.drinkCount - 1);
+        }
+        const maxHp = (target.baseCap || 80) + (target.bonusCap || 0);
+        if (target.currentHp !== undefined) {
+          target.currentHp = Math.min(maxHp, target.currentHp + 10);
+        }
+        if (target.currentHp > 0 && target.skipTurn) {
+          target.skipTurn = false;
+        }
+
+        io.to(roomCode).emit("applyPlayerAction", {
+          action: "insuranceUsed",
+          playerId: target.id,
+          nextInsuranceCount: target.insurance,
+        });
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase,
+        });
+      }
+    }
+    else if (
+      data.action === "enableNextTurnButton" ||
+      data.action === "showGraduateNextButton"
+    ) {
+      room.currentPhase = PHASES.WAIT_NEXT;
+      io.to(roomCode).emit("enableNextTurnButton");
+      if (data.action === "showGraduateNextButton") {
+        io.to(roomCode).emit("showGraduateNextButton", {
+          message: "ゴール達成！",
+        });
+      }
     }
   });
 
@@ -413,6 +519,9 @@ io.on("connection", (socket) => {
           `🎯 [SERVER] ルーレットスピン待機(WAIT_SPIN)へフェーズ昇格。`,
         );
 
+        io.to(roomCode).emit("routeSelectionConfirmed", {
+          chosenRouteIdx: p.chosenRouteIdx,
+        });
         io.to(roomCode).emit("syncGameState", {
           players: room.gamePlayers,
           activePlayerIndex: room.activePlayerIndex,
@@ -459,9 +568,10 @@ io.on("connection", (socket) => {
 
   // 【中継系イベント】
   socket.on("previewRouteSelection", (data) => {
-    const room = rooms[data.roomCode || socket.roomCode];
-    if (room) {
-      io.to(data.roomCode).emit("applyRoutePreview", {
+    const roomCode = (data && data.roomCode) || socket.roomCode;
+    const room = roomCode ? rooms[roomCode] : null;
+    if (room && roomCode) {
+      io.to(roomCode).emit("applyRoutePreview", {
         activePlayerIndex: room.activePlayerIndex,
         selectedRouteIndex: data.selectedRouteIndex,
       });
@@ -470,17 +580,48 @@ io.on("connection", (socket) => {
 
   socket.on("openCustomRouletteModal", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    io.to(roomCode).emit("openCustomRouletteModal", data);
+    if (roomCode) io.to(roomCode).emit("openCustomRouletteModal", data);
   });
 
   socket.on("openBijinKanpaiModal", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    io.to(roomCode).emit("openBijinKanpaiModal", data);
+    if (roomCode) io.to(roomCode).emit("openBijinKanpaiModal", data);
   });
 
   socket.on("triggerKanpaiEvent", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    io.to(roomCode).emit("showKanpaiModal", data);
+    const room = roomCode ? rooms[roomCode] : null;
+    if (room && data && data.location) {
+      room.gamePlayers.forEach((p) => {
+        if (p && p.location === data.location) {
+          p.drinkCount = (p.drinkCount || 0) + 1;
+          const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);
+          p.currentHp = Math.max(
+            0,
+            (p.currentHp !== undefined ? p.currentHp : maxHp) - 10,
+          );
+          if (p.currentHp <= 0) {
+            p.happiness = Math.max(
+              0,
+              (p.happiness !== undefined ? p.happiness : 100) - 30,
+            );
+            p.skipTurn = true;
+            p.currentHp = maxHp;
+          }
+        }
+      });
+      io.to(roomCode).emit("syncGameState", {
+        players: room.gamePlayers,
+        activePlayerIndex: room.activePlayerIndex,
+        currentPhase: room.currentPhase,
+      });
+    }
+    if (roomCode) io.to(roomCode).emit("showKanpaiModal", data);
+  });
+
+  socket.on("triggerGoalCelebration", (data) => {
+    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+    if (roomCode) io.to(roomCode).emit("showGoalModal", data);
   });
 
   // ==========================================================================
@@ -488,7 +629,7 @@ io.on("connection", (socket) => {
   // ==========================================================================
   socket.on("showGraduateEvent", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    io.to(roomCode).emit("showGraduateEvent", data);
+    if (roomCode) io.to(roomCode).emit("showGraduateEvent", data);
   });
 
   socket.on("requestGraduateSpin", (data) => {
@@ -496,9 +637,11 @@ io.on("connection", (socket) => {
     const room = rooms[roomCode];
     if (!room) return;
 
+    const p = room.gamePlayers[room.activePlayerIndex];
+    if (!p) return;
+
     const resultNum = Math.floor(Math.random() * 10) + 1;
     const isPass = resultNum >= 6;
-    const p = room.gamePlayers[room.activePlayerIndex];
 
     console.log(
       `🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`,
@@ -516,7 +659,7 @@ io.on("connection", (socket) => {
         p.hasFinished = true;
         room.currentPhase = PHASES.WAIT_NEXT;
 
-        io.to(roomCode).emit("triggerGoalCelebration", {
+        io.to(roomCode).emit("showGoalModal", {
           player: p,
           result: resultNum,
         });
@@ -524,10 +667,12 @@ io.on("connection", (socket) => {
         io.to(roomCode).emit("showGraduateNextButton", {
           message: `出目: ${resultNum} ➔ 見事単位取得！ストレート卒業GOAL！`,
         });
+        io.to(roomCode).emit("enableNextTurnButton");
       } else {
         p.isRepeat = true;
         p.location = "留年（5年生）";
-        room.currentPhase = PHASES.TURN_START;
+        // 留年ルートへそのままスピンして進めるよう WAIT_SPIN に設定
+        room.currentPhase = PHASES.WAIT_SPIN;
 
         io.to(roomCode).emit("applyRepeatDarkTheme", {
           playerId: p.id,
@@ -570,8 +715,51 @@ io.on("connection", (socket) => {
 
     setTimeout(() => {
       const p = room.gamePlayers[room.activePlayerIndex];
-      if (p && outcome.drinks) {
-        p.drinkCount = (p.drinkCount || 0) + outcome.drinks;
+      if (p) {
+        if (outcome.drinks && outcome.drinks > 0) {
+          p.drinkCount = (p.drinkCount || 0) + outcome.drinks;
+          const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);
+          p.currentHp = Math.max(
+            0,
+            (p.currentHp !== undefined ? p.currentHp : maxHp) -
+              outcome.drinks * 10,
+          );
+        }
+        if (outcome.happiness) {
+          p.happiness =
+            (p.happiness !== undefined ? p.happiness : 100) + outcome.happiness;
+        }
+        if (outcome.name && outcome.name.includes("他全員1杯")) {
+          room.gamePlayers.forEach((op) => {
+            if (op.id !== p.id) {
+              op.drinkCount = (op.drinkCount || 0) + 1;
+              const mHp = (op.baseCap || 80) + (op.bonusCap || 0);
+              op.currentHp = Math.max(
+                0,
+                (op.currentHp !== undefined ? op.currentHp : mHp) - 10,
+              );
+            }
+          });
+        } else if (outcome.name && outcome.name.includes("他全員2杯")) {
+          room.gamePlayers.forEach((op) => {
+            if (op.id !== p.id) {
+              op.drinkCount = (op.drinkCount || 0) + 2;
+              const mHp = (op.baseCap || 80) + (op.bonusCap || 0);
+              op.currentHp = Math.max(
+                0,
+                (op.currentHp !== undefined ? op.currentHp : mHp) - 20,
+              );
+            }
+          });
+        }
+        if (p.currentHp !== undefined && p.currentHp <= 0) {
+          p.happiness = Math.max(
+            0,
+            (p.happiness !== undefined ? p.happiness : 100) - 30,
+          );
+          p.skipTurn = true;
+          p.currentHp = (p.baseCap || 80) + (p.bonusCap || 0);
+        }
       }
 
       io.to(roomCode).emit("customRouletteFinished", {
@@ -581,13 +769,19 @@ io.on("connection", (socket) => {
         message: outcome.name,
       });
 
-      room.currentPhase = PHASES.WAIT_NEXT;
-      io.to(roomCode).emit("enableNextTurnButton");
-      io.to(roomCode).emit("syncGameState", {
-        players: room.gamePlayers,
-        activePlayerIndex: room.activePlayerIndex,
-        currentPhase: room.currentPhase,
-      });
+      const isCoupleEvent =
+        data.eventName === "💕 カップル成立チャンス 💕" ||
+        data.eventName === "カップル告白";
+
+      if (!isCoupleEvent) {
+        room.currentPhase = PHASES.WAIT_NEXT;
+        io.to(roomCode).emit("enableNextTurnButton");
+        io.to(roomCode).emit("syncGameState", {
+          players: room.gamePlayers,
+          activePlayerIndex: room.activePlayerIndex,
+          currentPhase: room.currentPhase,
+        });
+      }
     }, 3500);
   });
 
@@ -652,20 +846,37 @@ io.on("connection", (socket) => {
   });
 
   socket.on("customEventFirstSpinResult", (data) => {
-    const { roomCode, playerId, result, mapping, nextStepEventName } = data;
+    const {
+      roomCode,
+      playerId,
+      result,
+      mapping,
+      nextStepEventName,
+      pcSecondDesc,
+    } = data;
     const room = rooms[roomCode];
     if (!room) return;
 
     room.currentCustomEventMapping = mapping;
     io.to(roomCode).emit("startCustomEventSecondSpin", {
       targetPlayerId: playerId,
+      result: result,
       nextStepEventName: nextStepEventName,
+      pcSecondDesc: pcSecondDesc,
       mapping: mapping,
     });
   });
 
   socket.on("customEventSecondSpinResult", (data) => {
-    const { roomCode, playerId, result, successMessage, failureMessage, targetA, targetB } = data;
+    const {
+      roomCode,
+      playerId,
+      result,
+      successMessage,
+      failureMessage,
+      targetA,
+      targetB,
+    } = data;
     const room = rooms[roomCode];
     if (!room || !room.currentCustomEventMapping) return;
 
@@ -675,16 +886,35 @@ io.on("connection", (socket) => {
     const hitTarget = mapping[result];
 
     if (player && hitTarget) {
+      player.isLover = true;
+      if (!player.lovers) player.lovers = [];
+      if (!player.lovers.includes(hitTarget.name)) {
+        player.lovers.push(hitTarget.name);
+      }
+
+      const partner = gamePlayers.find(
+        (p) =>
+          String(p.id) === String(hitTarget.id) || p.name === hitTarget.name,
+      );
+      if (partner) {
+        partner.isLover = true;
+        if (!partner.lovers) partner.lovers = [];
+        if (!partner.lovers.includes(player.name)) {
+          partner.lovers.push(player.name);
+        }
+        partner.drinkCount = (partner.drinkCount || 0) + 1;
+      }
+
       io.to(roomCode).emit("customEventFinished", {
         success: true,
         message: successMessage || "イベント大成功！",
         targetA: targetA || player.name,
-        targetB: targetB || hitTarget.name
+        targetB: targetB || hitTarget.name,
       });
     } else {
       io.to(roomCode).emit("customEventFinished", {
         success: false,
-        message: failureMessage || "イベント失敗..."
+        message: failureMessage || "イベント失敗...",
       });
     }
 
@@ -727,6 +957,8 @@ io.on("connection", (socket) => {
               updatedP.isLover !== undefined
                 ? updatedP.isLover
                 : target.isLover;
+            if (updatedP.lovers !== undefined)
+              target.lovers = updatedP.lovers;
             target.skipTurn =
               updatedP.skipTurn !== undefined
                 ? updatedP.skipTurn
@@ -740,6 +972,10 @@ io.on("connection", (socket) => {
               updatedP.insurance !== undefined
                 ? updatedP.insurance
                 : target.insurance || 0;
+            if (updatedP.isRepeat !== undefined)
+              target.isRepeat = updatedP.isRepeat;
+            if (updatedP.hasFinished !== undefined)
+              target.hasFinished = updatedP.hasFinished;
           }
         });
       }
@@ -803,5 +1039,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

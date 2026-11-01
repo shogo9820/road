@@ -4,6 +4,7 @@ let activePlayerIndex = 0;
 let players = [];
 let isSpinning = false;
 let currentRotation = 0;
+let currentGameMode = "normal";
 
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -47,7 +48,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll('input[name="phone-mode"]').forEach((radio) => {
     radio.addEventListener("change", (e) => {
-      // 💡 e.target を HTMLInputElement として型を教える
       if (e.target) {
         (e.target as HTMLInputElement).checked = true;
       }
@@ -57,10 +57,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
   socket.on("joinedSuccess", (data) => {
     currentRoomCode = data.roomCode;
+    if (!players || players.length === 0) {
+      const now = Date.now();
+      players = [
+        { id: `p_${now}_1`, name: "プレイヤー1" },
+        { id: `p_${now}_2`, name: "プレイヤー2" },
+      ];
+    }
     showScreen("phone-screen-setup");
     renderPlayerInputs();
     syncSettingsToServer();
   });
+
   socket.on("errorMsg", (data) => {
     alert("エラー: " + data.message);
   });
@@ -85,19 +93,16 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
     const targetMode = data.mode || data.gameMode;
-    if (
-      targetMode &&
-      document.querySelector(`input[name="phone-mode"][value="${targetMode}"]`)
-    )
-      // 💡 全体をカッコで囲って as HTMLInputElement をつけます
-      (
-        document.querySelector(
-          `input[name="phone-mode"][value="${targetMode}"]`,
-        ) as HTMLInputElement
-      ).checked = true;
+    if (targetMode) {
+      currentGameMode = targetMode;
+      const radioEl = document.querySelector(
+        `input[name="phone-mode"][value="${targetMode}"]`,
+      ) as HTMLInputElement;
+      if (radioEl) radioEl.checked = true;
+    }
   });
 
-    // ==========================================================================
+  // ==========================================================================
   // 🧭 【一本道リレー：行程④】サーバーからの着地号令（startSquareEvent）受信
   // スマホ側は「操作専任」として、役職モーダルやボタンUIを手元に展開します。
   // ==========================================================================
@@ -124,13 +129,11 @@ window.addEventListener("DOMContentLoaded", () => {
     );
 
     loadAndApplySquareComponent(currentPos, () => {
-      let currentMode = "normal";
-
       // 1. 個別モジュール（sq_XX.js）を取得
-      let targetModule =
-        window.SQ_MODULES && window.SQ_MODULES[currentPos]
-          ? window.SQ_MODULES[currentPos][currentMode]
-          : null;
+      const modObj = window.SQ_MODULES && window.SQ_MODULES[currentPos];
+      let targetModule = modObj
+        ? modObj[currentGameMode] || modObj.normal
+        : null;
 
       // 2. マスタデータ（MAP_SQUARES）からのフォールバック取得
       if (
@@ -151,6 +154,10 @@ window.addEventListener("DOMContentLoaded", () => {
           updatedPlayer: p,
         });
         return;
+      }
+
+      if (targetModule.location) {
+        p.location = targetModule.location;
       }
 
       // 🚀 パターンA：役職マスの場合（就職ダイアログを確実に展開）
@@ -184,11 +191,52 @@ window.addEventListener("DOMContentLoaded", () => {
         );
         targetModule.event(p, targetModule);
       }
-      // 🚀 パターンC：通常マスの扱い（完了通知を返して次へ）
+      // 🚀 パターンC：通常・回復・留年・分岐マスの扱い（効果計算後に完了通知を返して次へ）
       else {
         console.log(
-          `📱 [4.2 通常マス] 特殊イベント無しのマスです。完了通知を送信します。`,
+          `📱 [4.2 通常マス] 特殊イベント無しのマスです。効果を適用して完了通知を送信します。`,
         );
+
+        const jobMaster =
+          typeof JOBS !== "undefined"
+            ? JOBS.find((j) => j.id === p.jobId || j.label === p.job)
+            : null;
+        const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 80;
+        const maxHp = baseCap + (p.bonusCap || 0);
+        if (p.currentHp === undefined) p.currentHp = maxHp;
+
+        const drinkAmount =
+          targetModule.drink !== undefined ? Number(targetModule.drink) : 0;
+        if (drinkAmount > 0) {
+          p.drinkCount = (p.drinkCount || 0) + drinkAmount;
+          p.currentHp = Math.max(0, p.currentHp - drinkAmount * 10);
+        } else if (targetModule.type === "heal") {
+          p.currentHp = Math.min(maxHp, p.currentHp + 30);
+        }
+
+        const happinessChange =
+          targetModule.happiness !== undefined
+            ? Number(targetModule.happiness)
+            : 0;
+        if (happinessChange !== 0) {
+          if (p.happiness === undefined) p.happiness = 100;
+          p.happiness += happinessChange;
+        }
+
+        if (p.currentHp <= 0) {
+          if (p.happiness === undefined) p.happiness = 100;
+          p.happiness = Math.max(0, p.happiness - 30);
+          p.skipTurn = true;
+          p.currentHp = maxHp;
+        }
+
+        const resDisplay = document.getElementById("roulette-result-display");
+        if (resDisplay && targetModule.text) {
+          resDisplay.textContent = `🎲 ${targetModule.text}`;
+        }
+
+        updatePhoneStatusDisplay();
+
         socket.emit("playerAction", {
           roomCode: currentRoomCode,
           action: "squareEventFinished",
@@ -220,27 +268,51 @@ window.addEventListener("DOMContentLoaded", () => {
   // 🎯 【基本ルーティン：行程①】サーバーから手番交代のバトンを受信した瞬間
   socket.on("applyPlayerAction", (data) => {
     if (data.action === "turnUpdated") {
-      // 🎯 次のターンになったら、カップルマスのピンク着せ替えクラスを安全に剥がして通常色に戻す
-      document.body.classList.remove("theme-couple");
+      document.body.classList.remove(
+        "theme-couple",
+        "theme-entrance",
+        "theme-insurance",
+      );
 
-      // いつものボタンテキストに戻す
-      const spinBtn = document.getElementById("btn-phone-spin");
-      if (spinBtn) spinBtn.textContent = "⚡ ルーレットを回す！";
-
-      window.hasConfirmedThisTurn = false;
-      window.isLandedThisTurn = false;
-
-      const curP =
-        players[
-          data.activePlayerIndex !== undefined
-            ? data.activePlayerIndex
-            : activePlayerIndex
-        ];
-      window.turnStartPosition = curP ? Number(curP.position) : null;
       activePlayerIndex =
         data.activePlayerIndex !== undefined
           ? data.activePlayerIndex
           : activePlayerIndex;
+      const curP = players[activePlayerIndex];
+
+      if (curP && curP.isRepeat) {
+        document.body.classList.add("theme-repeat-dark");
+      } else {
+        document.body.classList.remove("theme-repeat-dark");
+      }
+
+      // スピンボタンを標準状態に安全リセット
+      const spinBtn = document.getElementById(
+        "btn-phone-spin",
+      ) as HTMLButtonElement;
+      if (spinBtn) {
+        spinBtn.style.display = "block";
+        const cleanedBtn = spinBtn.cloneNode(true) as HTMLButtonElement;
+        spinBtn.parentNode.replaceChild(cleanedBtn, spinBtn);
+        cleanedBtn.disabled = true;
+        if (curP && curP.isRepeat) {
+          cleanedBtn.textContent = "💀 留年ルートへ進む！";
+          cleanedBtn.style.background =
+            "linear-gradient(135deg, #4a148c 0%, #000000 100%)";
+          cleanedBtn.style.color = "#ff80ab";
+          cleanedBtn.style.border = "2px solid #ea80fc";
+        } else {
+          cleanedBtn.textContent = "⚡ ルーレットを回す！";
+          cleanedBtn.style.background = "";
+          cleanedBtn.style.color = "";
+          cleanedBtn.style.border = "";
+        }
+        cleanedBtn.addEventListener("click", requestSpin);
+      }
+
+      window.hasConfirmedThisTurn = false;
+      window.isLandedThisTurn = false;
+      window.turnStartPosition = curP ? Number(curP.position) : null;
 
       // 🎯 手元のアクティブモーダルを全消去
       document.getElementById("job-modal-overlay") &&
@@ -249,6 +321,8 @@ window.addEventListener("DOMContentLoaded", () => {
         (document.getElementById("mobile-couple-event-modal").style.display =
           "none");
       document.getElementById("route-select-modal")?.remove();
+      document.getElementById("insurance-inline-zone")?.remove();
+      document.getElementById("insurance-confirm-modal")?.remove();
 
       console.log(
         `\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`,
@@ -259,11 +333,6 @@ window.addEventListener("DOMContentLoaded", () => {
           `TURN: ${data.activePlayerName || "プレイヤー"}`;
       }
 
-      if (document.getElementById("btn-phone-spin"))
-        (
-          document.getElementById("btn-phone-spin") as HTMLButtonElement
-        ).disabled = true;
-
       if (document.getElementById("btn-phone-next"))
         (
           document.getElementById("btn-phone-next") as HTMLButtonElement
@@ -272,16 +341,39 @@ window.addEventListener("DOMContentLoaded", () => {
         document.getElementById("roulette-result-display").textContent =
           "進路を選択してください";
       isSpinning = false;
+    } else if (data.action === "turnSkipped") {
+      if (data.activePlayerIndex !== undefined) {
+        activePlayerIndex = data.activePlayerIndex;
+      }
+      if (document.getElementById("current-player-banner")) {
+        document.getElementById("current-player-banner").textContent =
+          `TURN: ${data.activePlayerName || "プレイヤー"} (1回休み)`;
+      }
+      if (document.getElementById("btn-phone-spin"))
+        (
+          document.getElementById("btn-phone-spin") as HTMLButtonElement
+        ).disabled = true;
+      if (document.getElementById("btn-phone-next"))
+        (
+          document.getElementById("btn-phone-next") as HTMLButtonElement
+        ).disabled = false;
+      if (document.getElementById("roulette-result-display"))
+        document.getElementById("roulette-result-display").textContent =
+          "💤 二日酔い（1回休み）のためスキップ！「次のプレイヤーへ」を押してね";
+      isSpinning = false;
+    } else if (data.action === "insuranceUsed") {
+      if (document.getElementById("roulette-result-display")) {
+        document.getElementById("roulette-result-display").textContent =
+          "🛡️ 生命保険を発動！飲酒ペナルティを無効化しました！";
+      }
     }
   });
 
-  // 🎯 汎用モーダルの展開指示を受信
+  // 🎯 汎用モーダルの展開指示を受信（80番引退ギャンブル等）
   socket.on("openCustomRouletteModal", (data: any) => {
-    // 💡 引数に : any を追加して安全に
     const modal = document.getElementById("mobile-couple-event-modal");
     if (!modal) return;
 
-    // 💡 スタイルの警告を防ぐため、HTMLElementとしてキャスト
     const titleEl = (modal.querySelector("h3") ||
       modal.querySelector(".couple-title")) as HTMLElement;
     if (titleEl) titleEl.innerHTML = `🌸 ${data.eventName} 🌸`;
@@ -290,7 +382,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (descEl)
       descEl.innerHTML = `出目に応じて結果が決まる！<br>ボタンをタップしてルーレットを回そう！`;
 
-    // 🎯【最重要】ここを as HTMLButtonElement に変更します！
     const btnSpin = document.getElementById(
       "btn-couple-spin",
     ) as HTMLButtonElement;
@@ -299,7 +390,6 @@ window.addEventListener("DOMContentLoaded", () => {
       btnSpin.textContent = "⚡ ルーレットを回す！";
       btnSpin.disabled = false;
 
-      // 🎯 タップしたらサーバーへ汎用ルーレット開始を要求
       btnSpin.onclick = () => {
         btnSpin.disabled = true;
         socket.emit("startCustomRouletteEvent", {
@@ -316,69 +406,63 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on("customRouletteFinished", (data: any) => {
     const modal = document.getElementById("mobile-couple-event-modal");
     if (modal) modal.style.display = "none";
-    if (document.getElementById("roulette-result-display")) {
+    if (document.getElementById("roulette-result-display") && data && data.message) {
       document.getElementById("roulette-result-display").textContent =
         `🎯 結果: ${data.message}`;
     }
   });
 
-  socket.on("startCustomEventSecondSpin", (data) => {
-    const modal = document.getElementById("mobile-couple-event-modal");
-    if (!modal) return;
-
-    const titleEl =
-      modal.querySelector("h3") || modal.querySelector(".couple-title");
-    if (titleEl)
-      titleEl.innerHTML = `🌸 ${data.nextStepEventName || "チャレンジ"} 🌸`;
-
-    const descEl = modal.querySelector(".couple-desc");
-    if (descEl)
-      descEl.innerHTML = `運命の判定スピン！<br>ルーレットを回して結果を決定せよ！`;
-
-    const btnSpin = document.getElementById(
-      "btn-couple-spin",
+  // ==========================================================================
+  // 🛡️ 生命保険利用ボタン（#btn-phone-use-insurance）タップ時の確認モーダル
+  // ==========================================================================
+  document.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "#btn-phone-use-insurance",
     ) as HTMLButtonElement;
-    if (btnSpin) {
-      btnSpin.style.display = "block";
-      btnSpin.textContent = "🎲 判定ルーレットを回す！";
-      btnSpin.disabled = false;
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
 
-      // 🎯 スピンタップ時の自己完結処理
-      btnSpin.onclick = () => {
-        btnSpin.disabled = true;
-        const resultNum = Math.floor(Math.random() * 10) + 1;
-        const targetOutcome =
-          data.mapping && data.mapping[resultNum]
-            ? data.mapping[resultNum]
-            : { drinks: 0, name: "結果なし" };
+    const p = players[activePlayerIndex];
+    if (!p || !p.insurance || p.insurance <= 0) return;
 
-        alert(`🎯 出目: ${resultNum}\n結果: ${targetOutcome.name}`);
+    const confirmHtml = `
+      <div id="insurance-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+        <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
+          <h3 style="margin-top:0; color:#9c27b0; font-size:1.2rem; font-weight:bold;">🛡️ 生命保険の発動確認</h3>
+          <p style="font-size:0.85rem; color:#333; margin-bottom:20px; line-height:1.5;">生命保険を1枚消費して、飲酒ペナルティ（1杯分）を完全に無効化しますか？<br><span style="color:#666;">(現在所持: ${p.insurance}枚)</span></p>
+          <div style="display:flex; gap:10px;">
+            <button id="btn-insurance-yes" style="flex:1; padding:12px; font-weight:bold; background:#9c27b0; color:#fff; border:none; border-radius:10px; cursor:pointer;">はい（発動）</button>
+            <button id="btn-insurance-no" style="flex:1; padding:12px; font-weight:bold; background:#eee; color:#333; border:none; border-radius:10px; cursor:pointer;">いいえ</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-        const p = players[activePlayerIndex];
-        if (p) {
-          p.drinkCount = (p.drinkCount || 0) + (targetOutcome.drinks || 0);
+    const playScreen =
+      document.getElementById("phone-screen-play") || document.body;
+    document.getElementById("insurance-confirm-modal")?.remove();
+    playScreen.insertAdjacentHTML("beforeend", confirmHtml);
 
-          // サーバーへ完了報告
-          socket.emit("playerAction", {
-            roomCode: currentRoomCode,
-            action: "squareEventFinished",
-            updatedPlayer: p,
-          });
-        }
-
-        modal.style.display = "none";
+    const btnYes = document.getElementById("btn-insurance-yes");
+    if (btnYes) {
+      btnYes.onclick = () => {
+        p.insurance = Math.max(0, p.insurance - 1);
+        socket.emit("playerAction", {
+          roomCode: currentRoomCode,
+          action: "insuranceUsed",
+          playerId: p.id,
+          nextInsuranceCount: p.insurance,
+        });
+        document.getElementById("insurance-confirm-modal")?.remove();
       };
     }
-    modal.style.display = "flex";
-  });
 
-  socket.on("customEventFinished", (data) => {
-    alert(data.message);
-    const modal = document.getElementById("mobile-couple-event-modal");
-    if (modal) modal.style.display = "none";
-    if (document.getElementById("roulette-result-display"))
-      document.getElementById("roulette-result-display").textContent =
-        "🎯 タップして回そう！";
+    const btnNo = document.getElementById("btn-insurance-no");
+    if (btnNo) {
+      btnNo.onclick = () => {
+        document.getElementById("insurance-confirm-modal")?.remove();
+      };
+    }
   });
 
   // ==========================================================================
@@ -472,9 +556,10 @@ window.addEventListener("DOMContentLoaded", () => {
         (
           document.getElementById("btn-phone-spin") as HTMLButtonElement
         ).disabled = false;
-      if (document.getElementById("roulette-result-display"))
+      if (document.getElementById("roulette-result-display")) {
         document.getElementById("roulette-result-display").textContent =
-          "🎯 タップして回そう！";
+          p.isRepeat ? "💀 5年生編スタート..." : "🎯 タップして回そう！";
+      }
     }
   });
 
@@ -489,11 +574,34 @@ window.addEventListener("DOMContentLoaded", () => {
       btnNext.disabled = false;
     }
   });
+
+  socket.on("gameAllFinished", (data) => {
+    if (data && data.players) players = data.players;
+    const spinBtn = document.getElementById(
+      "btn-phone-spin",
+    ) as HTMLButtonElement;
+    if (spinBtn) spinBtn.disabled = true;
+    const nextBtn = document.getElementById(
+      "btn-phone-next",
+    ) as HTMLButtonElement;
+    if (nextBtn) nextBtn.disabled = true;
+    if (document.getElementById("current-player-banner")) {
+      document.getElementById("current-player-banner").textContent =
+        "🎊 全員卒業！ゲーム終了！ 🎊";
+    }
+    if (document.getElementById("roulette-result-display")) {
+      document.getElementById("roulette-result-display").textContent =
+        "🎉 全員ゴール達成！お疲れ様でした！ 🎉";
+    }
+  });
 });
 
 // 🧭 【一本道リレー：手順1】スマホで「ゲーム開始」が手動タップされた瞬間
 socket.on("gameStarted", (data) => {
   if (data && data.players) players = data.players;
+  if (data && (data.mode || data.gameMode)) {
+    currentGameMode = data.mode || data.gameMode;
+  }
   console.log(
     "📱 [①. 新ターン開始] ➔ サーバーからゲーム開始電波(gameStarted)を受信。ここで初めて手動操作権をロードします。",
   );
@@ -504,7 +612,7 @@ socket.on("gameStarted", (data) => {
 function joinRoom() {
   const inputEl = document.getElementById(
     "input-room-code",
-  ) as HTMLButtonElement;
+  ) as HTMLInputElement;
   if (!inputEl) return;
   const codeInput = inputEl.value.trim();
   if (!codeInput) {
@@ -552,7 +660,6 @@ function renderPlayerInputs() {
     input.style.borderRadius = "6px";
     input.style.border = "1px solid #ccc";
     input.addEventListener("input", (e) => {
-      // 💡 e.target の後ろに as HTMLInputElement を付け足す
       if (e.target) {
         players[idx].name = (e.target as HTMLInputElement).value;
       }
@@ -587,14 +694,18 @@ function addPlayerRow() {
   renderPlayerInputs();
   syncSettingsToServer();
 }
+
 function syncSettingsToServer() {
   if (!currentRoomCode) return;
-  
-  // 💡 全体をカッコで囲って as HTMLInputElement をつけます（オプショナルチェイニング「?.」の前にキャスト）
+
   const selectedMode =
-    (document.querySelector('input[name="phone-mode"]:checked') as HTMLInputElement)?.value ||
-    "normal";
-    
+    (
+      document.querySelector(
+        'input[name="phone-mode"]:checked',
+      ) as HTMLInputElement
+    )?.value || "normal";
+  currentGameMode = selectedMode;
+
   socket.emit("updateSettings", {
     roomCode: currentRoomCode,
     players: players,
@@ -603,18 +714,11 @@ function syncSettingsToServer() {
   });
 }
 
-// ==========================================================================
-// 🧭 【一本道リレー：手順1】スマホ側 ゲーム開始手動トリガー関数（完全修復版）
-// サーバーの if (room) 防壁にシカトされてログすら出なくなっていた原因を完全粉砕！
-// 手元メモリにある本物の部屋コード（currentRoomCode）を正確に梱包して、
-// サーバー側へ 100% 確実に startGame の一本道始動バトンを直撃で叩き込みます！
-// ==========================================================================
 function sendStartGame() {
   console.log(
     `📱 [1.0 スマホ発信] ➔ ゲーム開始が手動タップされました。サーバーへ部屋コード [${currentRoomCode}] の一本道始動バトンを発射します！`,
   );
 
-  // 🎯 【核心の修正】誤字や文字のすれ違いを完全全廃。currentRoomCode を確実に渡す！
   socket.emit("startGame", {
     roomCode: String(currentRoomCode).trim(),
   });
@@ -649,16 +753,28 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
     if (typeof callback === "function") callback(finalSteps);
   }, 3000);
 }
+
 function updatePhoneStatusDisplay() {
   const p = players[activePlayerIndex];
   if (!p) return;
+  const jobMaster =
+    typeof JOBS !== "undefined"
+      ? JOBS.find(
+          (j) => j.id === p.jobId || j.label === p.job || j.title === p.job,
+        )
+      : null;
+  const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 80;
+  const maxHp = baseCap + (p.bonusCap || 0);
+  const currentHp = p.currentHp !== undefined ? Math.max(0, p.currentHp) : maxHp;
+
   if (document.getElementById("phone-current-name"))
     document.getElementById("phone-current-name").textContent = p.name;
   if (document.getElementById("phone-current-job"))
-    document.getElementById("phone-current-job").textContent = p.job || "モブ";
+    document.getElementById("phone-current-job").textContent =
+      jobMaster ? jobMaster.label : p.job || "モブ";
   if (document.getElementById("phone-current-hp"))
     document.getElementById("phone-current-hp").textContent =
-      `${p.currentHp} / ${p.baseCap || 100}`;
+      `${currentHp} / ${maxHp}`;
   if (document.getElementById("phone-current-happiness"))
     document.getElementById("phone-current-happiness").textContent =
       `${p.happiness !== undefined ? p.happiness : 100} pt`;
@@ -689,6 +805,13 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
       targetP.jobId = jobId;
       targetP.job = jobName;
       targetP.hasJob = true;
+      if (typeof JOBS !== "undefined") {
+        const jobObj = JOBS.find((j) => j.id === jobId);
+        if (jobObj) {
+          targetP.baseCap = jobObj.cap;
+          targetP.currentHp = jobObj.cap + (targetP.bonusCap || 0);
+        }
+      }
       socket.emit("playerAction", {
         roomCode: currentRoomCode,
         action: "squareEventFinished",
@@ -729,22 +852,16 @@ function sendNextTurn() {
       true;
 }
 
-// 🛠️ 【デバッグ機能：型・ID不整合完全解決版】
-// 入力欄のID名のズレを完全に無視し、タップされたボタンの「すぐ真上または真横にある入力欄」から
-// 100%確実に数値を引っこ抜いて、サーバーの出目0合流レールへ直撃発射します。
+// 🛠️ 【デバッグ機能】
 document.addEventListener("click", (e) => {
-  // 💡 e.target を HTMLElement として型を教えてあげる
   const btn = (e.target as HTMLElement).closest("#btn-debug-warp");
   if (!btn) return;
   e.preventDefault();
 
-  // 🎯 ID名に頼らず、このデバッグコンテナ内にある input タグ（number型またはtext型）を直接探索して取得
   const parentContainer = btn.closest("div") || document.body;
-  
-  // 💡 querySelector で探してきた inputEl も、後ろに as HTMLInputElement をつけて入力欄だと教えてあげる
   const inputEl = (parentContainer.querySelector("input[type='number']") ||
-    parentContainer.querySelector("input")) as HTMLInputElement; // 💡ここにも追加しておくと、下の .value のエラーも同時に防げます！
-    
+    parentContainer.querySelector("input")) as HTMLInputElement;
+
   const targetVal = inputEl ? inputEl.value.trim() : "";
 
   const targetSquareId = parseInt(targetVal, 10);
@@ -757,7 +874,6 @@ document.addEventListener("click", (e) => {
     `📱 [PHONE ACTION] 🛠️ デバッグワープ送信。ターゲットマスID: ${targetSquareId}`,
   );
 
-  // 🎯 サーバーの debugWarp レシーバーへ、解釈ブレのないクリーンな数値型データとして梱包して発射！
   socket.emit("debugWarp", {
     roomCode: String(currentRoomCode).trim(),
     targetSquareId: Number(targetSquareId),
@@ -768,9 +884,6 @@ function checkBranchSquareOnTurnStart(syncData) {
   console.log("🔍 [DEBUG] checkBranchSquareOnTurnStart 実行開始");
 
   if (document.getElementById("route-select-modal")) {
-    console.log(
-      "🛑 [DEBUG 停止理由] route-select-modal が既に存在するためリターン",
-    );
     return;
   }
 
@@ -781,42 +894,21 @@ function checkBranchSquareOnTurnStart(syncData) {
   const currentPlayers =
     syncData && syncData.players ? syncData.players : players;
 
-  console.log(
-    `🔍 [DEBUG] currentIdx: ${currentIdx}, currentPlayers長: ${currentPlayers ? currentPlayers.length : "無し"}`,
-  );
-
   if (!currentPlayers || currentPlayers.length === 0) {
-    console.log("🛑 [DEBUG 停止理由] currentPlayers が空のためリターン");
     return;
   }
 
   const pObj = currentPlayers[currentIdx];
-  console.log(
-    "🔍 [DEBUG] pObj:",
-    pObj,
-    "hasConfirmed:",
-    window.hasConfirmedThisTurn,
-  );
-
   if (!pObj) {
-    console.log("🛑 [DEBUG 停止理由] pObj が存在しないためリターン");
     return;
   }
   if (window.hasConfirmedThisTurn === true) {
-    console.log(
-      "🛑 [DEBUG 停止理由] hasConfirmedThisTurn が true のためリターン",
-    );
     return;
   }
   if (Number(pObj.position) !== 0 && Number(pObj.position) !== 49) {
-    console.log(
-      `🛑 [DEBUG 停止理由] position が 0 または 49 ではない (${pObj.position}) ためリターン`,
-    );
     return;
   }
 
-  console.log("✅ [DEBUG] すべての関門を突破！モーダルを DOM に挿入します。");
-  // （以下、HTML生成処理へ続く）
   let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
@@ -897,13 +989,12 @@ function checkBranchSquareOnTurnStart(syncData) {
 }
 
 function loadAndApplySquareComponent(squareId, callback) {
-  let currentMode = "normal";
-
   // 1. 既にメモリ上にロード済みであれば即時実行
   if (
     window.SQ_MODULES &&
     window.SQ_MODULES[squareId] &&
-    window.SQ_MODULES[squareId][currentMode]
+    (window.SQ_MODULES[squareId][currentGameMode] ||
+      window.SQ_MODULES[squareId].normal)
   ) {
     if (typeof callback === "function") callback();
     return;
@@ -911,16 +1002,15 @@ function loadAndApplySquareComponent(squareId, callback) {
 
   // 2. スクリプトの動的生成と確実な読み込み待ち
   const script = document.createElement("script");
-  script.src = `/squares/sq_${squareId}.js?t=${Date.now()}`; // キャッシュ回避用タイムスタンプ
+  script.src = `/squares/sq_${squareId}.js?t=${Date.now()}`;
   script.onload = () => {
-    // 実行完了を確実にするためマイクロタスクを挟んでコールバックを呼ぶ
     setTimeout(() => {
       if (typeof callback === "function") callback();
     }, 10);
   };
   script.onerror = (err) => {
     console.error(
-      `🚨 [LOAD ERROR] /squares/sq_${squareId}.js の読み込みに失敗しました。パスまたは配置を確認してください。`,
+      `🚨 [LOAD ERROR] /squares/sq_${squareId}.js の読み込みに失敗しました。`,
       err,
     );
     if (typeof callback === "function") callback();
@@ -965,7 +1055,7 @@ socket.on("showGraduateNextButton", (data) => {
 
   if (document.getElementById("roulette-result-display")) {
     document.getElementById("roulette-result-display").textContent =
-      `🌸 ${data.message}`;
+      `🌸 ${data && data.message ? data.message : "卒業おめでとう！"}`;
   }
   const btnNext = document.getElementById(
     "btn-phone-next",

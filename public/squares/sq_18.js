@@ -18,6 +18,7 @@ window.SQ_MODULES[18] = {
     
     event: function (player, square) {
       const cfg = this.config;
+      const mod = this;
       const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
       console.log(`🌸 [18番マス: 入学式] ${player.name} のイベント開始`);
 
@@ -72,6 +73,7 @@ window.SQ_MODULES[18] = {
         if (player.jobId === "bijin") {
           if (typeof players !== "undefined" && Array.isArray(players)) {
             players.forEach((p) => { if (p.id !== player.id) p.drinkCount = (p.drinkCount || 0) + 1; });
+            socket.emit("updateGameState", { roomCode: targetRoom, players: players });
           }
           socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
           return;
@@ -104,9 +106,9 @@ window.SQ_MODULES[18] = {
           };
         }
 
-        // ホイール同期回転リスナー
-        socket.off("spinCustomRoulette");
-        socket.on("spinCustomRoulette", (data) => {
+        // ホイール同期回転リスナー（自身のリスナーのみ安全に着脱）
+        if (mod._onSpin) socket.off("spinCustomRoulette", mod._onSpin);
+        mod._onSpin = (data) => {
           const resNum = data.result !== undefined ? data.result : 1;
           if (resultDisplay) resultDisplay.textContent = "🌀 ルーレット回転中...";
 
@@ -123,23 +125,29 @@ window.SQ_MODULES[18] = {
             currentRotation += 1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
             playMobileRouletteAnimation(resNum, currentRotation, () => {});
           }
-        });
+        };
+        socket.on("spinCustomRoulette", mod._onSpin);
 
         // 決着通知リスナー
-        socket.off("customRouletteFinished");
-        socket.on("customRouletteFinished", (data) => {
+        if (mod._onFinished) socket.off("customRouletteFinished", mod._onFinished);
+        mod._onFinished = (data) => {
+          if (mod._onSpin) socket.off("spinCustomRoulette", mod._onSpin);
+          if (mod._onFinished) socket.off("customRouletteFinished", mod._onFinished);
+
           if (resultDisplay) resultDisplay.textContent = `🎯 結果: ${data.message}`;
-          setTimeout(() => {
-            document.body.classList.remove(cfg.themeClass);
-            const resetBtn = document.getElementById("btn-phone-spin");
-            if (resetBtn) {
-              const cleanedBtn = resetBtn.cloneNode(true);
-              resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
-              cleanedBtn.disabled = true;
-              cleanedBtn.textContent = "⚡ ルーレットを回す！";
+          document.body.classList.remove(cfg.themeClass);
+          const resetBtn = document.getElementById("btn-phone-spin");
+          if (resetBtn) {
+            const cleanedBtn = resetBtn.cloneNode(true);
+            resetBtn.parentNode.replaceChild(cleanedBtn, resetBtn);
+            cleanedBtn.disabled = true;
+            cleanedBtn.textContent = "⚡ ルーレットを回す！";
+            if (typeof requestSpin === "function") {
+              cleanedBtn.addEventListener("click", requestSpin);
             }
-          }, 3500);
-        });
+          }
+        };
+        socket.on("customRouletteFinished", mod._onFinished);
       }
     }
   },

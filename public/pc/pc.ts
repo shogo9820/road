@@ -5,6 +5,7 @@ let players = [];
 let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
 let isPCEventMode = false;
+let currentGameMode = "normal";
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("\n=========================================");
@@ -80,6 +81,15 @@ function initSocketListeners() {
     console.log(
       "💻 [PC RECEIVE] applySettings 受信。参加者リストを同期します。",
     );
+    const targetMode = data && (data.mode || data.gameMode);
+    if (targetMode) {
+      currentGameMode = targetMode;
+      const modeBadge = document.getElementById("pc-game-mode-badge");
+      if (modeBadge) {
+        modeBadge.textContent =
+          targetMode === "short" ? "ショートモード" : "通常モード";
+      }
+    }
     if (data.players && Array.isArray(data.players)) {
       players = data.players;
       renderPlayerWaitingList();
@@ -97,6 +107,15 @@ function initSocketListeners() {
     if (data && data.players) players = data.players;
     if (data && data.activePlayerIndex !== undefined)
       activePlayerIndex = data.activePlayerIndex;
+    const targetMode = data && (data.mode || data.gameMode);
+    if (targetMode) {
+      currentGameMode = targetMode;
+      const modeBadge = document.getElementById("pc-game-mode-badge");
+      if (modeBadge) {
+        modeBadge.textContent =
+          targetMode === "short" ? "ショートモード" : "通常モード";
+      }
+    }
 
     switchScreen("screen-game");
 
@@ -192,6 +211,7 @@ function appendSocketListeners() {
       dynamicTableZone.innerHTML = html;
     }
   });
+
   // 🎯 【確定版】美人入学式の乾杯モーダルを受信して大画面に表示（「と」で繋ぐプレイヤー名仕様）
   socket.on("openBijinKanpaiModal", (data) => {
     console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
@@ -210,7 +230,6 @@ function appendSocketListeners() {
           .map((p) => p.name);
 
         if (otherPlayerNames.length > 0) {
-          // 🎯 カンマではなく「と」で繋ぐことで「プレイヤー1とプレイヤー2」の形にします！
           membersEl.textContent = otherPlayerNames.join("と");
         } else {
           membersEl.textContent = "周囲のサークル員";
@@ -221,7 +240,6 @@ function appendSocketListeners() {
 
       if (locationEl) locationEl.textContent = "美人にモテたいの";
 
-      // インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
     }
   });
@@ -249,15 +267,23 @@ function appendSocketListeners() {
 
     // 着地先コンポーネントをロードして表示を更新
     loadAndApplySquareComponent(p.position, () => {
-      let currentMode = "normal";
-      let targetModule =
-        window.SQ_MODULES && window.SQ_MODULES[p.position]
-          ? window.SQ_MODULES[p.position][currentMode]
-          : null;
-      let targetSquare =
+      const modObj = window.SQ_MODULES && window.SQ_MODULES[p.position];
+      const targetModule = modObj
+        ? modObj[currentGameMode] || modObj.normal
+        : null;
+      const targetSquare =
         typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
           ? MAP_SQUARES[p.position]
           : null;
+
+      // マスの場所を最優先で確定させる（乾杯判定の前に確定！）
+      const detectedLocation =
+        targetModule && targetModule.location
+          ? targetModule.location
+          : targetSquare && targetSquare.location
+            ? targetSquare.location
+            : data.location || "家";
+      p.location = detectedLocation;
 
       // 1. マス固有のイベント表示があれば起動（PC側のモーダル展開など）
       if (targetModule && typeof targetModule.event === "function") {
@@ -272,7 +298,13 @@ function appendSocketListeners() {
       updateCurrentPlayerDisplay();
 
       // 3. 🍻 同じ場所乾杯判定
-      if (p.location && p.location !== "家" && p.location !== "スタート前") {
+      if (
+        p.location &&
+        p.location !== "家" &&
+        p.location !== "スタート前" &&
+        p.location !== "-" &&
+        p.position !== 99
+      ) {
         const samePlaceBuddies = players
           .filter(
             (otherP) =>
@@ -300,7 +332,8 @@ function appendSocketListeners() {
       if (p.chosenRouteIdx !== undefined) delete p.chosenRouteIdx;
 
       // 4. 右下の「現在のマスの内容」枠にテキストを反映
-      const mockSquare = targetSquare || targetModule || { text: "通常マス", location: p.location };
+      const mockSquare = targetModule ||
+        targetSquare || { text: "通常マス", location: p.location };
       triggerDelayedDisplay(1, mockSquare);
     });
   });
@@ -320,20 +353,17 @@ function appendSocketListeners() {
       if (membersEl && data.members) membersEl.textContent = data.members;
       if (locationEl && data.location) locationEl.textContent = data.location;
 
-      // インラインの display: none を flex に書き換えて大画面中央にドカンと表示！
       pcModal.style.display = "flex";
     }
   });
 
-  // 🎯 汎用ルーレット回転同期（モーダル生成・書き換えは一切行わず、回転のみ実行！）
+  // 🎯 汎用ルーレット回転同期
   socket.on("spinCustomRoulette", (data) => {
     console.log(
       `💻 [PC ROUTINE] ルーレット回転同期を受信: 出目 ${data.result}`,
     );
     isPCEventMode = true;
 
-    // 🌟 余計なモーダル再生成やテキスト上書き処理は全廃！
-    // 純粋に大画面側のホイールを物理回転させるだけに専念させます。
     if (typeof executeSyncedRoulette === "function") {
       executeSyncedRoulette(data.result);
     }
@@ -341,16 +371,43 @@ function appendSocketListeners() {
 
   // 🎯 汎用ルーレット決着（結果テキスト表示）
   socket.on("customRouletteFinished", (data) => {
-    // 🌟 【ここを追加！】カップルイベント（ピンク画面）中は、汎用の「出目:5」で上書きされるのを完全にブロック！
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal && pcModal.classList.contains("theme-couple")) {
-      console.log(
-        "💻 [PC GUARD] カップルイベント中のため、汎用テキストの上書きを阻止し、専用の祝賀通知を待ちます。",
-      );
-      return; // 👈 ここで処理を打ち切ることで、下の無機質な「出目:5」が画面に出なくなります！
+      // 41番マス1回目スピンが奇数で失敗だった場合はPC画面にも失敗表示を出して閉じる
+      if (
+        data &&
+        data.eventName === "💕 カップル成立チャンス 💕" &&
+        data.result !== undefined &&
+        data.result % 2 !== 0
+      ) {
+        isPCEventMode = false;
+        const modalResultBox = document.getElementById(
+          "modal-event-result-box",
+        );
+        if (modalResultBox) {
+          modalResultBox.style.display = "block";
+          modalResultBox.className = "event-result-box failure";
+          modalResultBox.innerHTML = `
+            <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px; color:#d81b60;">出目: ${data.result}</div>
+            <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：タイミングが悪い...</div>
+          `;
+        }
+        setTimeout(() => {
+          const targetModalEl = document.getElementById("pc-event-modal");
+          if (targetModalEl) {
+            targetModalEl.className = "event-modal-overlay";
+            targetModalEl.style.display = "none";
+          }
+        }, 3500);
+      } else {
+        console.log(
+          "💻 [PC GUARD] カップルイベント進行中のため、専用の通知を待ちます。",
+        );
+      }
+      return;
     }
 
-    // ─── ここから下は通常の入学式マスなどの処理（元のまま） ───
+    // ─── 通常の入学式・引退ギャンブルマスなどの処理 ───
     isPCEventMode = false;
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
@@ -387,7 +444,7 @@ function appendSocketListeners() {
       descEl.textContent =
         data.pcSecondDesc || "スマホから最終決着スピンを回してね！";
 
-    // 🎯 3. 【ここ！】1回目の結果文言を左下にパッと表示！
+    // 🎯 3. 1回目の結果文言を左下に表示
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
@@ -429,7 +486,6 @@ function appendSocketListeners() {
     modalResultBox.style.display = "block";
 
     if (data.success) {
-      // 🎉 告白大成功：ド派手に盛大なお祝い！
       modalResultBox.className = "event-result-box couple-success";
       modalResultBox.innerHTML = `
         <div class="couple-congrats-title">🎉 おめでとう！！！ 🎉</div>
@@ -437,7 +493,6 @@ function appendSocketListeners() {
         <div class="couple-kanpai-shout">🍻 成立記念！全員で乾杯！ 🍻</div>
       `;
     } else {
-      // 💔 失敗時
       modalResultBox.className = "event-result-box failure";
       modalResultBox.innerHTML = `
         <div style="font-size:1.3rem; font-weight:bold; color:#546e7a;">💔 チャレンジ失敗...</div>
@@ -445,7 +500,6 @@ function appendSocketListeners() {
       `;
     }
 
-    // 5秒間盛大に見せてから次の手番へ解放
     setTimeout(() => {
       const targetModalEl = document.getElementById("pc-event-modal");
       if (targetModalEl) {
@@ -503,12 +557,6 @@ function appendSocketListeners() {
     executeSyncedRoulette(data.result);
   });
 
-  // 🎯 99番マスのゴール祝賀演出をPC大画面へ中継（これは独立して追加）
-  socket.on("triggerGoalCelebration", (data) => {
-    const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-    io.to(roomCode).emit("showGoalModal", data);
-  });
-
   // 💀 4. 留年：画面ダークモード化（暗黒演出）
   socket.on("applyRepeatDarkTheme", (data) => {
     isPCEventMode = false;
@@ -518,26 +566,31 @@ function appendSocketListeners() {
     console.log(
       `💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`,
     );
-    // 画面全体にダーククラスを付与
     document.body.classList.add("theme-repeat-dark");
 
-    // イベントメッセージ更新
-    if (document.getElementById("event-text")) {
-      document.getElementById("event-text").innerHTML =
-        `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
+    const descEl =
+      document.getElementById("event-text") ||
+      document.getElementById("current-tile-desc");
+    if (descEl) {
+      descEl.innerHTML = `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
     }
 
-    // 留年ルート開通による盤面再描画
     if (window.boardManager)
       window.boardManager.draw(players, activePlayerIndex);
   });
 
   // 🎉 99番マス到着時：PC大画面にゴール祝賀モーダルを展開！
-  socket.on("showGoalModal", (data) => {
+  const displayGoalModal = (data) => {
+    if (!data || !data.player) return;
     console.log(`💻 [PC ゴール祝賀展開] プレイヤー: ${data.player.name}`);
-    isPCEventMode = true;
+    isPCEventMode = false;
 
-    // 乾杯モーダル（#pc-kanpai-modal）を祝賀用に流用表示
+    const pcEventModal = document.getElementById("pc-event-modal");
+    if (pcEventModal) {
+      pcEventModal.className = "event-modal-overlay";
+      pcEventModal.style.display = "none";
+    }
+
     const kanpaiModal = document.getElementById("pc-kanpai-modal");
     if (kanpaiModal) {
       const titleEl = kanpaiModal.querySelector(".kanpai-header");
@@ -552,9 +605,57 @@ function appendSocketListeners() {
       kanpaiModal.style.display = "flex";
     }
 
-    // 盤面再描画
     if (window.boardManager)
       window.boardManager.draw(players, activePlayerIndex);
+  };
+
+  socket.on("showGoalModal", displayGoalModal);
+  socket.on("triggerGoalCelebration", displayGoalModal);
+
+  // 🎊 全員ゴール完了（ゲーム終了）
+  socket.on("gameAllFinished", (data) => {
+    if (data && data.players) players = data.players;
+    isPCEventMode = false;
+
+    const pcEventModal = document.getElementById("pc-event-modal");
+    if (pcEventModal) {
+      pcEventModal.className = "event-modal-overlay";
+      pcEventModal.style.display = "none";
+    }
+
+    const kanpaiModal = document.getElementById("pc-kanpai-modal");
+    if (kanpaiModal) {
+      const titleEl = kanpaiModal.querySelector(".kanpai-header");
+      const membersEl = document.getElementById("pc-kanpai-members");
+      const locationEl = document.getElementById("pc-kanpai-location");
+
+      if (titleEl) titleEl.textContent = "🎊 全員卒業！ゲーム終了！ 🎊";
+      if (membersEl) {
+        const summary = players
+          .map(
+            (p) =>
+              `${p.name}(${p.drinkCount || 0}杯 / ${p.happiness !== undefined ? p.happiness : 100}pt)`,
+          )
+          .join(" ・ ");
+        membersEl.textContent = summary || "全員卒業達成！";
+      }
+      if (locationEl) locationEl.textContent = "最高の宅飲み人生に乾杯！！！";
+
+      kanpaiModal.style.display = "flex";
+    }
+
+    updateCurrentPlayerDisplay();
+    if (window.boardManager)
+      window.boardManager.draw(players, activePlayerIndex);
+  });
+
+  socket.on("enableNextTurnButton", () => {
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal && pcModal.classList.contains("theme-insurance")) {
+      pcModal.className = "event-modal-overlay";
+      pcModal.style.display = "none";
+      isPCEventMode = false;
+    }
   });
 }
 
@@ -577,6 +678,7 @@ function switchScreen(targetId) {
     target.classList.add("active");
   }
 }
+
 function renderPlayerWaitingList() {
   const ul = document.getElementById("player-list");
   if (!ul) return;
@@ -622,7 +724,7 @@ function renderLocationPlayersList() {
       item.className = "color-legend-item";
       item.innerHTML = `
         <span class="color-piece-dot" style="background:${pColor};"></span>
-        <span>${p.name || `P\${idx + 1}`}</span>
+        <span>${p.name || `P${idx + 1}`}</span>
       `;
       legendContainer.appendChild(item);
     });
@@ -668,7 +770,7 @@ function renderLocationPlayersList() {
         piece.className = "board-mini-piece";
         piece.style.backgroundColor = pObj.color;
         piece.title = `${pObj.name} (P${pObj.index})`;
-        piece.textContent = pObj.index; // 駒の中央に「1」「2」とプレイヤー番号を表示
+        piece.textContent = pObj.index;
         tdPieces.appendChild(piece);
       });
     } else {
@@ -761,10 +863,10 @@ function updateCurrentPlayerDisplay() {
     else if (hpVal >= 50) happinessEl.style.color = "#ffffff";
     else happinessEl.style.color = "#ff8a80";
   }
-  if (document.getElementById("current-player-location"))
-    document.getElementById("current-player-location").textContent = p.location
-      ? p.location
-      : "-";
+  const locEls = document.querySelectorAll("#current-player-location");
+  locEls.forEach((el) => {
+    el.textContent = p.location ? p.location : "-";
+  });
   renderLocationPlayersList();
 }
 
@@ -773,20 +875,14 @@ function executeSyncedRoulette(resultNum) {
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  if (p.skipTurn) {
-    p.skipTurn = false;
-    alert(`${p.name} は潰れていたため、このターンは1回休みです。`);
-    socket.emit("playerAction", { roomCode: roomCode, action: "nextTurn" });
-    return;
-  }
-
   const resEl = document.getElementById("roulette-result-display");
   if (resEl) resEl.textContent = "🎯 回転中...";
-  if (document.getElementById("event-text"))
-    document.getElementById("event-text").innerHTML =
-      `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
+  const descEl =
+    document.getElementById("event-text") ||
+    document.getElementById("current-tile-desc");
+  if (descEl && !isPCEventMode)
+    descEl.innerHTML = `<p class="event-msg" style="color: #666; font-weight: bold; animation: pulse 1s infinite;">🌀 ルーレット回転中... どこに止まるかな？ 🌀</p>`;
 
-  // 🎯 【不可視化バグ完全修復】大画面の物理ルーレット角度テーブル
   const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
   const stopAngle = targetDegrees[resultNum - 1];
   pcCurrentRotation +=
@@ -805,7 +901,6 @@ function executeSyncedRoulette(resultNum) {
   }
 
   if (isPCEventMode) {
-    triggerDelayedDisplay(resultNum, null);
     return;
   }
 
@@ -844,7 +939,6 @@ function executeSyncedRoulette(resultNum) {
         return;
       }
 
-      // pc.js の executeSyncedRoulette 内の moveTimer 内部
       const nextIdArray = currentSquare.nextId;
       if (Number(p.position) === 89 && p.isRepeat) {
         // 🎯 留年フラグがある時は強制的に 90番マス（留年ルート）へ！
@@ -859,19 +953,19 @@ function executeSyncedRoulette(resultNum) {
         );
       } else {
         p.position = Number(
-          Array.isArray(nextIdArray) ? nextIdArray : nextIdArray,
+          Array.isArray(nextIdArray) ? nextIdArray[0] : nextIdArray,
         );
       }
       stepsMoved++;
       if (window.boardManager)
         window.boardManager.draw(players, activePlayerIndex);
     }, 250);
-    // pc.js の finalizeMovement 内部（同じ場所乾杯自動判定付き）
-    // 🎯 pc.ts の executeSyncedRoulette 内：歩行完了時の処理
+
     function finalizeMovement() {
-      console.log(`💻 [PC FINALIZE] ➔ マスID: ${p.position} に到着。サーバーへ着地通知を送信します。`);
-      
-      // サーバーへ着地完了を通知（サーバー側から startSquareEvent が返ってきます）
+      console.log(
+        `💻 [PC FINALIZE] ➔ マスID: ${p.position} に到着。サーバーへ着地通知を送信します。`,
+      );
+
       socket.emit("squareLanded", {
         roomCode: roomCode,
         position: p.position,
@@ -879,21 +973,16 @@ function executeSyncedRoulette(resultNum) {
     }
   }, 3000);
 }
-// pc.js
+
 function triggerDelayedDisplay(resultNum, targetSquare) {
   const p = players[activePlayerIndex];
   if (!p) return;
 
-  // 1. 現在のモードの個別モジュール（sq_XX.js）を取得
-  const currentMode =
-    (typeof rooms !== "undefined" && rooms[roomCode] && rooms[roomCode].mode) ||
-    "normal";
-  const targetModule =
-    window.SQ_MODULES && window.SQ_MODULES[p.position]
-      ? window.SQ_MODULES[p.position][currentMode]
-      : null;
+  const modObj = window.SQ_MODULES && window.SQ_MODULES[p.position];
+  const targetModule = modObj
+    ? modObj[currentGameMode] || modObj.normal
+    : null;
 
-  // 2. 【場所と同様のロジック】個別JS ➔ マスタ ➔ デフォルト値 の順で text を抽出！
   const detectedText =
     targetModule && targetModule.text
       ? targetModule.text
@@ -901,7 +990,6 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         ? targetSquare.text
         : "通常マス";
 
-  // 場所の確定（既存と同様）
   const detectedLocation =
     targetModule && targetModule.location
       ? targetModule.location
@@ -910,21 +998,23 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         : "家";
   p.location = detectedLocation;
 
-  // 3. 右下の「現在のマスの内容」枠（.tile-event-card）にテキストを反映
-  // id="event-text" がある場合はそこへ、無い場合は .tile-event-card 全体を安全に書き換え
-  const eventTextEl = document.getElementById("event-text");
+  const eventTextEl =
+    document.getElementById("event-text") ||
+    document.getElementById("current-tile-desc");
   const eventCardEl = document.querySelector(".tile-event-card");
 
   if (eventTextEl) {
     eventTextEl.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p>`;
   } else if (eventCardEl) {
     eventCardEl.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 8px; color: #555;">📢 現在のマスの内容</div>
-      <p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p>
+      <div class="card-title" style="border-bottom: 2px solid #e0e0e0; padding-bottom: 4px; margin-bottom: 8px;">📢 現在のマスの内容</div>
+      <div id="current-tile-desc"><p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p></div>
     `;
   }
 
-  // 4. サーバーへ最新ステート（位置・場所など）を同期
+  updateCurrentPlayerDisplay();
+
+  // サーバーへ位置と場所のみを通知（スマホ側のHP・杯数・就職判定を上書きしない）
   socket.emit("updateGameState", {
     roomCode: roomCode,
     activePlayerIndex: activePlayerIndex,
@@ -933,15 +1023,6 @@ function triggerDelayedDisplay(resultNum, targetSquare) {
         id: p.id,
         position: p.position,
         location: p.location,
-        currentHp: p.currentHp,
-        drinkCount: p.drinkCount,
-        happiness: p.happiness !== undefined ? p.happiness : 100,
-        isLover: p.isLover,
-        skipTurn: p.skipTurn,
-        hasJob: p.hasJob !== undefined ? p.hasJob : false,
-        jobId: p.jobId || null,
-        job: p.job || "モブ",
-        isRepeat: p.isRepeat !== undefined ? p.isRepeat : false,
       },
     ],
   });
@@ -954,14 +1035,6 @@ socket.on("syncGameState", (data) => {
   updateCurrentPlayerDisplay();
   if (window.boardManager) window.boardManager.draw(players, activePlayerIndex);
 });
-
-// // 🎯 サーバーから「手動進行（次へボタン点灯）」の合図を受け取った時に、大画面の各種イベントモーダルを閉じる
-// socket.on("enableNextTurnButton", () => {
-//   const pcModal = document.getElementById("pc-event-modal");
-//   // if (pcModal) pcModal.style.display = "none";
-//   const kanpaiModal = document.getElementById("pc-kanpai-modal");
-//   if (kanpaiModal) kanpaiModal.style.display = "none";
-// });入学の美人イベントが起きなく見える理由
 
 const GAME_EVENTS = {
   入学式: {
@@ -981,12 +1054,15 @@ const GAME_EVENTS = {
   },
 };
 
-function openPCEventModal(eventType: string, playerName: string, activePlayerId: any) {
+function openPCEventModal(
+  eventType: string,
+  playerName: string,
+  activePlayerId: any,
+) {
   isPCEventMode = true;
   const pcModal = document.getElementById("pc-event-modal");
   if (!pcModal) return;
 
-  // 💡 ボタン要素として型を教えて変数に受ける
   const btnNext = document.getElementById("btn-next-turn") as HTMLButtonElement;
   if (btnNext) {
     btnNext.disabled = true;
@@ -996,16 +1072,17 @@ function openPCEventModal(eventType: string, playerName: string, activePlayerId:
   const config = GAME_EVENTS[eventType];
   if (!config) return;
   pcModal.className = "event-modal-overlay active " + config.class;
-  
+
   if (document.getElementById("modal-event-title"))
     document.getElementById("modal-event-title").textContent = config.title;
-    
+
   if (document.getElementById("modal-event-desc"))
     document.getElementById("modal-event-desc").textContent =
       config.desc(playerName);
 
-  // 💡 HTMLElement として型を教えて style を操作する
-  const resultBox = document.getElementById("modal-event-result-box") as HTMLElement;
+  const resultBox = document.getElementById(
+    "modal-event-result-box",
+  ) as HTMLElement;
   if (resultBox) {
     resultBox.style.display = "none";
   }
@@ -1015,13 +1092,11 @@ function handleForceStopSquare(player, square) {
   if (!square) return;
   if (Number(square.id) === 89) return;
 
-  const currentMode = "normal";
-  const targetModule =
-    window.SQ_MODULES &&
-    window.SQ_MODULES[square.id] &&
-    window.SQ_MODULES[square.id][currentMode];
+  const modObj = window.SQ_MODULES && window.SQ_MODULES[square.id];
+  const targetModule = modObj
+    ? modObj[currentGameMode] || modObj.normal
+    : null;
 
-  // 🌟 ここでマス固有の event() を叩いてピンクモーダルを即座に開かせる
   if (targetModule && typeof targetModule.event === "function") {
     console.log(`💻 [PC SIGNAL] sq_${square.id}.js の固有event()を起動。`);
     targetModule.event(player, square);
@@ -1030,11 +1105,11 @@ function handleForceStopSquare(player, square) {
 }
 
 function loadAndApplySquareComponent(squareId, callback) {
-  let currentMode = "normal";
   if (
     window.SQ_MODULES &&
     window.SQ_MODULES[squareId] &&
-    window.SQ_MODULES[squareId][currentMode]
+    (window.SQ_MODULES[squareId][currentGameMode] ||
+      window.SQ_MODULES[squareId].normal)
   ) {
     if (typeof callback === "function") callback();
     return;
@@ -1057,23 +1132,69 @@ socket.on("applyPlayerAction", (data) => {
     );
     isPCEventMode = false;
 
-    // 🎯 1. 判定ルーレット・イベントモーダルを完全に閉じる
+    if (data.activePlayerIndex !== undefined) {
+      activePlayerIndex = data.activePlayerIndex;
+    }
+    const curP = players[activePlayerIndex];
+    if (curP && curP.isRepeat) {
+      document.body.classList.add("theme-repeat-dark");
+    } else {
+      document.body.classList.remove("theme-repeat-dark");
+    }
+
     const pcModal = document.getElementById("pc-event-modal");
     if (pcModal) {
       pcModal.style.display = "none";
       pcModal.classList.remove("active");
     }
 
-    // 🎯 2. 乾杯モーダルを閉じる
     const kanpaiModal = document.getElementById("pc-kanpai-modal");
     if (kanpaiModal) {
       kanpaiModal.style.display = "none";
     }
 
-    // 🎯 3. カップルイベントモーダル（個別要素がある場合）を閉じる
     const coupleModal = document.getElementById("pc-couple-event-modal");
     if (coupleModal) {
       coupleModal.style.display = "none";
+    }
+  } else if (data && data.action === "turnSkipped") {
+    isPCEventMode = false;
+    if (data.activePlayerIndex !== undefined) {
+      activePlayerIndex = data.activePlayerIndex;
+    }
+    const pcModal = document.getElementById("pc-event-modal");
+    if (pcModal) {
+      pcModal.style.display = "none";
+      pcModal.classList.remove("active");
+    }
+    const kanpaiModal = document.getElementById("pc-kanpai-modal");
+    if (kanpaiModal) {
+      kanpaiModal.style.display = "none";
+    }
+    const descEl =
+      document.getElementById("event-text") ||
+      document.getElementById("current-tile-desc");
+    if (descEl) {
+      descEl.innerHTML = `<p class="event-msg" style="color: #e67e22; font-weight: bold; font-size: 1.15rem; margin: 0;">💤 ${data.activePlayerName || "プレイヤー"} さんは二日酔い（1回休み）のためターンをスキップします！</p>`;
+    }
+    updateCurrentPlayerDisplay();
+  } else if (data && data.action === "insuranceUsed") {
+    const p = players.find((pl) => String(pl.id) === String(data.playerId));
+    if (p) {
+      p.insurance = data.nextInsuranceCount;
+      const descEl =
+        document.getElementById("event-text") ||
+        document.getElementById("current-tile-desc");
+      if (descEl) {
+        descEl.innerHTML = `
+          <p class="event-msg" style="color: #9c27b0; font-weight: bold; font-size: 1.2rem; margin: 0;">
+            🛡️ 生命保険発動！！！ 🛡️<br>
+            ${p.name} は保険を1枚消費し、このターンの飲酒ペナルティを無効化した！<br>
+            <span style="font-size: 0.9rem; color: #666;">(残り保険枚数: ${p.insurance}枚)</span>
+          </p>
+        `;
+      }
+      updateCurrentPlayerDisplay();
     }
   }
 });

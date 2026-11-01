@@ -1,7 +1,7 @@
 // public/squares/sq_30.js
 window.SQ_MODULES = window.SQ_MODULES || {};
 
-window.SQ_MODULES = {
+window.SQ_MODULES[30] = {
   normal: {
     id: 30,
     type: "insurance_shop",
@@ -100,6 +100,10 @@ window.SQ_MODULES = {
               const cleanedSpinBtn = spinBtn.cloneNode(true);
               spinBtn.parentNode.replaceChild(cleanedSpinBtn, spinBtn);
               cleanedSpinBtn.disabled = true;
+              cleanedSpinBtn.textContent = "⚡ ルーレットを回す！";
+              if (typeof requestSpin === "function") {
+                cleanedSpinBtn.addEventListener("click", requestSpin);
+              }
             }
 
             if (resultDisplay) {
@@ -124,6 +128,6 @@ window.SQ_MODULES = {
       }
     }
   },
-  salaryman: { id: 30, type: "insurance_shop", text: "【強制ストップ】生命保険・ライフプラン設計", location: "オフィス", event: function(p, s) { window.SQ_MODULES.normal.event(p, s); } },
-  short: { id: 30, type: "insurance_shop", text: "【強制ストップ】命の盾を闇取引！", location: "家", event: function(p, s) { window.SQ_MODULES.normal.event(p, s); } }
+  salaryman: { id: 30, type: "insurance_shop", text: "【強制ストップ】生命保険・ライフプラン設計", location: "オフィス", event: function(p, s) { window.SQ_MODULES[30].normal.event(p, s); } },
+  short: { id: 30, type: "insurance_shop", text: "【強制ストップ】命の盾を闇取引！", location: "家", event: function(p, s) { window.SQ_MODULES[30].normal.event(p, s); } }
 };

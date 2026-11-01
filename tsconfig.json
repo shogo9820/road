@@ -43,6 +43,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "public/squares/**/*" 
+    "public/squares/**/*",
+    "public/sw.js"
   ]
 }

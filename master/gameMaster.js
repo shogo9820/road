@@ -18,7 +18,8 @@ const JOBS = [
   { id: "zako", label: "雑魚", title: "いくらちゃん", cap: 60 },
   { id: "psychopath", label: "サイコパス", title: "パパ", cap: 150 },
   { id: "shugo", label: "酒豪", title: "飲み会番長", cap: 150 },
-  { id: "soccer", label: "サッカーキャラ", title: "超絶イケメン天才カリスマフットボールプレイヤー", cap: 150 }
+  { id: "soccer", label: "サッカーキャラ", title: "超絶イケメン天才カリスマフットボールプレイヤー", cap: 150 },
+  { id: "busaiku", label: "ブサイク", title: "ブサイク", cap: 110 }
 ];
 
 const MAP_SQUARES = [

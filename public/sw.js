@@ -1,4 +1,4 @@
-const CACHE_NAME = "salmons-game-v2";
+const CACHE_NAME = "salmons-game-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -38,26 +38,22 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // 🎯 修正：自サーバー以外への外部通信（://qrserver.com等）とSocket.ioはキャッシュ処理から完全除外
   if (url.origin !== self.location.origin || url.pathname.startsWith("/socket.io/")) {
     return;
   }
 
+  // Network-First: 常に最新のファイルを取得し、オフライン時のみキャッシュへフォールバック
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== "basic") {
-          return response;
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
