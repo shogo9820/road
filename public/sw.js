@@ -1,4 +1,4 @@
-const CACHE_NAME = "salmons-game-v3";
+const CACHE_NAME = "salmons-game-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -6,11 +6,9 @@ const ASSETS_TO_CACHE = [
   "/master/gameMaster.js",
   "/pc/index.html",
   "/pc/pc.css",
-  "/pc/pc.js",
   "/pc/board.js",
   "/mobile/index.html",
-  "/mobile/controller.css",
-  "/mobile/controller.js"
+  "/mobile/controller.css"
 ];
 
 self.addEventListener("install", (event) => {

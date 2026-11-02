@@ -4,9 +4,10 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && vite build",
     "start": "node dist/server.js",
     "dev": "tsx server.ts",
+    "dev:vite": "vite",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

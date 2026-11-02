@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <script>var exports = {};</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>サークル人生ゲーム - ポータル</title>
+  <link rel="preconnect" href="https://googleapis.com">
+  <link rel="preconnect" href="https://gstatic.com" crossorigin>
+  <link href="https://googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>:root{--primary-color:#6a11cb;--secondary-color:#2575fc;--bg-color:#f5f5f5;--card-bg:#fff;--text-color:#333;--border-color:#e0e0e0}body{background-color:var(--bg-color);color:var(--text-color);box-sizing:border-box;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:0;font-family:"M PLUS Rounded 1c",sans-serif;display:flex}.portal-container{background:var(--card-bg);text-align:center;border:1px solid var(--border-color);border-radius:20px;width:90%;max-width:480px;padding:40px 30px;box-shadow:0 8px 24px #00000014}h1{color:var(--text-color);margin-top:0;margin-bottom:8px;font-size:1.8rem;font-weight:900}.subtitle{color:#666;margin-bottom:32px;font-size:1rem;font-weight:700}.menu-list{flex-direction:column;gap:16px;display:flex}.portal-btn{color:#fff;border-radius:14px;padding:16px;font-size:1.2rem;font-weight:900;text-decoration:none;transition:transform .1s,box-shadow .1s;display:block;box-shadow:0 4px 12px #0000001a}.portal-btn:active{transform:scale(.98);box-shadow:0 2px 6px #0000001a}.btn-pc{background:linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)}.btn-mobile{background:linear-gradient(135deg,#ff4081 0%,#ff9800 100%)}.btn-desc{opacity:.9;margin-top:4px;font-size:.85rem;font-weight:700;display:block}</style>
+    <!-- PWAマニフェストの読み込み -->
+  <link rel="manifest" href="/assets/manifest-DvTF5peL.json">
+  <meta name="theme-color" content="#6a11cb">
+
+</head>
+  <!-- サービスワーカーの登録処理 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('[PWA] サービスワーカー登録成功（ポータル）:', reg.scope))
+          .catch((err) => console.error('[PWA] サービスワーカー登録失敗:', err));
+      });
+    }
+  </script>
+
+<body>
+
+  <div class="portal-container">
+    <h1>🍻 宅飲み人生ゲーム 🍺</h1>
+    <div class="subtitle">〜 使用する画面を選択してください 〜</div>
+
+    <div class="menu-list">
+      <!-- PC用大画面へのリンク -->
+      <a href="/pc/index.html" class="portal-btn btn-pc">
+        🖥 PC親機 画面を開く
+        <span class="btn-desc">部屋を作成してテレビやモニターに映す用</span>
+      </a>
+
+      <!-- スマホコントローラーへのリンク -->
+      <a href="/mobile/index.html" class="portal-btn btn-mobile">
+        📱 スマホ子機 画面を開く
+        <span class="btn-desc">ルームに参加してルーレットを回す用</span>
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

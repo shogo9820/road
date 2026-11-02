@@ -35,14 +35,16 @@
   // 🎯 【最適化】コンパイル対象と除外対象を現在のフォルダ構成に指定
   "include": [
     "server.ts",
+    "global.d.ts",
     "./master/**/*",
-    "./public/**/*",
-    "**/*.ts",
-    "**/*.tsx"
+    "./public/pc/board.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
+    "vite.config.ts",
+    "public/pc/pc.tsx",
+    "public/mobile/controller.tsx",
     "public/squares/**/*",
     "public/sw.js"
   ]
