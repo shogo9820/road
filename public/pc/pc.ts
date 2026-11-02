@@ -515,68 +515,20 @@ function appendSocketListeners() {
     }, 4500);
   });
 
-  // 🎓 1. 卒業判定モーダルの展開
+  // 🎓 89番マス：卒業判定イベント（sq_89.js へ委譲）
   socket.on("showGraduateEvent", (data) => {
-    console.log(`💻 [PC 卒業判定展開] プレイヤー: ${data.playerName}`);
-    isPCEventMode = true;
-
-    const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal) {
-      pcModal.className = "event-modal-overlay active theme-rankup";
-      pcModal.style.display = "flex";
-    }
-
-    const titleEl = document.getElementById("modal-event-title");
-    if (titleEl) titleEl.textContent = "🎓 運命の卒業判定 🎓";
-
-    const descEl = document.getElementById("modal-event-desc");
-    if (descEl)
-      descEl.textContent =
-        "出目 6以上でストレート卒業GOAL！5以下は地獄の留年ルート突入！";
-
-    const modalResultBox = document.getElementById("modal-event-result-box");
-    if (modalResultBox) modalResultBox.style.display = "none";
-
-    const dynamicTableZone = document.getElementById(
-      "pc-event-table-dynamic-zone",
-    );
-    if (dynamicTableZone) {
-      dynamicTableZone.innerHTML = `
-        <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定基準</div>
-        <ul class="event-table-list">
-          <li class="event-table-item"><div class="event-table-num-badge" style="background:#4caf50;">6〜10</div><div><span style="color:#2e7d32; font-weight:bold;">🌸 合格！99番マス(GOAL)へ瞬間ワープ！</span></div></li>
-          <li class="event-table-item"><div class="event-table-num-badge" style="background:#f44336;">1〜5</div><div><span style="color:#c62828; font-weight:bold;">💀 留年... 隠し留年ルート(90〜98)へ突入！</span></div></li>
-        </ul>
-      `;
-    }
-  });
-
-  // 🎓 2. 卒業ルーレット回転
-  socket.on("spinGraduateRoulette", (data) => {
-    console.log(`💻 [PC 卒業ルーレット回転] 出目: ${data.result}`);
-    executeSyncedRoulette(data.result);
-  });
-
-  // 💀 4. 留年：画面ダークモード化（暗黒演出）
-  socket.on("applyRepeatDarkTheme", (data) => {
-    isPCEventMode = false;
-    const pcModal = document.getElementById("pc-event-modal");
-    if (pcModal) pcModal.style.display = "none";
-
-    console.log(
-      `💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`,
-    );
-    document.body.classList.add("theme-repeat-dark");
-
-    const descEl =
-      document.getElementById("event-text") ||
-      document.getElementById("current-tile-desc");
-    if (descEl) {
-      descEl.innerHTML = `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
-    }
-
-    if (window.boardManager)
-      window.boardManager.draw(players, activePlayerIndex);
+    loadAndApplySquareComponent(89, () => {
+      const modObj = window.SQ_MODULES && window.SQ_MODULES[89];
+      const targetModule = modObj
+        ? modObj[currentGameMode] || modObj.normal
+        : null;
+      if (targetModule && typeof targetModule.event === "function") {
+        const p = players[activePlayerIndex] || {
+          name: data && data.playerName ? data.playerName : "プレイヤー",
+        };
+        targetModule.event(p, { ...targetModule, isTurnStart: true });
+      }
+    });
   });
 
   // 🎉 99番マス到着時：PC大画面にゴール祝賀モーダルを展開！
