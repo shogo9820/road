@@ -720,6 +720,9 @@ io.on("connection", (socket) => {
     setTimeout(() => {
       const p = room.gamePlayers[room.activePlayerIndex];
       if (p) {
+        if (data.consumeAllInsurance) {
+          p.insurance = 0;
+        }
         if (outcome.drinks && outcome.drinks > 0) {
           p.drinkCount = (p.drinkCount || 0) + outcome.drinks;
           const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);

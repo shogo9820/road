@@ -1424,7 +1424,16 @@ function initMobileListeners() {
     ) as HTMLButtonElement;
     if (insuranceBtn) {
       const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
-      if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
+      const isAutoInsuranceSquare =
+        Number(p.position) === 80 &&
+        window.serverCurrentPhase === "4.SQUARE_LANDED";
+      if (isAutoInsuranceSquare) {
+        insuranceBtn.disabled = true;
+        insuranceBtn.textContent =
+          insuranceCount > 0
+            ? `🛡️ 生命保険 全${insuranceCount}枚 自動発動中！`
+            : `🛡️ 生命保険を利用する (0枚)`;
+      } else if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
         insuranceBtn.disabled = false;
         insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
       } else {
