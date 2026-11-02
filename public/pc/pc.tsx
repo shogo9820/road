@@ -597,7 +597,13 @@ function PCApp() {
   const rawCurrentHp =
     p && p.currentHp !== undefined ? p.currentHp : maxHp;
   const currentHp = Math.max(0, rawCurrentHp);
-  const jobLabel = p ? (jobMaster ? jobMaster.label : p.job || "モブ") : "モブ";
+  const jobLabel = p
+    ? (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
+      ? jobMaster.title
+      : jobMaster
+        ? jobMaster.label
+        : p.job || "モブ"
+    : "モブ";
   const playerColor = p
     ? p.color ||
       PLAYER_COLOR_PALETTE[activeIdxState % PLAYER_COLOR_PALETTE.length]
@@ -1281,15 +1287,18 @@ function appendSocketListeners() {
       return;
     }
 
-    // ─── 通常の入学式・引退ギャンブルマスなどの処理 ───
+    // ─── 通常の入学式・ランクアップ・引退ギャンブルマスなどの処理 ───
     isPCEventMode = false;
     const modalResultBox = document.getElementById("modal-event-result-box");
     if (modalResultBox) {
       modalResultBox.style.display = "block";
-      modalResultBox.className =
-        data.outcome && data.outcome.drinks === 0
-          ? "event-result-box success"
-          : "event-result-box failure";
+      const isSuccess =
+        data.outcome && data.outcome.isRankUp !== undefined
+          ? data.outcome.isRankUp
+          : data.outcome && data.outcome.drinks === 0;
+      modalResultBox.className = isSuccess
+        ? "event-result-box success"
+        : "event-result-box failure";
       modalResultBox.innerHTML = `
         <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px;">出目: ${data.result}</div>
         <div style="font-size:1.4rem; font-weight:bold;">${data.message}</div>

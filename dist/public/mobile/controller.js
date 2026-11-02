@@ -484,7 +484,13 @@ function ControllerApp() {
             ? Math.max(0, p.currentHp)
             : maxHp
         : 80;
-    const jobLabel = p ? (jobMaster ? jobMaster.label : p.job || "モブ") : "モブ";
+    const jobLabel = p
+        ? (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
+            ? jobMaster.title
+            : jobMaster
+                ? jobMaster.label
+                : p.job || "モブ"
+        : "モブ";
     const happinessVal = p && p.happiness !== undefined ? p.happiness : 100;
     return ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: "phone-screen", children: [(0, jsx_runtime_1.jsxs)("div", { id: "phone-screen-join", className: `card phone-card ${activeScreen === "phone-screen-join" ? "active" : ""}`, style: {
                             display: activeScreen === "phone-screen-join" ? "block" : "none",
@@ -787,7 +793,7 @@ function initMobileListeners() {
     socket.off("applyPlayerAction");
     socket.on("applyPlayerAction", (data) => {
         if (data.action === "turnUpdated") {
-            document.body.classList.remove("theme-couple", "theme-entrance", "theme-insurance");
+            document.body.classList.remove("theme-couple", "theme-entrance", "theme-insurance", "theme-rankup");
             activePlayerIndex =
                 data.activePlayerIndex !== undefined
                     ? data.activePlayerIndex

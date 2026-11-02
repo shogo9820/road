@@ -672,7 +672,13 @@ function ControllerApp() {
       ? Math.max(0, p.currentHp)
       : maxHp
     : 80;
-  const jobLabel = p ? (jobMaster ? jobMaster.label : p.job || "モブ") : "モブ";
+  const jobLabel = p
+    ? (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
+      ? jobMaster.title
+      : jobMaster
+        ? jobMaster.label
+        : p.job || "モブ"
+    : "モブ";
   const happinessVal = p && p.happiness !== undefined ? p.happiness : 100;
 
   return (
@@ -1237,6 +1243,7 @@ function initMobileListeners() {
         "theme-couple",
         "theme-entrance",
         "theme-insurance",
+        "theme-rankup",
       );
 
       activePlayerIndex =

@@ -364,6 +364,8 @@ io.on("connection", (socket) => {
                         target.skipTurn = data.updatedPlayer.skipTurn;
                     if (data.updatedPlayer.isRepeat !== undefined)
                         target.isRepeat = data.updatedPlayer.isRepeat;
+                    if (data.updatedPlayer.isRankedUp !== undefined)
+                        target.isRankedUp = data.updatedPlayer.isRankedUp;
                     if (data.updatedPlayer.hasFinished !== undefined)
                         target.hasFinished = data.updatedPlayer.hasFinished;
                     // 役職が決定した場合、JOBSマスタのcap(最大HP)を反映
@@ -371,7 +373,9 @@ io.on("connection", (socket) => {
                         const jobObj = gameMaster_js_1.JOBS.find((j) => j.id === target.jobId);
                         if (jobObj) {
                             target.baseCap = jobObj.cap;
-                            target.job = jobObj.label || target.job;
+                            target.job = target.isRankedUp
+                                ? jobObj.title || target.job
+                                : jobObj.label || target.job;
                             if (!prevHasJob || prevJobId !== target.jobId) {
                                 target.currentHp = jobObj.cap + (target.bonusCap || 0);
                             }
@@ -621,6 +625,14 @@ io.on("connection", (socket) => {
                     p.happiness =
                         (p.happiness !== undefined ? p.happiness : 100) + outcome.happiness;
                 }
+                if (outcome.isRankUp && typeof gameMaster_js_1.JOBS !== "undefined") {
+                    const jobObj = gameMaster_js_1.JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job);
+                    if (jobObj && jobObj.title) {
+                        p.job = jobObj.title;
+                        p.isRankedUp = true;
+                        console.log(`👑 [SERVER ランクアップ] ${p.name} さんが「${jobObj.title}」にランクアップ！`);
+                    }
+                }
                 if (outcome.name && outcome.name.includes("他全員1杯")) {
                     room.gamePlayers.forEach((op) => {
                         if (op.id !== p.id) {
@@ -820,6 +832,8 @@ io.on("connection", (socket) => {
                                 : target.insurance || 0;
                         if (updatedP.isRepeat !== undefined)
                             target.isRepeat = updatedP.isRepeat;
+                        if (updatedP.isRankedUp !== undefined)
+                            target.isRankedUp = updatedP.isRankedUp;
                         if (updatedP.hasFinished !== undefined)
                             target.hasFinished = updatedP.hasFinished;
                     }
