@@ -37,14 +37,13 @@
     "server.ts",
     "global.d.ts",
     "./master/**/*",
-    "./public/pc/board.ts"
+    "./public/**/*",
+    "**/*.ts",
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "vite.config.ts",
-    "public/pc/pc.tsx",
-    "public/mobile/controller.tsx",
     "public/squares/**/*",
     "public/sw.js"
   ]
