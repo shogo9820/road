@@ -12,9 +12,9 @@ window.SQ_MODULES[89] = {
       themeClass: "theme-rankup",
       repeatThemeClass: "theme-repeat-dark",
       pcTitle: "🎓 運命の卒業判定 🎓",
-      pcDesc: "出目 6以上でストレート卒業GOAL！5以下は地獄の留年ルート突入！",
+      pcDesc: "出目 6以上で卒業！5以下は留年...",
       mobileTitle: "🎓 運命の卒業判定 🎓",
-      mobileDesc: "出目 6以上でストレート卒業GOAL！<br>5以下は地獄の留年ルート突入！",
+      mobileDesc: "出目 6以上で卒業！<br>5以下は留年...",
       mobileBtn: "⚡ 卒業判定ルーレットを回す！",
       mobileRepeatBtn: "💀 留年ルートへ進む！",
       mobileRepeatDisplay: "💀 5年生編スタート..."
@@ -69,39 +69,75 @@ window.SQ_MODULES[89] = {
         if (descEl) descEl.textContent = cfg.pcDesc;
 
         const modalResultBox = document.getElementById("modal-event-result-box");
-        if (modalResultBox) modalResultBox.style.display = "none";
+        if (modalResultBox) {
+          modalResultBox.style.display = "none";
+          modalResultBox.className = "event-result-box";
+          modalResultBox.textContent = "";
+        }
+
+        const modalRouletteDisplay = document.getElementById(
+          "modal-roulette-result-display"
+        );
+        if (modalRouletteDisplay) {
+          modalRouletteDisplay.textContent = "🎯 スマホから回してね！";
+        }
 
         const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
         if (dynamicTableZone) {
           dynamicTableZone.innerHTML = `
             <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定基準</div>
             <ul class="event-table-list">
-              <li class="event-table-item"><div class="event-table-num-badge" style="background:#4caf50;">6〜10</div><div><span style="color:#2e7d32; font-weight:bold;">🌸 合格！99番マス(GOAL)へ瞬間ワープ！</span></div></li>
-              <li class="event-table-item"><div class="event-table-num-badge" style="background:#f44336;">1〜5</div><div><span style="color:#c62828; font-weight:bold;">💀 留年... 隠し留年ルート(90〜98)へ突入！</span></div></li>
+              <li class="event-table-item"><div class="event-table-num-badge" style="background:#4caf50;">6〜10</div><div><span style="color:#2e7d32; font-weight:bold;">卒業！</span></div></li>
+              <li class="event-table-item"><div class="event-table-num-badge" style="background:#f44336;">1〜5</div><div><span style="color:#c62828; font-weight:bold;">留年...</span></div></li>
             </ul>
           `;
         }
 
-        // 🎓 卒業ルーレット回転リスナー
+        // 🎓 卒業ルーレット回転リスナー（3秒回転 ➔ 回り終えた時点で出目を表示）
         if (mod._onPcSpin) socket.off("spinGraduateRoulette", mod._onPcSpin);
         mod._onPcSpin = (data) => {
           console.log(`💻 [PC 卒業ルーレット回転] 出目: ${data.result}`);
+          if (modalRouletteDisplay) {
+            modalRouletteDisplay.textContent = "🌀 回転中...";
+          }
           if (typeof executeSyncedRoulette === "function") {
             executeSyncedRoulette(data.result);
           }
+          // ルーレットが回り終えた瞬間（3秒後）に出目結果を表示し、その1秒後にサーバーから暗転信号が届く
+          setTimeout(() => {
+            if (modalRouletteDisplay) {
+              modalRouletteDisplay.textContent = `出目: ${data.result}`;
+            }
+            if (modalResultBox) {
+              modalResultBox.style.display = "block";
+              modalResultBox.className = data.isPass
+                ? "event-result-box success"
+                : "event-result-box failure";
+              modalResultBox.innerHTML = `
+                <div style="font-size:1.8rem; font-weight:bold; margin-bottom:6px;">出目: ${data.result}</div>
+                <div style="font-size:1.4rem; font-weight:bold;">${data.isPass ? "卒業！" : "留年..."}</div>
+              `;
+            }
+          }, 3000);
         };
         socket.on("spinGraduateRoulette", mod._onPcSpin);
 
-        // 💀 留年：画面ダークモード化（暗黒演出）リスナー
+        // 💀 留年：画面ダークモード化（ルーレット終了1秒後にモーダル消去と同時に暗転）
         if (mod._onPcRepeat) socket.off("applyRepeatDarkTheme", mod._onPcRepeat);
         mod._onPcRepeat = (data) => {
           if (typeof isPCEventMode !== "undefined") isPCEventMode = false;
+
+          // 卒業判定モーダルを完全に消去（.active の display:flex !important も解除）
           const targetModal = document.getElementById("pc-event-modal");
-          if (targetModal) targetModal.style.display = "none";
+          if (targetModal) {
+            targetModal.className = "event-modal-overlay";
+            targetModal.style.display = "none";
+          }
 
           console.log(
             `💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`
           );
+          // モーダル消去と同時に背景を暗くする
           document.body.classList.add(cfg.repeatThemeClass);
 
           const tileDescEl =
@@ -127,9 +163,32 @@ window.SQ_MODULES[89] = {
         const mainSpinBtn = document.getElementById("btn-phone-spin");
         if (mainSpinBtn) mainSpinBtn.disabled = true;
 
+        // スマホ側でもルーレット回転アニメーションを同期
+        if (mod._onMobileSpin)
+          socket.off("spinGraduateRoulette", mod._onMobileSpin);
+        mod._onMobileSpin = (data) => {
+          const resNum = data && data.result !== undefined ? data.result : 1;
+          if (
+            typeof currentRotation !== "undefined" &&
+            typeof playMobileRouletteAnimation === "function"
+          ) {
+            const targetDegrees = [
+              342, 306, 270, 234, 198, 162, 126, 90, 54, 18
+            ];
+            currentRotation +=
+              1800 +
+              ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) %
+                360);
+            playMobileRouletteAnimation(resNum, currentRotation, () => {});
+          }
+        };
+        socket.on("spinGraduateRoulette", mod._onMobileSpin);
+
         // 🌸 合格時：交代ボタンのみ点灯
         if (mod._onPass) socket.off("showGraduateNextButton", mod._onPass);
         mod._onPass = (data) => {
+          if (mod._onMobileSpin)
+            socket.off("spinGraduateRoulette", mod._onMobileSpin);
           if (mod._onPass) socket.off("showGraduateNextButton", mod._onPass);
           if (mod._onFail) socket.off("graduateFailedRepeat", mod._onFail);
 
@@ -145,18 +204,18 @@ window.SQ_MODULES[89] = {
         };
         socket.on("showGraduateNextButton", mod._onPass);
 
-        // 💀 留年時：手元もダークルーレットに変身させて通常スピンを復活！
+        // 💀 留年時：モーダル消去と同時に手元もダークモード化させて通常スピンを復活！
         if (mod._onFail) socket.off("graduateFailedRepeat", mod._onFail);
         mod._onFail = (data) => {
+          if (mod._onMobileSpin)
+            socket.off("spinGraduateRoulette", mod._onMobileSpin);
           if (mod._onPass) socket.off("showGraduateNextButton", mod._onPass);
           if (mod._onFail) socket.off("graduateFailedRepeat", mod._onFail);
 
           const modal = document.getElementById("mobile-couple-event-modal");
           if (modal) modal.style.display = "none";
 
-          alert(data.message);
-
-          // 手元画面もダークモード化
+          // 手元画面もPCと同時にダークモード化
           document.body.classList.add(cfg.repeatThemeClass);
 
           const spinBtn = document.getElementById("btn-phone-spin");

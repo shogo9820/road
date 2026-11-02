@@ -693,7 +693,7 @@ io.on("connection", (socket) => {
         activePlayerIndex: room.activePlayerIndex,
         currentPhase: room.currentPhase,
       });
-    }, 3500);
+    }, 4000);
   });
 
   // ==========================================================================
