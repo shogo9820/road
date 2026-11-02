@@ -11,13 +11,18 @@ window.SQ_MODULES[30] = {
     config: {
       themeClass: "theme-insurance",
       pcTitle: "🛡️ 生命保険 取扱所 🛡️",
-      pcDesc: "今後の飲酒を完全無効化できる生命保険に加入できます。スマホで枚数を選択してください。",
-      mobilePrompt: "🛡️ 今後の飲酒を完全無効化できる生命保険を購入できます。"
+      pcDesc: "今後の飲酒を完全無効化できる生命保険に加入できます（1枚購入につき1杯飲酒）。スマホで枚数を選択してください。",
+      mobilePrompt: "🛡️ 今後の飲酒を完全無効化できる生命保険を購入できます（1枚購入につき1杯飲酒）。"
     },
 
-    event: function(player, square) {
+    event: function (player, square) {
       const cfg = this.config;
-      const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
+      const targetRoom =
+        typeof currentRoomCode !== "undefined"
+          ? currentRoomCode
+          : typeof roomCode !== "undefined"
+            ? roomCode
+            : "";
       console.log(`🛡️ [sq_30.js] 30番マス: ${player.name} の生命保険購入イベント開始`);
 
       // 💻 ① 【PC大画面側の処理：案内モーダルを表示して自動進行を阻止】
@@ -26,7 +31,10 @@ window.SQ_MODULES[30] = {
         if (typeof isPCEventMode !== "undefined") isPCEventMode = true;
 
         const btnNext = document.getElementById("btn-next-turn");
-        if (btnNext) { btnNext.disabled = true; btnNext.style.display = "none"; }
+        if (btnNext) {
+          btnNext.disabled = true;
+          btnNext.style.display = "none";
+        }
 
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         pcModal.style.display = "flex";
@@ -34,19 +42,24 @@ window.SQ_MODULES[30] = {
         document.getElementById("modal-event-desc").textContent = `${player.name} さんが保険屋に立ち寄り中！ ${cfg.pcDesc}`;
 
         const resultBox = document.getElementById("modal-event-result-box");
-        if (resultBox) { resultBox.style.display = "none"; resultBox.textContent = ""; }
+        if (resultBox) {
+          resultBox.style.display = "none";
+          resultBox.textContent = "";
+        }
 
         const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
         if (dynamicTableZone) {
           dynamicTableZone.innerHTML = `
             <div class="event-title" style="font-size:1.3rem; color:#8e24aa; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ab47bc; padding-bottom:4px;">📜 保険プラン内容</div>
             <ul class="event-table-list">
+              <li class="event-table-item"><div class="event-table-num-badge" style="background:#d32f2f;">代償</div><div><span style="color:#c62828; font-weight:bold;">🍺 1枚購入するごとに、その場で1杯飲まないといけない！</span></div></li>
               <li class="event-table-item"><div class="event-table-num-badge" style="background:#ab47bc;">効果</div><div><span style="color:#4a148c; font-weight:bold;">1枚消費につき、アルコール1杯を完全無効化！</span></div></li>
               <li class="event-table-item"><div class="event-table-num-badge" style="background:#ab47bc;">制限</div><div><span style="color:#4a148c; font-weight:bold;">1人あたり最大3枚まで購入可能</span></div></li>
             </ul>
           `;
         }
-        document.getElementById("modal-roulette-result-display").textContent = "📱 スマホコントローラーから購入枚数を選択中...";
+        document.getElementById("modal-roulette-result-display").textContent =
+          "📱 スマホコントローラーから購入枚数を選択中...";
         return;
       }
 
@@ -65,11 +78,14 @@ window.SQ_MODULES[30] = {
 
         const inlineShopHtml = `
           <div id="insurance-inline-zone" style="width:100%; display:flex; flex-direction:column; gap:8px; margin:10px auto; align-items:center;">
-            <div style="font-weight:bold; font-size:1.1rem; color:#9c27b0; margin-bottom:4px;">🛡️ 何枚購入しますか？ (現在: ${player.insurance || 0}枚所持)</div>
-            <button class="btn-shop-select btn-blue" data-count="0" style="background-color:#78909c !important;">0枚（購入しない）</button>
-            <button class="btn-shop-select btn-orange" data-count="1">1枚購入</button>
-            <button class="btn-shop-select btn-orange" data-count="2">2枚購入</button>
-            <button class="btn-shop-select btn-orange" data-count="3">3枚購入（最大）</button>
+            <div style="font-weight:bold; font-size:1.1rem; color:#9c27b0; margin-bottom:4px; text-align:center;">
+              🛡️ 何枚購入しますか？ (現在: ${player.insurance || 0}枚所持)<br>
+              <span style="font-size:0.9rem; color:#d32f2f;">※1枚購入するのに1杯飲まないといけません</span>
+            </div>
+            <button class="btn-shop-select btn-blue" data-count="0" style="background-color:#78909c !important;">0枚（購入しない / 0杯）</button>
+            <button class="btn-shop-select btn-orange" data-count="1">1枚購入（🍺 1杯飲む）</button>
+            <button class="btn-shop-select btn-orange" data-count="2">2枚購入（🍺 2杯飲む）</button>
+            <button class="btn-shop-select btn-orange" data-count="3">3枚購入（最大 / 🍺 3杯飲む）</button>
           </div>
         `;
 
@@ -81,7 +97,7 @@ window.SQ_MODULES[30] = {
 
         // 各ボタンのタップ処理
         const selectButtons = document.querySelectorAll("#insurance-inline-zone .btn-shop-select");
-        selectButtons.forEach(btn => {
+        selectButtons.forEach((btn) => {
           btn.onclick = (e) => {
             e.preventDefault();
             const buyCount = parseInt(e.currentTarget.getAttribute("data-count"), 10);
@@ -89,7 +105,39 @@ window.SQ_MODULES[30] = {
             if (!player.insurance) player.insurance = 0;
             player.insurance += buyCount;
 
-            console.log(`[sq_30.js] 保険購入確定: ${buyCount}枚（合計: ${player.insurance}枚）`);
+            // 購入した枚数分だけ杯数（drinkCount）をプラス＆体力（currentHp）を計算
+            if (buyCount > 0) {
+              player.drinkCount = (player.drinkCount || 0) + buyCount;
+
+              const jobMaster =
+                typeof JOBS !== "undefined" && Array.isArray(JOBS)
+                  ? JOBS.find(
+                      (j) =>
+                        j.id === player.jobId ||
+                        j.label === player.job ||
+                        j.title === player.job
+                    )
+                  : null;
+              const baseCap = jobMaster ? jobMaster.cap : player.baseCap || 80;
+              const maxHp = baseCap + (player.bonusCap || 0);
+              if (player.currentHp === undefined) player.currentHp = maxHp;
+
+              player.currentHp = Math.max(0, player.currentHp - buyCount * 10);
+              if (player.currentHp <= 0) {
+                if (player.happiness === undefined) player.happiness = 100;
+                player.happiness = Math.max(0, player.happiness - 30);
+                player.skipTurn = true;
+                player.currentHp = maxHp;
+              }
+            }
+
+            if (typeof updatePhoneStatusDisplay === "function") {
+              updatePhoneStatusDisplay();
+            }
+
+            console.log(
+              `[sq_30.js] 保険購入確定: ${buyCount}枚（合計保険: ${player.insurance}枚 / 合計飲酒: ${player.drinkCount || 0}杯）`
+            );
 
             // インラインUI削除 & 通常スピンボタンを非活性で復活
             document.getElementById("insurance-inline-zone")?.remove();
@@ -107,7 +155,10 @@ window.SQ_MODULES[30] = {
             }
 
             if (resultDisplay) {
-              resultDisplay.textContent = `🛡️ 保険を ${buyCount} 枚購入しました！「次のプレイヤーへ」を押してね！`;
+              resultDisplay.textContent =
+                buyCount > 0
+                  ? `🛡️ 保険を ${buyCount} 枚購入し、${buyCount} 杯飲みました！「次のプレイヤーへ」を押してね！`
+                  : `🛡️ 保険を購入しませんでした。「次のプレイヤーへ」を押してね！`;
             }
 
             // PC大画面のモーダルを閉じる
@@ -117,7 +168,7 @@ window.SQ_MODULES[30] = {
               targetPcModal.style.display = "none";
             }
 
-            // サーバーへ完了報告（サーバー側でフェーズが WAIT_NEXT に移り、次へボタンが点灯）
+            // サーバーへ完了報告（サーバー側でフェーズが WAIT_NEXT に移り、全端末のstateが同期され次へボタンが点灯）
             socket.emit("playerAction", {
               roomCode: targetRoom,
               action: "squareEventFinished",
@@ -128,6 +179,22 @@ window.SQ_MODULES[30] = {
       }
     }
   },
-  salaryman: { id: 30, type: "insurance_shop", text: "【強制ストップ】生命保険・ライフプラン設計", location: "オフィス", event: function(p, s) { window.SQ_MODULES[30].normal.event(p, s); } },
-  short: { id: 30, type: "insurance_shop", text: "【強制ストップ】命の盾を闇取引！", location: "家", event: function(p, s) { window.SQ_MODULES[30].normal.event(p, s); } }
+  salaryman: {
+    id: 30,
+    type: "insurance_shop",
+    text: "【強制ストップ】生命保険・ライフプラン設計",
+    location: "オフィス",
+    event: function (p, s) {
+      window.SQ_MODULES[30].normal.event(p, s);
+    }
+  },
+  short: {
+    id: 30,
+    type: "insurance_shop",
+    text: "【強制ストップ】命の盾を闇取引！",
+    location: "家",
+    event: function (p, s) {
+      window.SQ_MODULES[30].normal.event(p, s);
+    }
+  }
 };
