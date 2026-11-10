@@ -118,6 +118,7 @@ function startTurnRoutine(room, roomCode) {
         return;
     // 1. ターン開始前確認フェーズに設定（このターン開始時点の杯数を記録）
     room.currentPhase = PHASES.TURN_START;
+    room.pendingKanpaiLocation = null;
     p.turnStartDrinkCount = p.drinkCount || 0;
     console.log(`\n=========================================`);
     console.log(`🚨 [SERVER ROUTINE] ➔ 1. 新ターン開始: ${p.name} さん (現在地: ${p.position}番マス)`);
@@ -412,6 +413,23 @@ io.on("connection", (socket) => {
                     }
                 }
             }
+            // 🍻 保留中の同じ場所乾杯を、最新値の上に適用
+            if (room.pendingKanpaiLocation) {
+                const kLoc = room.pendingKanpaiLocation;
+                room.pendingKanpaiLocation = null;
+                room.gamePlayers.forEach((kp) => {
+                    if (kp && kp.location === kLoc && kp.position !== 99) {
+                        kp.drinkCount = (kp.drinkCount || 0) + 1;
+                        const kMax = (kp.baseCap || 80) + (kp.bonusCap || 0);
+                        kp.currentHp = Math.max(0, (kp.currentHp !== undefined ? kp.currentHp : kMax) - 10);
+                        if (kp.currentHp <= 0) {
+                            kp.happiness = Math.max(0, (kp.happiness !== undefined ? kp.happiness : 100) - 30);
+                            kp.skipTurn = true;
+                            kp.currentHp = kMax;
+                        }
+                    }
+                });
+            }
             console.log(`\n🚨 [SERVER] ➔ 5. イベント数値処理完了。交代待機フェーズ(WAIT_NEXT)へ。`);
             room.currentPhase = PHASES.WAIT_NEXT;
             io.to(roomCode).emit("enableNextTurnButton");
@@ -539,23 +557,9 @@ io.on("connection", (socket) => {
         const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
         const room = roomCode ? rooms[roomCode] : null;
         if (room && data && data.location) {
-            room.gamePlayers.forEach((p) => {
-                if (p && p.location === data.location) {
-                    p.drinkCount = (p.drinkCount || 0) + 1;
-                    const maxHp = (p.baseCap || 80) + (p.bonusCap || 0);
-                    p.currentHp = Math.max(0, (p.currentHp !== undefined ? p.currentHp : maxHp) - 10);
-                    if (p.currentHp <= 0) {
-                        p.happiness = Math.max(0, (p.happiness !== undefined ? p.happiness : 100) - 30);
-                        p.skipTurn = true;
-                        p.currentHp = maxHp;
-                    }
-                }
-            });
-            io.to(roomCode).emit("syncGameState", {
-                players: room.gamePlayers,
-                activePlayerIndex: room.activePlayerIndex,
-                currentPhase: room.currentPhase,
-            });
+            // 乾杯の飲酒はマスイベント完了(squareEventFinished)後に適用する
+            // （スマホの古い値で上書きされるのを防ぐため）
+            room.pendingKanpaiLocation = data.location;
         }
         if (roomCode)
             io.to(roomCode).emit("showKanpaiModal", data);
@@ -742,6 +746,8 @@ io.on("connection", (socket) => {
         }
         // フェーズを着地イベント発生(SQUARE_LANDED)へ遷移
         room.currentPhase = PHASES.SQUARE_LANDED;
+        // 移動が完了したので、前回の進路選択を破棄（次の分岐マスでの誤表示防止）
+        delete p.chosenRouteIdx;
         console.log(`🚨 [SERVER ROUTINE] ➔ 4. マス着地確定: ${p.name} 氏 (マスID: ${p.position}, 場所: ${p.location})`);
         // 🎯 1. PC・スマホ双方へ「マスイベント開始」を同時に号令
         io.to(roomCode).emit("startSquareEvent", {

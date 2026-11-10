@@ -1282,6 +1282,12 @@ function appendSocketListeners() {
             samePlaceBuddies,
           );
           const allKanpaiMembers = [p.name, ...samePlaceBuddies];
+          // サーバー側の現在地を先に確定させてから乾杯を発火（順序保証）
+          socket.emit("updateGameState", {
+            roomCode: roomCode,
+            activePlayerIndex: activePlayerIndex,
+            players: [{ id: p.id, position: p.position, location: p.location }],
+          });
           socket.emit("triggerKanpaiEvent", {
             roomCode: roomCode,
             members: allKanpaiMembers.join("と"),
