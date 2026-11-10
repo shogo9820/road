@@ -856,6 +856,13 @@ function initMobileListeners() {
             if (data.activePlayerIndex !== undefined) {
                 activePlayerIndex = data.activePlayerIndex;
             }
+            const curP = players[activePlayerIndex];
+            if (curP && curP.isRepeat) {
+                document.body.classList.add("theme-repeat-dark");
+            }
+            else {
+                document.body.classList.remove("theme-repeat-dark");
+            }
             if (document.getElementById("current-player-banner")) {
                 document.getElementById("current-player-banner").textContent =
                     `TURN: ${data.activePlayerName || "プレイヤー"} (1回休み)`;

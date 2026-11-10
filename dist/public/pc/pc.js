@@ -1008,6 +1008,13 @@ function appendSocketListeners() {
             if (data.activePlayerIndex !== undefined) {
                 activePlayerIndex = data.activePlayerIndex;
             }
+            const curP = players[activePlayerIndex];
+            if (curP && curP.isRepeat) {
+                document.body.classList.add("theme-repeat-dark");
+            }
+            else {
+                document.body.classList.remove("theme-repeat-dark");
+            }
             const pcModal = document.getElementById("pc-event-modal");
             if (pcModal) {
                 pcModal.style.display = "none";
