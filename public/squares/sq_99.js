@@ -5,7 +5,7 @@ window.SQ_MODULES[99] = {
     id: 99,
     type: "goal",
     text: "㊗️ 祝・大学卒業！ゴール！！！",
-    location: "卒業式場（ゴール）",
+    location: "卒業式（ゴール）",
     event: function (player, moduleData) {
       console.log(`🎉 [99番マス: GOAL到着] プレイヤー: ${player.name} が卒業式場に着地しました！`);
 

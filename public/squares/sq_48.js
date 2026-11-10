@@ -8,7 +8,6 @@ window.SQ_MODULES[48] = {
     happiness: 0,
     location: "家",
     event: function (player, square) {
-      // PC側は通常のマス内容表示のみ行うため早期リターン
       if (document.getElementById("pc-event-modal")) return;
 
       const targetRoom =
@@ -18,49 +17,53 @@ window.SQ_MODULES[48] = {
             ? roomCode
             : "";
 
-      const isSoccer =
-        player.jobId === "soccer" ||
-        player.job === "サッカーキャラ" ||
-        player.job === "超絶イケメン天才カリスマフットボールプレイヤー";
-
-      const drinkAmount = isSoccer ? 2 : 0;
-
-      if (drinkAmount > 0) {
+      function applyDrinkAndHappiness(targetP, drinkAmt, happyAmt) {
         const jobMaster =
           typeof JOBS !== "undefined" && Array.isArray(JOBS)
             ? JOBS.find(
                 (j) =>
-                  j.id === player.jobId ||
-                  j.label === player.job ||
-                  j.title === player.job
+                  j.id === targetP.jobId ||
+                  j.label === targetP.job ||
+                  j.title === targetP.job
               )
             : null;
-        const baseCap = jobMaster ? jobMaster.cap : player.baseCap || 80;
-        const maxHp = baseCap + (player.bonusCap || 0);
-        if (player.currentHp === undefined) player.currentHp = maxHp;
+        const baseCap = jobMaster ? jobMaster.cap : targetP.baseCap || 80;
+        const maxHp = baseCap + (targetP.bonusCap || 0);
+        if (targetP.currentHp === undefined) targetP.currentHp = maxHp;
 
-        player.drinkCount = (player.drinkCount || 0) + drinkAmount;
-        player.currentHp = Math.max(0, player.currentHp - drinkAmount * 10);
-
-        if (player.currentHp <= 0) {
-          if (player.happiness === undefined) player.happiness = 100;
-          player.happiness = Math.max(0, player.happiness - 30);
-          player.skipTurn = true;
-          player.currentHp = maxHp;
+        if (drinkAmt > 0) {
+          targetP.drinkCount = (targetP.drinkCount || 0) + drinkAmt;
+          targetP.currentHp = Math.max(0, targetP.currentHp - drinkAmt * 10);
+        }
+        if (happyAmt !== 0) {
+          if (targetP.happiness === undefined) targetP.happiness = 100;
+          targetP.happiness += happyAmt;
+        }
+        if (targetP.currentHp <= 0) {
+          if (targetP.happiness === undefined) targetP.happiness = 100;
+          targetP.happiness = Math.max(0, targetP.happiness - 30);
+          targetP.skipTurn = true;
+          targetP.currentHp = maxHp;
         }
       }
 
+      const isMatch =
+        player.jobId === "soccer" ||
+        ["サッカーキャラ","超絶イケメン天才カリスマフットボールプレイヤー"].includes(player.job);
+      const drinkAmount = isMatch ? 2 : 0;
+      applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");
       if (resDisplay) {
-        resDisplay.textContent = isSoccer
-          ? `⚽ サッカーキャラ対象！2杯飲みます！`
-          : `🎲 ${this.text}（対象外のため0杯）`;
+        resDisplay.textContent = isMatch
+          ? "⚽ サッカーキャラ対象！2杯飲みます！"
+          : drinkAmount > 0
+            ? `🎲 ${this.text}（${drinkAmount}杯）`
+            : `🎲 ${this.text}（対象外のため0杯）`;
       }
 
       if (typeof updatePhoneStatusDisplay === "function") {
         updatePhoneStatusDisplay();
       }
-
       if (typeof socket !== "undefined") {
         socket.emit("playerAction", {
           roomCode: targetRoom,
@@ -73,17 +76,19 @@ window.SQ_MODULES[48] = {
   salaryman: {
     id: 48,
     type: "normal",
-    text: "社内eスポーツ大会で惜しくも4位。悔しくて飲む。",
-    drink: 2,
-    happiness: -5,
-    location: "オフィス"
+    text: "【夏合宿】4位（【サッカーキャラの場合】２杯飲む）",
+    drink: 0,
+    happiness: 0,
+    location: "家",
+    event: function (p, s) { window.SQ_MODULES[48].normal.event(p, s); }
   },
   short: {
     id: 48,
     type: "normal",
-    text: "合宿罰ゲームの一気飲み！",
-    drink: 2,
+    text: "【夏合宿】4位（【サッカーキャラの場合】２杯飲む）",
+    drink: 0,
     happiness: 0,
-    location: "家"
+    location: "家",
+    event: function (p, s) { window.SQ_MODULES[48].normal.event(p, s); }
   }
 };

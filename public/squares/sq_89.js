@@ -6,7 +6,7 @@ window.SQ_MODULES[89] = {
     id: 89,
     type: "force_stop",
     text: "【強制ストップ】運命の卒業判定マス！",
-    location: "卒業判定掲示板前",
+    location: "家",
 
     config: {
       themeClass: "theme-rankup",

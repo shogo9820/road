@@ -1,6 +1,98 @@
 window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[97] = {
-  normal: { id: 97, type: "repeat", text: "【留年】卒論再提出締め切り前夜、深夜の徹夜作業！", drink: 1, degree: 40, happiness: -20, location: "家" },
-  salaryman: { id: 97, type: "repeat", text: "納期直前の徹夜残業でエナドリと酒をチャンポン！", drink: 2, degree: 40, happiness: -30, location: "オフィス" },
-  short: { id: 97, type: "repeat", text: "卒論徹夜作業で極限状態！", drink: 2, degree: 40, happiness: -15, location: "研究室" }
+  normal: {
+    id: 97,
+    type: "repeat",
+    text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
+    drink: 1,
+    happiness: -20,
+    location: "家",
+    event: function (player, square) {
+      if (document.getElementById("pc-event-modal")) return;
+
+      const targetRoom =
+        typeof currentRoomCode !== "undefined"
+          ? currentRoomCode
+          : typeof roomCode !== "undefined"
+            ? roomCode
+            : "";
+
+      function applyDrinkAndHappiness(targetP, drinkAmt, happyAmt) {
+        const jobMaster =
+          typeof JOBS !== "undefined" && Array.isArray(JOBS)
+            ? JOBS.find(
+                (j) =>
+                  j.id === targetP.jobId ||
+                  j.label === targetP.job ||
+                  j.title === targetP.job
+              )
+            : null;
+        const baseCap = jobMaster ? jobMaster.cap : targetP.baseCap || 80;
+        const maxHp = baseCap + (targetP.bonusCap || 0);
+        if (targetP.currentHp === undefined) targetP.currentHp = maxHp;
+
+        if (drinkAmt > 0) {
+          targetP.drinkCount = (targetP.drinkCount || 0) + drinkAmt;
+          targetP.currentHp = Math.max(0, targetP.currentHp - drinkAmt * 10);
+        }
+        if (happyAmt !== 0) {
+          if (targetP.happiness === undefined) targetP.happiness = 100;
+          targetP.happiness += happyAmt;
+        }
+        if (targetP.currentHp <= 0) {
+          if (targetP.happiness === undefined) targetP.happiness = 100;
+          targetP.happiness = Math.max(0, targetP.happiness - 30);
+          targetP.skipTurn = true;
+          targetP.currentHp = maxHp;
+        }
+      }
+
+      applyDrinkAndHappiness(player, 0, -20);
+      if (typeof players !== "undefined" && Array.isArray(players)) {
+        players.forEach((p) => {
+          if (p && p.isRepeat) {
+            applyDrinkAndHappiness(p, 1, 0);
+          }
+        });
+        if (typeof socket !== "undefined") {
+          socket.emit("updateGameState", { roomCode: targetRoom, players: players });
+        }
+      } else {
+        applyDrinkAndHappiness(player, 1, 0);
+      }
+      const resDisplay = document.getElementById("roulette-result-display");
+      if (resDisplay) {
+        resDisplay.textContent = "💀 留年した者全員で絆の乾杯！（留年組全員1杯）";
+      }
+
+      if (typeof updatePhoneStatusDisplay === "function") {
+        updatePhoneStatusDisplay();
+      }
+      if (typeof socket !== "undefined") {
+        socket.emit("playerAction", {
+          roomCode: targetRoom,
+          action: "squareEventFinished",
+          updatedPlayer: player
+        });
+      }
+    }
+  },
+  salaryman: {
+    id: 97,
+    type: "repeat",
+    text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
+    drink: 1,
+    happiness: -20,
+    location: "家",
+    event: function (p, s) { window.SQ_MODULES[97].normal.event(p, s); }
+  },
+  short: {
+    id: 97,
+    type: "repeat",
+    text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
+    drink: 1,
+    happiness: -20,
+    location: "家",
+    event: function (p, s) { window.SQ_MODULES[97].normal.event(p, s); }
+  }
 };

@@ -483,6 +483,10 @@ window.boardManager = {
           fillColor = this.squareColors.heal;
           strokeColor = "#ffffff";
           textColor = "#ffffff";
+        } else if (sq.type === "rankup_chance") {
+          fillColor = "#ff9800";
+          strokeColor = "#ffffff";
+          textColor = "#ffffff";
         } else if (sq.type === "repeat") {
           fillColor = this.squareColors.repeat;
           strokeColor = "#ba68c8";

@@ -1,6 +1,6 @@
 window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[73] = {
-  normal: { id: 73, type: "normal", text: "", drink: 0, happiness: 0, location: "" },
-  salaryman: { id: 73, type: "normal", text: "", drink: 0, happiness: 0, location: "" },
-  short: { id: 73, type: "normal", text: "", drink: 0, happiness: 0, location: "" }
+  normal: { id: 73, type: "normal", text: "UNOおもれえ（１杯飲む）", drink: 1, happiness: 0, location: "宅飲み" },
+  salaryman: { id: 73, type: "normal", text: "UNOおもれえ（１杯飲む）", drink: 1, happiness: 0, location: "宅飲み" },
+  short: { id: 73, type: "normal", text: "UNOおもれえ（１杯飲む）", drink: 1, happiness: 0, location: "宅飲み" }
 };
