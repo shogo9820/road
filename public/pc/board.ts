@@ -521,6 +521,29 @@ window.boardManager = {
         this.ctx.fillText(sq.id.toString(), cx, cy);
       }
 
+      // ✨ 現在手番プレイヤーが立っているマスの強調ハイライト枠
+      if (currentPlayer && Number(currentPlayer.position) === idx) {
+        const radius = specialTheme ? 12 : 8;
+        // 外側の発光リング
+        this.drawRoundedRect(
+          this.ctx,
+          px - 4,
+          py - 4,
+          pw + 8,
+          ph + 8,
+          radius + 2,
+        );
+        this.ctx.lineWidth = 5;
+        this.ctx.strokeStyle = "rgba(255, 235, 59, 0.75)";
+        this.ctx.stroke();
+
+        // 内側のシャープなゴールド枠
+        this.drawRoundedRect(this.ctx, px - 2, py - 2, pw + 4, ph + 4, radius);
+        this.ctx.lineWidth = 2.5;
+        this.ctx.strokeStyle = "#ff6f00";
+        this.ctx.stroke();
+      }
+
       this.ctx.restore();
     });
 

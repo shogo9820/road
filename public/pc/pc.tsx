@@ -803,13 +803,19 @@ function PCApp() {
                   </span>
                 </div>
                 <div className="stat-item">
+                  <span>🛡️ 保険</span>
+                  <span id="current-player-insurance">
+                    {`${p ? p.insurance || 0 : 0} 枚`}
+                  </span>
+                </div>
+                <div className="stat-item">
                   <span>📍 現在地</span>
                   <span id="current-player-location">{currentLocation}</span>
                 </div>
               </div>
             </div>
 
-            {/* 2. 何色が誰か分かるプレイヤーカラー凡例カード */}
+            {/* 2. 全員分のステータス＆カラー一覧カード */}
             <div className="card player-color-legend-card">
               <div
                 className="card-title"
@@ -820,23 +826,102 @@ function PCApp() {
                   color: "#555",
                 }}
               >
-                🎨 プレイヤーカラー
+                👥 全員ステータス一覧
               </div>
               <div
                 id="player-color-legend-list"
                 className="color-legend-container"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
               >
                 {playersState.map((pl, idx) => {
                   const pColor =
                     pl.color ||
                     PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length];
+                  const isCurrent = idx === activeIdxState;
+                  const plDrinks = pl.drinkCount || 0;
+                  const plHappy =
+                    pl.happiness !== undefined ? pl.happiness : 100;
+                  const plIns = pl.insurance || 0;
                   return (
-                    <div key={pl.id || idx} className="color-legend-item">
-                      <span
-                        className="color-piece-dot"
-                        style={{ background: pColor }}
-                      ></span>
-                      <span>{pl.name || `P${idx + 1}`}</span>
+                    <div
+                      key={pl.id || idx}
+                      className="color-legend-item"
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                        padding: "6px 10px",
+                        borderRadius: "10px",
+                        boxSizing: "border-box",
+                        background: isCurrent ? "#fff8e1" : "#f5f5f5",
+                        border: isCurrent
+                          ? `2px solid ${pColor}`
+                          : "1px solid #e0e0e0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          minWidth: 0,
+                        }}
+                      >
+                        <span
+                          className="color-piece-dot"
+                          style={{
+                            background: pColor,
+                            width: "16px",
+                            height: "16px",
+                            fontSize: "0.7rem",
+                            color: "#fff",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: "bold",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            fontSize: "0.88rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {pl.name || `P${idx + 1}`}
+                          {pl.hasFinished
+                            ? " 🎓"
+                            : pl.skipTurn
+                              ? " 💤"
+                              : pl.isRepeat
+                                ? " 💀"
+                                : ""}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "0.78rem",
+                          fontWeight: "bold",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span style={{ color: "#e65100" }}>🍺{plDrinks}</span>
+                        <span style={{ color: "#f57f17" }}>✨{plHappy}</span>
+                        {plIns > 0 && (
+                          <span style={{ color: "#8e24aa" }}>🛡️{plIns}</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1453,11 +1538,12 @@ function appendSocketListeners() {
   socket.off("triggerGoalCelebration");
   socket.on("triggerGoalCelebration", displayGoalModal);
 
-  // 🎊 全員ゴール完了（ゲーム終了）
+  // 🎊 全員ゴール完了（ゲーム終了・最終ランキング発表）
   socket.off("gameAllFinished");
   socket.on("gameAllFinished", (data: any) => {
     if (data && data.players) players = data.players;
     isPCEventMode = false;
+    document.body.classList.remove("theme-repeat-dark");
 
     const pcEventModal = document.getElementById("pc-event-modal");
     if (pcEventModal) {
@@ -1471,17 +1557,49 @@ function appendSocketListeners() {
       const membersEl = document.getElementById("pc-kanpai-members");
       const locationEl = document.getElementById("pc-kanpai-location");
 
-      if (titleEl) titleEl.textContent = "🎊 全員卒業！ゲーム終了！ 🎊";
+      if (titleEl) titleEl.textContent = "🎊 全員卒業！最終結果発表！ 🎊";
       if (membersEl) {
-        const summary = players
-          .map(
-            (p) =>
-              `${p.name}(${p.drinkCount || 0}杯 / ${p.happiness !== undefined ? p.happiness : 100}pt)`,
-          )
-          .join(" ・ ");
-        membersEl.textContent = summary || "全員卒業達成！";
+        // 幸福度順で総合ランキング作成
+        const sortedByHappy = [...players].sort(
+          (a, b) =>
+            (b.happiness !== undefined ? b.happiness : 100) -
+            (a.happiness !== undefined ? a.happiness : 100),
+        );
+        // 最多飲酒プレイヤー（酒豪王）
+        const maxDrinks = Math.max(
+          0,
+          ...players.map((pl) => pl.drinkCount || 0),
+        );
+        const topDrinkers =
+          maxDrinks > 0
+            ? players
+                .filter((pl) => (pl.drinkCount || 0) === maxDrinks)
+                .map((pl) => pl.name)
+            : [];
+
+        const medals = ["🥇 1位", "🥈 2位", "🥉 3位"];
+        const rowsHtml = sortedByHappy
+          .map((pl, i) => {
+            const rankLabel = medals[i] || `${i + 1}位`;
+            const hp = pl.happiness !== undefined ? pl.happiness : 100;
+            const dr = pl.drinkCount || 0;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.18); padding:10px 18px; border-radius:12px; margin-bottom:8px; font-size:1.35rem;">
+              <span>${rankLabel} <strong>${pl.name}</strong></span>
+              <span>✨ ${hp}pt ／ 🍺 ${dr}杯</span>
+            </div>`;
+          })
+          .join("");
+
+        const drinkKingHtml =
+          topDrinkers.length > 0
+            ? `<div style="margin-top:14px; padding:10px 16px; background:rgba(0,0,0,0.28); border-radius:12px; font-size:1.25rem; color:#ffeb3b;">
+                🍺 <strong>本日の酒豪王:</strong> ${topDrinkers.join("・")}（${maxDrinks}杯）
+              </div>`
+            : "";
+
+        membersEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
       }
-      if (locationEl) locationEl.textContent = "最高の宅飲み人生に乾杯！！！";
+      if (locationEl) locationEl.textContent = "最高の宅飲み人生に乾杯！！！🍻";
 
       kanpaiModal.style.display = "flex";
     }

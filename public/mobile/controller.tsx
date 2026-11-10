@@ -1034,7 +1034,11 @@ let hasBoundDocumentClicks = false;
 
 function initMobileListeners() {
   const urlParams = new URLSearchParams(window.location.search);
-  const roomParam = urlParams.get("room");
+  let savedRoom: string | null = null;
+  try {
+    savedRoom = sessionStorage.getItem("salmons_room_code");
+  } catch (_e) {}
+  const roomParam = urlParams.get("room") || savedRoom;
 
   if (roomParam) {
     if (setRoomInputRef) setRoomInputRef(roomParam);
@@ -1049,6 +1053,14 @@ function initMobileListeners() {
   socket.off("joinedSuccess");
   socket.on("joinedSuccess", (data: any) => {
     currentRoomCode = data.roomCode;
+    try {
+      sessionStorage.setItem("salmons_room_code", String(data.roomCode));
+    } catch (_e) {}
+
+    if (data && data.isGameInProgress) {
+      return;
+    }
+
     if (!players || players.length === 0) {
       const now = Date.now();
       players = [
@@ -1063,6 +1075,10 @@ function initMobileListeners() {
 
   socket.off("errorMsg");
   socket.on("errorMsg", (data: any) => {
+    try {
+      sessionStorage.removeItem("salmons_room_code");
+    } catch (_e) {}
+    showScreen("phone-screen-join");
     alert("エラー: " + data.message);
   });
 
@@ -1573,7 +1589,10 @@ function initMobileListeners() {
       "📱 [①. 新ターン開始] ➔ サーバーからゲーム開始電波(gameStarted)を受信。ここで初めて手動操作権をロードします。",
     );
     showScreen("phone-screen-play");
-    activePlayerIndex = 0;
+    activePlayerIndex =
+      data && data.activePlayerIndex !== undefined
+        ? data.activePlayerIndex
+        : 0;
     updatePhoneStatusDisplay();
   });
 

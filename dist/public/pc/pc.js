@@ -460,15 +460,68 @@ function PCApp() {
                                                                     background: "rgba(0,0,0,0.2)",
                                                                     padding: "2px 8px",
                                                                     borderRadius: "20px",
-                                                                }, children: `💕 恋人: ${p.lovers.join("、")}` })) : p && p.isLover ? ("❤️") : null })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "player-stats", children: [(0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\uD83C\uDF7A \u676F\u6570" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-drinks", children: `${p ? p.drinkCount || 0 : 0} 杯` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2764\uFE0F \u4F53\u529B" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-hp", children: `${currentHp} / ${maxHp}` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2728 \u5E78\u798F\u5EA6" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-happiness", style: { color: happinessColor }, children: `${hpVal} pt` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\uD83D\uDCCD \u73FE\u5728\u5730" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-location", children: currentLocation })] })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "card player-color-legend-card", children: [(0, jsx_runtime_1.jsx)("div", { className: "card-title", style: {
+                                                                }, children: `💕 恋人: ${p.lovers.join("、")}` })) : p && p.isLover ? ("❤️") : null })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "player-stats", children: [(0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\uD83C\uDF7A \u676F\u6570" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-drinks", children: `${p ? p.drinkCount || 0 : 0} 杯` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2764\uFE0F \u4F53\u529B" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-hp", children: `${currentHp} / ${maxHp}` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2728 \u5E78\u798F\u5EA6" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-happiness", style: { color: happinessColor }, children: `${hpVal} pt` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\uD83D\uDEE1\uFE0F \u4FDD\u967A" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-insurance", children: `${p ? p.insurance || 0 : 0} 枚` })] }), (0, jsx_runtime_1.jsxs)("div", { className: "stat-item", children: [(0, jsx_runtime_1.jsx)("span", { children: "\uD83D\uDCCD \u73FE\u5728\u5730" }), (0, jsx_runtime_1.jsx)("span", { id: "current-player-location", children: currentLocation })] })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "card player-color-legend-card", children: [(0, jsx_runtime_1.jsx)("div", { className: "card-title", style: {
                                                 fontWeight: "bold",
                                                 fontSize: "0.95rem",
                                                 marginBottom: "8px",
                                                 color: "#555",
-                                            }, children: "\uD83C\uDFA8 \u30D7\u30EC\u30A4\u30E4\u30FC\u30AB\u30E9\u30FC" }), (0, jsx_runtime_1.jsx)("div", { id: "player-color-legend-list", className: "color-legend-container", children: playersState.map((pl, idx) => {
+                                            }, children: "\uD83D\uDC65 \u5168\u54E1\u30B9\u30C6\u30FC\u30BF\u30B9\u4E00\u89A7" }), (0, jsx_runtime_1.jsx)("div", { id: "player-color-legend-list", className: "color-legend-container", style: {
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "6px",
+                                            }, children: playersState.map((pl, idx) => {
                                                 const pColor = pl.color ||
                                                     PLAYER_COLOR_PALETTE[idx % PLAYER_COLOR_PALETTE.length];
-                                                return ((0, jsx_runtime_1.jsxs)("div", { className: "color-legend-item", children: [(0, jsx_runtime_1.jsx)("span", { className: "color-piece-dot", style: { background: pColor } }), (0, jsx_runtime_1.jsx)("span", { children: pl.name || `P${idx + 1}` })] }, pl.id || idx));
+                                                const isCurrent = idx === activeIdxState;
+                                                const plDrinks = pl.drinkCount || 0;
+                                                const plHappy = pl.happiness !== undefined ? pl.happiness : 100;
+                                                const plIns = pl.insurance || 0;
+                                                return ((0, jsx_runtime_1.jsxs)("div", { className: "color-legend-item", style: {
+                                                        width: "100%",
+                                                        justifyContent: "space-between",
+                                                        padding: "6px 10px",
+                                                        borderRadius: "10px",
+                                                        boxSizing: "border-box",
+                                                        background: isCurrent ? "#fff8e1" : "#f5f5f5",
+                                                        border: isCurrent
+                                                            ? `2px solid ${pColor}`
+                                                            : "1px solid #e0e0e0",
+                                                    }, children: [(0, jsx_runtime_1.jsxs)("div", { style: {
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "6px",
+                                                                minWidth: 0,
+                                                            }, children: [(0, jsx_runtime_1.jsx)("span", { className: "color-piece-dot", style: {
+                                                                        background: pColor,
+                                                                        width: "16px",
+                                                                        height: "16px",
+                                                                        fontSize: "0.7rem",
+                                                                        color: "#fff",
+                                                                        display: "inline-flex",
+                                                                        alignItems: "center",
+                                                                        justifyContent: "center",
+                                                                        fontWeight: "bold",
+                                                                        flexShrink: 0,
+                                                                    }, children: idx + 1 }), (0, jsx_runtime_1.jsxs)("span", { style: {
+                                                                        fontWeight: "bold",
+                                                                        fontSize: "0.88rem",
+                                                                        overflow: "hidden",
+                                                                        textOverflow: "ellipsis",
+                                                                        whiteSpace: "nowrap",
+                                                                    }, children: [pl.name || `P${idx + 1}`, pl.hasFinished
+                                                                            ? " 🎓"
+                                                                            : pl.skipTurn
+                                                                                ? " 💤"
+                                                                                : pl.isRepeat
+                                                                                    ? " 💀"
+                                                                                    : ""] })] }), (0, jsx_runtime_1.jsxs)("div", { style: {
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "6px",
+                                                                fontSize: "0.78rem",
+                                                                fontWeight: "bold",
+                                                                flexShrink: 0,
+                                                            }, children: [(0, jsx_runtime_1.jsxs)("span", { style: { color: "#e65100" }, children: ["\uD83C\uDF7A", plDrinks] }), (0, jsx_runtime_1.jsxs)("span", { style: { color: "#f57f17" }, children: ["\u2728", plHappy] }), plIns > 0 && ((0, jsx_runtime_1.jsxs)("span", { style: { color: "#8e24aa" }, children: ["\uD83D\uDEE1\uFE0F", plIns] }))] })] }, pl.id || idx));
                                             }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "card location-board-card", children: [(0, jsx_runtime_1.jsx)("div", { className: "card-title", style: {
                                                 fontWeight: "bold",
                                                 fontSize: "0.95rem",
@@ -923,12 +976,13 @@ function appendSocketListeners() {
     socket.on("showGoalModal", displayGoalModal);
     socket.off("triggerGoalCelebration");
     socket.on("triggerGoalCelebration", displayGoalModal);
-    // 🎊 全員ゴール完了（ゲーム終了）
+    // 🎊 全員ゴール完了（ゲーム終了・最終ランキング発表）
     socket.off("gameAllFinished");
     socket.on("gameAllFinished", (data) => {
         if (data && data.players)
             players = data.players;
         isPCEventMode = false;
+        document.body.classList.remove("theme-repeat-dark");
         const pcEventModal = document.getElementById("pc-event-modal");
         if (pcEventModal) {
             pcEventModal.className = "event-modal-overlay";
@@ -940,15 +994,39 @@ function appendSocketListeners() {
             const membersEl = document.getElementById("pc-kanpai-members");
             const locationEl = document.getElementById("pc-kanpai-location");
             if (titleEl)
-                titleEl.textContent = "🎊 全員卒業！ゲーム終了！ 🎊";
+                titleEl.textContent = "🎊 全員卒業！最終結果発表！ 🎊";
             if (membersEl) {
-                const summary = players
-                    .map((p) => `${p.name}(${p.drinkCount || 0}杯 / ${p.happiness !== undefined ? p.happiness : 100}pt)`)
-                    .join(" ・ ");
-                membersEl.textContent = summary || "全員卒業達成！";
+                // 幸福度順で総合ランキング作成
+                const sortedByHappy = [...players].sort((a, b) => (b.happiness !== undefined ? b.happiness : 100) -
+                    (a.happiness !== undefined ? a.happiness : 100));
+                // 最多飲酒プレイヤー（酒豪王）
+                const maxDrinks = Math.max(0, ...players.map((pl) => pl.drinkCount || 0));
+                const topDrinkers = maxDrinks > 0
+                    ? players
+                        .filter((pl) => (pl.drinkCount || 0) === maxDrinks)
+                        .map((pl) => pl.name)
+                    : [];
+                const medals = ["🥇 1位", "🥈 2位", "🥉 3位"];
+                const rowsHtml = sortedByHappy
+                    .map((pl, i) => {
+                    const rankLabel = medals[i] || `${i + 1}位`;
+                    const hp = pl.happiness !== undefined ? pl.happiness : 100;
+                    const dr = pl.drinkCount || 0;
+                    return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.18); padding:10px 18px; border-radius:12px; margin-bottom:8px; font-size:1.35rem;">
+              <span>${rankLabel} <strong>${pl.name}</strong></span>
+              <span>✨ ${hp}pt ／ 🍺 ${dr}杯</span>
+            </div>`;
+                })
+                    .join("");
+                const drinkKingHtml = topDrinkers.length > 0
+                    ? `<div style="margin-top:14px; padding:10px 16px; background:rgba(0,0,0,0.28); border-radius:12px; font-size:1.25rem; color:#ffeb3b;">
+                🍺 <strong>本日の酒豪王:</strong> ${topDrinkers.join("・")}（${maxDrinks}杯）
+              </div>`
+                    : "";
+                membersEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
             }
             if (locationEl)
-                locationEl.textContent = "最高の宅飲み人生に乾杯！！！";
+                locationEl.textContent = "最高の宅飲み人生に乾杯！！！🍻";
             kanpaiModal.style.display = "flex";
         }
         updateCurrentPlayerDisplay();

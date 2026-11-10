@@ -207,18 +207,46 @@ io.on("connection", (socket) => {
             qrCodeDataUrl,
         });
     });
-    // 【ルーム参加】
+    // 【ルーム参加（ゲーム進行中の途中復帰・リロード自動再接続にも対応）】
     socket.on("joinRoom", (data) => {
         const roomCode = data && data.roomCode ? data.roomCode : null;
         if (roomCode && rooms[roomCode]) {
+            const room = rooms[roomCode];
             socket.join(roomCode);
             socket.roomCode = roomCode;
             console.log(`ルーム参加 [${roomCode}]:`, socket.id);
-            socket.emit("joinedSuccess", { roomCode });
-            socket.emit("applySettings", {
-                players: rooms[roomCode].players,
-                mode: rooms[roomCode].mode,
-            });
+            const isGameInProgress = Boolean(room.gamePlayers && room.gamePlayers.length > 0);
+            socket.emit("joinedSuccess", { roomCode, isGameInProgress });
+            if (isGameInProgress) {
+                const activeP = room.gamePlayers[room.activePlayerIndex];
+                socket.emit("gameStarted", {
+                    roomCode,
+                    players: room.gamePlayers,
+                    mode: room.mode,
+                    activePlayerIndex: room.activePlayerIndex,
+                    currentPhase: room.currentPhase || PHASES.TURN_START,
+                });
+                socket.emit("applyPlayerAction", {
+                    action: activeP && activeP.skipTurn ? "turnSkipped" : "turnUpdated",
+                    activePlayerIndex: room.activePlayerIndex,
+                    activePlayerName: activeP ? activeP.name : "",
+                });
+                socket.emit("syncGameState", {
+                    players: room.gamePlayers,
+                    activePlayerIndex: room.activePlayerIndex,
+                    currentPhase: room.currentPhase || PHASES.TURN_START,
+                });
+                if (room.currentPhase === PHASES.WAIT_NEXT ||
+                    room.currentPhase === "6.WAIT_NEXT") {
+                    socket.emit("enableNextTurnButton");
+                }
+            }
+            else {
+                socket.emit("applySettings", {
+                    players: room.players,
+                    mode: room.mode,
+                });
+            }
         }
         else {
             socket.emit("errorMsg", { message: "指定されたルームが見つかりません" });
