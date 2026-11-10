@@ -1422,6 +1422,7 @@ function appendSocketListeners() {
     if (!data || !data.player) return;
     console.log(`💻 [PC ゴール祝賀展開] プレイヤー: ${data.player.name}`);
     isPCEventMode = false;
+    document.body.classList.remove("theme-repeat-dark");
 
     const pcEventModal = document.getElementById("pc-event-modal");
     if (pcEventModal) {

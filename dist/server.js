@@ -116,8 +116,9 @@ function startTurnRoutine(room, roomCode) {
     const p = room.gamePlayers[room.activePlayerIndex];
     if (!p)
         return;
-    // 1. ターン開始前確認フェーズに設定
+    // 1. ターン開始前確認フェーズに設定（このターン開始時点の杯数を記録）
     room.currentPhase = PHASES.TURN_START;
+    p.turnStartDrinkCount = p.drinkCount || 0;
     console.log(`\n=========================================`);
     console.log(`🚨 [SERVER ROUTINE] ➔ 1. 新ターン開始: ${p.name} さん (現在地: ${p.position}番マス)`);
     // 2. 休み（skipTurn）のチェック

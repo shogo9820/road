@@ -9,7 +9,19 @@ window.SQ_MODULES[99] = {
     event: function (player, moduleData) {
       console.log(`🎉 [99番マス: GOAL到着] プレイヤー: ${player.name} が卒業式場に着地しました！`);
 
-      const targetRoom = typeof currentRoomCode !== "undefined" ? currentRoomCode : (typeof roomCode !== "undefined" ? roomCode : "");
+      // 留年ルートからゴールした場合も背景のダークテーマを解除して祝賀モードへ
+      document.body.classList.remove("theme-repeat-dark");
+
+      // PC大画面側は socket 通知による showGoalModal で描画するため重複送信を防止
+      const pcModal = document.getElementById("pc-event-modal");
+      if (pcModal) return;
+
+      const targetRoom =
+        typeof currentRoomCode !== "undefined"
+          ? currentRoomCode
+          : typeof roomCode !== "undefined"
+            ? roomCode
+            : "";
 
       // 1. プレイヤーにゴールフラグを付与
       player.hasFinished = true;
@@ -29,6 +41,24 @@ window.SQ_MODULES[99] = {
           updatedPlayer: player
         });
       }
+    }
+  },
+  salaryman: {
+    id: 99,
+    type: "goal",
+    text: "㊗️ 祝・定年退職！ゴール！！！",
+    location: "卒業式場（ゴール）",
+    event: function (p, m) {
+      window.SQ_MODULES[99].normal.event(p, m);
+    }
+  },
+  short: {
+    id: 99,
+    type: "goal",
+    text: "㊗️ 祝・大学卒業！ゴール！！！",
+    location: "卒業式場（ゴール）",
+    event: function (p, m) {
+      window.SQ_MODULES[99].normal.event(p, m);
     }
   }
 };

@@ -213,19 +213,31 @@ function checkBranchSquareOnTurnStart(syncData) {
     if (window.hasConfirmedThisTurn === true) {
         return;
     }
-    if (Number(pObj.position) !== 0 && Number(pObj.position) !== 49) {
+    const pos = Number(pObj.position);
+    if (pos !== 0 && pos !== 49) {
         return;
     }
+    // sq_0.js / sq_49.js の routeConfig からルート選択モーダルの文言を参照
+    const modObj = window.SQ_MODULES && window.SQ_MODULES[pos];
+    const targetModule = modObj
+        ? modObj[currentGameMode] || modObj.normal
+        : null;
+    const rCfg = (targetModule && targetModule.routeConfig) || {};
+    const modalTitle = rCfg.title || "🧭 運命の進路選択";
+    const modalDesc = rCfg.desc || "進むルートをタップしてください。";
+    const routeALabel = rCfg.routeALabel || "Aルート（通常進路）";
+    const routeBLabel = rCfg.routeBLabel || "Bルート（特殊進路）";
+    const confirmLabel = rCfg.confirmLabel || "進路を確定してルーレットへ";
     let modalHtml = `
     <div id="route-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
       <div style="background:#fff; width:90%; max-width:320px; padding:25px; border-radius:16px; text-align:center; box-sizing:border-box;">
-        <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">🧭 運命の進路選択</h3>
-        <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">進むルートをタップしてください。</p>
+        <h3 style="margin-top:0; color:#222; font-size:1.25rem; font-weight:bold;">${modalTitle}</h3>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:20px; line-height:1.4;">${modalDesc}</p>
         <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
-          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Aルート（通常進路）</button>
-          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">Bルート（特殊進路）</button>
+          <button id="btn-route-a" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">${routeALabel}</button>
+          <button id="btn-route-b" style="padding:14px; font-size:1rem; font-weight:bold; border:2px solid #ddd; border-radius:10px; background:#fff; color:#333; cursor:pointer; outline:none;">${routeBLabel}</button>
         </div>
-        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed;">進路を確定してルーレットへ</button>
+        <button id="btn-route-confirm" disabled style="width:100%; padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#ccc; color:#fff; cursor:not-allowed;">${confirmLabel}</button>
       </div>
     </div>
   `;
@@ -299,7 +311,7 @@ function loadAndApplySquareComponent(squareId, callback) {
     }
     // 2. スクリプトの動的生成と確実な読み込み待ち
     const script = document.createElement("script");
-    script.src = `/squares/sq_${squareId}.js?t=${Date.now()}`;
+    script.src = `/squares/sq_${squareId}.js`;
     script.onload = () => {
         setTimeout(() => {
             if (typeof callback === "function")
@@ -950,12 +962,15 @@ function initMobileListeners() {
             console.log("🛑 [DEBUG] プレイヤー情報が存在しないため終了");
             return;
         }
-        // 保険ボタンの更新
+        // 保険ボタンの更新（このターンに飲酒が発生し、交代待ちフェーズ中のときのみ利用可能）
         const insuranceBtn = document.getElementById("btn-phone-use-insurance");
         if (insuranceBtn) {
             const insuranceCount = p.insurance !== undefined ? p.insurance : 0;
             const isAutoInsuranceSquare = Number(p.position) === 80 &&
                 window.serverCurrentPhase === "4.SQUARE_LANDED";
+            const isWaitNextPhase = window.serverCurrentPhase === "6.WAIT_NEXT";
+            const turnStartDrinks = p.turnStartDrinkCount !== undefined ? p.turnStartDrinkCount : 0;
+            const hasDrunkThisTurn = (p.drinkCount || 0) > turnStartDrinks && Number(p.position) !== 30;
             if (isAutoInsuranceSquare) {
                 insuranceBtn.disabled = true;
                 insuranceBtn.textContent =
@@ -963,7 +978,10 @@ function initMobileListeners() {
                         ? `🛡️ 生命保険 全${insuranceCount}枚 自動発動中！`
                         : `🛡️ 生命保険を利用する (0枚)`;
             }
-            else if (insuranceCount > 0 && currentIdx === activePlayerIndex) {
+            else if (insuranceCount > 0 &&
+                currentIdx === activePlayerIndex &&
+                isWaitNextPhase &&
+                hasDrunkThisTurn) {
                 insuranceBtn.disabled = false;
                 insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚所持)`;
             }
@@ -997,7 +1015,9 @@ function initMobileListeners() {
             }
             if ((pos === 0 || pos === 49) && !window.hasConfirmedThisTurn) {
                 console.log("📱 [DEBUG] 分岐対象マスを検知。進路選択モーダルを表示します。");
-                checkBranchSquareOnTurnStart(data);
+                loadAndApplySquareComponent(pos, () => {
+                    checkBranchSquareOnTurnStart(data);
+                });
             }
         }
         // 🎯 2. スピン待機フェーズ（2.WAIT_SPIN）

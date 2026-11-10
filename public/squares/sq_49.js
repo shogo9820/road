@@ -4,7 +4,7 @@
  * [設計思想]
  * 1. 着地時（startSquareEvent）：18番や41番と同様にPC・スマホ連動のイベントモーダル＆ルーレットを展開。
  *    出目6以上でマスタ（JOBS）の title（上位役職名）へランクアップし、5以下は現状維持。
- * 2. 次ターン開始時（1.TURN_START）：0番マス（sq_0.js）と完全に同じ「shadowTargets」構造により、
+ * 2. 次ターン開始時（1.TURN_START）：0番マス（sq_0.js）と完全に同じ「shadowTargets」「routeConfig」構造により、
  *    Aルート / Bルートの進路選択と影描画がそのまま機能します。
  */
 
@@ -19,6 +19,15 @@ window.SQ_MODULES[49] = {
     drink: 0,
     happiness: 0,
     location: "家",
+
+    // 🧭 進路選択モーダルの文言設定
+    routeConfig: {
+      title: "🧭 運命の進路選択",
+      desc: "進むルートをタップしてください。",
+      routeALabel: "Aルート（激シャバルート）",
+      routeBLabel: "Bルート（激おもろ一生の思い出ルート）",
+      confirmLabel: "進路を確定してルーレットへ"
+    },
 
     // 🧭 0番マス（sq_0.js）と完全に一致させた、影を落とすマスのID配列指定
     shadowTargets: {
@@ -247,6 +256,13 @@ window.SQ_MODULES[49] = {
     drink: 0,
     happiness: 0,
     location: "オフィス",
+    routeConfig: {
+      title: "🧭 運命の進路選択",
+      desc: "進むルートをタップしてください。",
+      routeALabel: "Aルート（激シャバルート）",
+      routeBLabel: "Bルート（激おもろ一生の思い出ルート）",
+      confirmLabel: "進路を確定してルーレットへ"
+    },
     shadowTargets: {
       routeA: [
         59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
@@ -269,6 +285,13 @@ window.SQ_MODULES[49] = {
     drink: 0,
     happiness: 10,
     location: "家",
+    routeConfig: {
+      title: "🧭 運命の進路選択",
+      desc: "進むルートをタップしてください。",
+      routeALabel: "Aルート（激シャバルート）",
+      routeBLabel: "Bルート（激おもろ一生の思い出ルート）",
+      confirmLabel: "進路を確定してルーレットへ"
+    },
     shadowTargets: {
       routeA: [
         59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,

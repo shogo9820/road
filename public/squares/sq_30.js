@@ -10,6 +10,7 @@ window.SQ_MODULES[30] = {
 
     config: {
       themeClass: "theme-insurance",
+      maxInsurance: 3, // 💡 将来5枚上限に変更する場合はここを 5 に変えるだけで自動反映されます
       pcTitle: "🛡️ 生命保険 取扱所 🛡️",
       pcDesc: "今後の飲酒を完全無効化できる生命保険に加入できます（1枚購入につき1杯飲酒）。スマホで枚数を選択してください。",
       mobilePrompt: "🛡️ 今後の飲酒を完全無効化できる生命保険を購入できます（1枚購入につき1杯飲酒）。"
@@ -17,6 +18,9 @@ window.SQ_MODULES[30] = {
 
     event: function (player, square) {
       const cfg = this.config;
+      const maxIns = cfg.maxInsurance || 3;
+      const currentIns = player.insurance || 0;
+      const purchasableMax = Math.max(0, maxIns - currentIns);
       const targetRoom =
         typeof currentRoomCode !== "undefined"
           ? currentRoomCode
@@ -54,7 +58,7 @@ window.SQ_MODULES[30] = {
             <ul class="event-table-list">
               <li class="event-table-item"><div class="event-table-num-badge" style="background:#d32f2f;">代償</div><div><span style="color:#c62828; font-weight:bold;">🍺 1枚購入するごとに、その場で1杯飲まないといけない！</span></div></li>
               <li class="event-table-item"><div class="event-table-num-badge" style="background:#ab47bc;">効果</div><div><span style="color:#4a148c; font-weight:bold;">1枚消費につき、アルコール1杯を完全無効化！</span></div></li>
-              <li class="event-table-item"><div class="event-table-num-badge" style="background:#ab47bc;">制限</div><div><span style="color:#4a148c; font-weight:bold;">1人あたり最大3枚まで購入可能</span></div></li>
+              <li class="event-table-item"><div class="event-table-num-badge" style="background:#ab47bc;">制限</div><div><span style="color:#4a148c; font-weight:bold;">1人あたり最大${maxIns}枚まで所持可能（現在: ${currentIns}枚）</span></div></li>
             </ul>
           `;
         }
@@ -76,16 +80,19 @@ window.SQ_MODULES[30] = {
         // 既存の残骸があれば削除
         document.getElementById("insurance-inline-zone")?.remove();
 
+        let buttonsHtml = `<button class="btn-shop-select btn-blue" data-count="0" style="background-color:#78909c !important;">0枚（購入しない / 0杯）</button>`;
+        for (let i = 1; i <= purchasableMax; i++) {
+          const maxLabel = i === purchasableMax ? "最大 / " : "";
+          buttonsHtml += `<button class="btn-shop-select btn-orange" data-count="${i}">${i}枚購入（${maxLabel}🍺 ${i}杯飲む）</button>`;
+        }
+
         const inlineShopHtml = `
           <div id="insurance-inline-zone" style="width:100%; display:flex; flex-direction:column; gap:8px; margin:10px auto; align-items:center;">
             <div style="font-weight:bold; font-size:1.1rem; color:#9c27b0; margin-bottom:4px; text-align:center;">
-              🛡️ 何枚購入しますか？ (現在: ${player.insurance || 0}枚所持)<br>
+              🛡️ 何枚購入しますか？ (現在: ${currentIns} / ${maxIns}枚所持)<br>
               <span style="font-size:0.9rem; color:#d32f2f;">※1枚購入するのに1杯飲まないといけません</span>
             </div>
-            <button class="btn-shop-select btn-blue" data-count="0" style="background-color:#78909c !important;">0枚（購入しない / 0杯）</button>
-            <button class="btn-shop-select btn-orange" data-count="1">1枚購入（🍺 1杯飲む）</button>
-            <button class="btn-shop-select btn-orange" data-count="2">2枚購入（🍺 2杯飲む）</button>
-            <button class="btn-shop-select btn-orange" data-count="3">3枚購入（最大 / 🍺 3杯飲む）</button>
+            ${buttonsHtml}
           </div>
         `;
 
@@ -103,7 +110,7 @@ window.SQ_MODULES[30] = {
             const buyCount = parseInt(e.currentTarget.getAttribute("data-count"), 10);
 
             if (!player.insurance) player.insurance = 0;
-            player.insurance += buyCount;
+            player.insurance = Math.min(maxIns, player.insurance + buyCount);
 
             // 購入した枚数分だけ杯数（drinkCount）をプラス＆体力（currentHp）を計算
             if (buyCount > 0) {
