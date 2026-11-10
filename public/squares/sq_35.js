@@ -47,17 +47,11 @@ window.SQ_MODULES[35] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "heian" ||
-        ["平安生","龍大生"].includes(player.job);
+      const isMatch = player.jobId === "heian";
       applyDrinkAndHappiness(player, 0, 5);
       if (isMatch && typeof players !== "undefined" && Array.isArray(players)) {
         players.forEach((p) => {
-          if (
-            p &&
-            (p.jobId === "heian" ||
-              ["平安生","龍大生"].includes(p.job))
-          ) {
+          if (p && p.jobId === "heian") {
             applyDrinkAndHappiness(p, 1, 0);
           }
         });

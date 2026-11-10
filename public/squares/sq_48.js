@@ -47,9 +47,7 @@ window.SQ_MODULES[48] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "soccer" ||
-        ["サッカーキャラ","超絶イケメン天才カリスマフットボールプレイヤー"].includes(player.job);
+      const isMatch = player.jobId === "soccer";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");

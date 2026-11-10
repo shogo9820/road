@@ -47,9 +47,7 @@ window.SQ_MODULES[47] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "okinawa" ||
-        ["沖縄出身","比嘉んちゅ"].includes(player.job);
+      const isMatch = player.jobId === "okinawa";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");

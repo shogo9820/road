@@ -47,9 +47,7 @@ window.SQ_MODULES[36] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "ikemen" ||
-        ["イケメン","いかれバーテンダー"].includes(player.job);
+      const isMatch = player.jobId === "ikemen";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, -5);
       const resDisplay = document.getElementById("roulette-result-display");

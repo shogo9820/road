@@ -47,9 +47,7 @@ window.SQ_MODULES[43] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "omoshiro" ||
-        ["おもしろキャラ","松竹所属芸人"].includes(player.job);
+      const isMatch = player.jobId === "omoshiro";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");

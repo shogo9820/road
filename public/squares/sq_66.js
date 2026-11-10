@@ -47,9 +47,7 @@ window.SQ_MODULES[66] = {
         }
       }
 
-      const isMatch =
-        (player.jobId === "mob" && player.isRankedUp) ||
-        player.job === "代表or副代表";
+      const isMatch = player.jobId === "mob" && Boolean(player.isRankedUp);
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");

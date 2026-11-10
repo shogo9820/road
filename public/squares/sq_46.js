@@ -47,9 +47,7 @@ window.SQ_MODULES[46] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "psychopath" ||
-        ["サイコパス","パパ"].includes(player.job);
+      const isMatch = player.jobId === "psychopath";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");

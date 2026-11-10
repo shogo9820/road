@@ -47,10 +47,7 @@ window.SQ_MODULES[67] = {
         }
       }
 
-      const isBijin =
-        player.jobId === "bijin" ||
-        player.job === "美人" ||
-        player.job === "ミス龍大";
+      const isBijin = player.jobId === "bijin";
       applyDrinkAndHappiness(player, 0, 0);
       if (isBijin && typeof players !== "undefined" && Array.isArray(players)) {
         players.forEach((p) => {

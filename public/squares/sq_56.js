@@ -47,9 +47,7 @@ window.SQ_MODULES[56] = {
         }
       }
 
-      const isMatch =
-        player.jobId === "korean" ||
-        ["韓国人","イ"].includes(player.job);
+      const isMatch = player.jobId === "korean";
       const drinkAmount = isMatch ? 2 : 0;
       applyDrinkAndHappiness(player, drinkAmount, 0);
       const resDisplay = document.getElementById("roulette-result-display");
