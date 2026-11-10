@@ -1197,7 +1197,10 @@ function initMobileListeners() {
 
         const jobMaster =
           typeof JOBS !== "undefined"
-            ? JOBS.find((j: any) => j.id === p.jobId || j.label === p.job)
+            ? JOBS.find(
+                (j: any) =>
+                  j.id === p.jobId || j.label === p.job || j.title === p.job,
+              )
             : null;
         const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 80;
         const maxHp = baseCap + (p.bonusCap || 0);
@@ -1209,7 +1212,7 @@ function initMobileListeners() {
           p.drinkCount = (p.drinkCount || 0) + drinkAmount;
           p.currentHp = Math.max(0, p.currentHp - drinkAmount * 10);
         } else if (targetModule.type === "heal") {
-          p.currentHp = Math.min(maxHp, p.currentHp + 30);
+          p.currentHp = maxHp;
         }
 
         const happinessChange =

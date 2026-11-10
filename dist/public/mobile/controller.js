@@ -760,7 +760,7 @@ function initMobileListeners() {
             else {
                 console.log(`📱 [4.2 通常マス] 特殊イベント無しのマスです。効果を適用して完了通知を送信します。`);
                 const jobMaster = typeof JOBS !== "undefined"
-                    ? JOBS.find((j) => j.id === p.jobId || j.label === p.job)
+                    ? JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job)
                     : null;
                 const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 80;
                 const maxHp = baseCap + (p.bonusCap || 0);
@@ -772,7 +772,7 @@ function initMobileListeners() {
                     p.currentHp = Math.max(0, p.currentHp - drinkAmount * 10);
                 }
                 else if (targetModule.type === "heal") {
-                    p.currentHp = Math.min(maxHp, p.currentHp + 30);
+                    p.currentHp = maxHp;
                 }
                 const happinessChange = targetModule.happiness !== undefined
                     ? Number(targetModule.happiness)

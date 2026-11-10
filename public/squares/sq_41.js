@@ -137,6 +137,21 @@ window.SQ_MODULES[41] = {
               if (!player.lovers.includes(hitTarget.name)) player.lovers.push(hitTarget.name);
               player.drinkCount = (player.drinkCount || 0) + 1;
 
+              const jobMaster =
+                typeof JOBS !== "undefined" && Array.isArray(JOBS)
+                  ? JOBS.find((j) => j.id === player.jobId || j.label === player.job || j.title === player.job)
+                  : null;
+              const baseCap = jobMaster ? jobMaster.cap : player.baseCap || 80;
+              const maxHp = baseCap + (player.bonusCap || 0);
+              if (player.currentHp === undefined) player.currentHp = maxHp;
+              player.currentHp = Math.max(0, player.currentHp - 10);
+              if (player.currentHp <= 0) {
+                if (player.happiness === undefined) player.happiness = 100;
+                player.happiness = Math.max(0, player.happiness - 30);
+                player.skipTurn = true;
+                player.currentHp = maxHp;
+              }
+
               // 🎯 サーバーの独立レシーバーへ直撃送信（名前も一緒に渡す）
               socket.emit("customEventSecondSpinResult", {
                 roomCode: targetRoom,

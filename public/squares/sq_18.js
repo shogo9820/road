@@ -69,10 +69,30 @@ window.SQ_MODULES[18] = {
         const spinBtn = document.getElementById("btn-phone-spin");
         const resultDisplay = document.getElementById("roulette-result-display");
 
-        // 美人役職の場合
+        // 美人役職の場合（自分以外の全員が1杯飲み、体力-10＆二日酔い判定）
         if (player.jobId === "bijin") {
           if (typeof players !== "undefined" && Array.isArray(players)) {
-            players.forEach((p) => { if (p.id !== player.id) p.drinkCount = (p.drinkCount || 0) + 1; });
+            players.forEach((p) => {
+              if (p && p.id !== player.id) {
+                const jobMaster =
+                  typeof JOBS !== "undefined" && Array.isArray(JOBS)
+                    ? JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job)
+                    : null;
+                const baseCap = jobMaster ? jobMaster.cap : p.baseCap || 80;
+                const maxHp = baseCap + (p.bonusCap || 0);
+                if (p.currentHp === undefined) p.currentHp = maxHp;
+
+                p.drinkCount = (p.drinkCount || 0) + 1;
+                p.currentHp = Math.max(0, p.currentHp - 10);
+
+                if (p.currentHp <= 0) {
+                  if (p.happiness === undefined) p.happiness = 100;
+                  p.happiness = Math.max(0, p.happiness - 30);
+                  p.skipTurn = true;
+                  p.currentHp = maxHp;
+                }
+              }
+            });
             socket.emit("updateGameState", { roomCode: targetRoom, players: players });
           }
           socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });

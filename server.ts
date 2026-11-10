@@ -793,6 +793,14 @@ io.on("connection", (socket) => {
                 0,
                 (op.currentHp !== undefined ? op.currentHp : mHp) - 10,
               );
+              if (op.currentHp <= 0) {
+                op.happiness = Math.max(
+                  0,
+                  (op.happiness !== undefined ? op.happiness : 100) - 30,
+                );
+                op.skipTurn = true;
+                op.currentHp = mHp;
+              }
             }
           });
         } else if (outcome.name && outcome.name.includes("他全員2杯")) {
@@ -804,6 +812,14 @@ io.on("connection", (socket) => {
                 0,
                 (op.currentHp !== undefined ? op.currentHp : mHp) - 20,
               );
+              if (op.currentHp <= 0) {
+                op.happiness = Math.max(
+                  0,
+                  (op.happiness !== undefined ? op.happiness : 100) - 30,
+                );
+                op.skipTurn = true;
+                op.currentHp = mHp;
+              }
             }
           });
         }
@@ -958,6 +974,19 @@ io.on("connection", (socket) => {
           partner.lovers.push(player.name);
         }
         partner.drinkCount = (partner.drinkCount || 0) + 1;
+        const mHp = (partner.baseCap || 80) + (partner.bonusCap || 0);
+        partner.currentHp = Math.max(
+          0,
+          (partner.currentHp !== undefined ? partner.currentHp : mHp) - 10,
+        );
+        if (partner.currentHp <= 0) {
+          partner.happiness = Math.max(
+            0,
+            (partner.happiness !== undefined ? partner.happiness : 100) - 30,
+          );
+          partner.skipTurn = true;
+          partner.currentHp = mHp;
+        }
       }
 
       io.to(roomCode).emit("customEventFinished", {
