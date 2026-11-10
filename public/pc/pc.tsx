@@ -521,6 +521,50 @@ const PCModalsZone = memo(
           </div>
         </div>
       </div>
+
+      {/* 🎲 宅飲みゲーム専用 特大モーダル */}
+      <div
+        id="pc-takunomi-modal"
+        className="kanpai-overlay"
+        style={{ display: "none" }}
+      >
+        <div
+          className="kanpai-window"
+          style={{
+            background: "linear-gradient(135deg, #ff6f00 0%, #f57c00 50%, #ffb300 100%)",
+          }}
+        >
+          <div className="kanpai-glow"></div>
+          <h1 className="kanpai-header">🍻 宅飲みミニゲーム発生！ 🍻</h1>
+          <div
+            id="pc-takunomi-desc"
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              color: "#fff8e1",
+              background: "rgba(0, 0, 0, 0.25)",
+              padding: "10px 24px",
+              borderRadius: "16px",
+              margin: "12px auto",
+              maxWidth: "85%",
+            }}
+          ></div>
+          <div
+            id="pc-takunomi-main"
+            className="kanpai-shout"
+            style={{ margin: "18px 0", fontSize: "3.2rem" }}
+          >
+            プレイヤーから始まる！
+          </div>
+          <div
+            id="pc-takunomi-sub"
+            className="kanpai-footer-nav"
+            style={{ fontSize: "1.25rem", color: "#fff" }}
+          >
+            ※実際にゲームをして、負けた人をスマホ画面で選択してください
+          </div>
+        </div>
+      </div>
     </>
   ),
   () => true,
@@ -1253,18 +1297,43 @@ function appendSocketListeners() {
         targetModule.event(p, targetSquare || targetModule);
       }
 
+      // 1.5. 🎲 宅飲みマスの場合はPC画面に「〇〇から始まる！」モーダルを展開
+      if (p.location === "宅飲み") {
+        const takunomiModal = document.getElementById("pc-takunomi-modal");
+        if (takunomiModal) {
+          const descEl = document.getElementById("pc-takunomi-desc");
+          const mainEl = document.getElementById("pc-takunomi-main");
+          const subEl = document.getElementById("pc-takunomi-sub");
+          const sqText =
+            (targetModule && targetModule.text) ||
+            (targetSquare && targetSquare.text) ||
+            "宅飲みゲームスタート！";
+          if (descEl) descEl.textContent = `🎲 ${sqText}`;
+          if (mainEl) {
+            mainEl.textContent = `👉 ${p.name} から始まる！`;
+            mainEl.style.color = "#ffffff";
+          }
+          if (subEl) {
+            subEl.textContent =
+              "※実際にゲームをして、負けた人をスマホ画面で選択してください";
+          }
+          takunomiModal.style.display = "flex";
+        }
+      }
+
       // 2. 盤面Canvas、ステータス、凡例・エリア表を即座に再描画
       if (window.boardManager) {
         window.boardManager.draw(players, activePlayerIndex);
       }
       updateCurrentPlayerDisplay();
 
-      // 3. 🍻 同じ場所乾杯判定
+      // 3. 🍻 同じ場所乾杯判定（宅飲みは除外）
       if (
         p.location &&
         p.location !== "家" &&
         p.location !== "スタート前" &&
         p.location !== "-" &&
+        p.location !== "宅飲み" &&
         p.position !== 99
       ) {
         const samePlaceBuddies = players
@@ -1615,6 +1684,25 @@ function appendSocketListeners() {
       window.boardManager.draw(players, activePlayerIndex);
   });
 
+  // 🎲 宅飲みゲーム決着：スマホで選択された敗者をPCモーダルに表示
+  socket.off("takunomiEventFinished");
+  socket.on("takunomiEventFinished", (data: any) => {
+    if (!data) return;
+    const takunomiModal = document.getElementById("pc-takunomi-modal");
+    if (takunomiModal) {
+      takunomiModal.style.display = "flex";
+      const mainEl = document.getElementById("pc-takunomi-main");
+      const subEl = document.getElementById("pc-takunomi-sub");
+      if (mainEl) {
+        mainEl.textContent = `🚨 ${data.loserName} アウト！ 🚨`;
+        mainEl.style.color = "#ffeb3b";
+      }
+      if (subEl) {
+        subEl.textContent = `🍺 ${data.loserName} さんが ＋${data.drinkAmount || 1}杯 飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`;
+      }
+    }
+  });
+
   socket.off("enableNextTurnButton");
   socket.on("enableNextTurnButton", () => {
     const pcModal = document.getElementById("pc-event-modal");
@@ -1664,6 +1752,11 @@ function appendSocketListeners() {
         kanpaiModal.style.display = "none";
       }
 
+      const takunomiModal = document.getElementById("pc-takunomi-modal");
+      if (takunomiModal) {
+        takunomiModal.style.display = "none";
+      }
+
       const coupleModal = document.getElementById("pc-couple-event-modal");
       if (coupleModal) {
         coupleModal.style.display = "none";
@@ -1688,6 +1781,10 @@ function appendSocketListeners() {
       const kanpaiModal = document.getElementById("pc-kanpai-modal");
       if (kanpaiModal) {
         kanpaiModal.style.display = "none";
+      }
+      const takunomiModal = document.getElementById("pc-takunomi-modal");
+      if (takunomiModal) {
+        takunomiModal.style.display = "none";
       }
       const descEl =
         document.getElementById("event-text") ||

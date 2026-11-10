@@ -570,6 +570,52 @@ io.on("connection", (socket) => {
             io.to(roomCode).emit("showGoalModal", data);
     });
     // ==========================================================================
+    // 🎲 【宅飲みミニゲーム：スマホで負けたプレイヤーを選択】
+    // ==========================================================================
+    socket.on("takunomiLoserSelected", (data) => {
+        const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
+        const room = roomCode ? rooms[roomCode] : null;
+        if (!room || !room.gamePlayers)
+            return;
+        const drinkAmount = data && data.drinkAmount !== undefined ? Number(data.drinkAmount) : 1;
+        const squareHappiness = data && data.squareHappiness !== undefined
+            ? Number(data.squareHappiness)
+            : 0;
+        // 止まったプレイヤーにマスの幸福度変化があれば反映
+        const activeP = room.gamePlayers[room.activePlayerIndex];
+        if (activeP && squareHappiness !== 0) {
+            activeP.happiness =
+                (activeP.happiness !== undefined ? activeP.happiness : 100) +
+                    squareHappiness;
+        }
+        // 選択された敗者プレイヤーに飲酒＆HP減少＆二日酔い判定を適用
+        const loser = room.gamePlayers.find((p) => String(p.id) === String(data.loserId) || p.name === data.loserName) || activeP;
+        if (loser) {
+            loser.drinkCount = (loser.drinkCount || 0) + drinkAmount;
+            const mHp = (loser.baseCap || 80) + (loser.bonusCap || 0);
+            loser.currentHp = Math.max(0, (loser.currentHp !== undefined ? loser.currentHp : mHp) -
+                drinkAmount * 10);
+            if (loser.currentHp <= 0) {
+                loser.happiness = Math.max(0, (loser.happiness !== undefined ? loser.happiness : 100) - 30);
+                loser.skipTurn = true;
+                loser.currentHp = mHp;
+            }
+            console.log(`🍻 [SERVER 宅飲み決着] ${loser.name} アウト！（+${drinkAmount}杯）`);
+        }
+        room.currentPhase = PHASES.WAIT_NEXT;
+        io.to(roomCode).emit("takunomiEventFinished", {
+            loserId: loser ? loser.id : data.loserId,
+            loserName: loser ? loser.name : data.loserName,
+            drinkAmount,
+        });
+        io.to(roomCode).emit("enableNextTurnButton");
+        io.to(roomCode).emit("syncGameState", {
+            players: room.gamePlayers,
+            activePlayerIndex: room.activePlayerIndex,
+            currentPhase: room.currentPhase,
+        });
+    });
+    // ==========================================================================
     // 🎓 【89番マス：運命の卒業判定】
     // ==========================================================================
     socket.on("showGraduateEvent", (data) => {

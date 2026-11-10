@@ -1189,6 +1189,96 @@ function initMobileListeners() {
         );
         targetModule.event(p, targetModule);
       }
+      // 🚀 パターンB-2：宅飲みマスの場合（スマホに全員の敗者選択ボタンを展開）
+      else if (p.location === "宅飲み") {
+        console.log(
+          `📱 [4.2 宅飲みミニゲーム] マスID: ${currentPos}。敗者選択画面を展開します。`,
+        );
+        const resDisplay = document.getElementById("roulette-result-display");
+        const spinBtn = document.getElementById("btn-phone-spin");
+        const playScreen =
+          document.getElementById("phone-screen-play") || document.body;
+
+        if (spinBtn) spinBtn.style.display = "none";
+        if (resDisplay) {
+          resDisplay.textContent = `🍻 ${p.name} からスタート！負けた人を選択してください`;
+        }
+
+        document.getElementById("takunomi-loser-zone")?.remove();
+
+        const buttonsHtml = (players || [])
+          .map((pl) => {
+            let penaltyDrinks =
+              targetModule.drink && Number(targetModule.drink) > 0
+                ? Number(targetModule.drink)
+                : 1;
+            if (currentPos === 45) {
+              penaltyDrinks = pl.jobId === "busaiku" ? 2 : 1;
+            } else if (currentPos === 78) {
+              penaltyDrinks = pl.isRankedUp ? 2 : 1;
+            } else if (currentPos === 96) {
+              penaltyDrinks = 2;
+            }
+            return `<button type="button" class="btn-takunomi-select btn-orange" data-player-id="${pl.id}" data-player-name="${pl.name}" data-drinks="${penaltyDrinks}" style="width:100%; max-width:300px; padding:12px; font-weight:bold; font-size:1.05rem; border-radius:10px; cursor:pointer;">🚨 ${pl.name} アウト！（🍺 ＋${penaltyDrinks}杯）</button>`;
+          })
+          .join("");
+
+        const inlineZoneHtml = `
+          <div id="takunomi-loser-zone" style="width:100%; display:flex; flex-direction:column; gap:8px; margin:10px auto; align-items:center;">
+            <div style="font-weight:bold; font-size:1.05rem; color:#e65100; margin-bottom:4px; text-align:center;">
+              🎲 ${targetModule.text || "宅飲みゲーム！"}<br>
+              <span style="font-size:0.9rem; color:#333;">👉 <strong>${p.name}</strong> から始まる！負けた人をタップ👇</span>
+            </div>
+            ${buttonsHtml}
+          </div>
+        `;
+
+        if (spinBtn) {
+          spinBtn.insertAdjacentHTML("beforebegin", inlineZoneHtml);
+        } else {
+          playScreen.insertAdjacentHTML("beforeend", inlineZoneHtml);
+        }
+
+        const selectBtns = document.querySelectorAll(
+          "#takunomi-loser-zone .btn-takunomi-select",
+        );
+        selectBtns.forEach((btn) => {
+          (btn as HTMLButtonElement).onclick = (e) => {
+            e.preventDefault();
+            const targetEl = e.currentTarget as HTMLElement;
+            const loserId = targetEl.getAttribute("data-player-id") || "";
+            const loserName =
+              targetEl.getAttribute("data-player-name") || "プレイヤー";
+            const drinkAmt = parseInt(
+              targetEl.getAttribute("data-drinks") || "1",
+              10,
+            );
+            const sqHappiness =
+              targetModule.happiness !== undefined
+                ? Number(targetModule.happiness)
+                : 0;
+
+            document.getElementById("takunomi-loser-zone")?.remove();
+            if (spinBtn) {
+              spinBtn.style.display = "block";
+              (spinBtn as HTMLButtonElement).disabled = true;
+            }
+            if (resDisplay) {
+              resDisplay.textContent = `🚨 ${loserName} アウト！（🍺 ＋${drinkAmt}杯）`;
+            }
+
+            socket.emit("takunomiLoserSelected", {
+              roomCode: currentRoomCode,
+              squareId: currentPos,
+              loserId,
+              loserName,
+              drinkAmount: drinkAmt,
+              squareHappiness: sqHappiness,
+              activePlayerId: p.id,
+            });
+          };
+        });
+      }
       // 🚀 パターンC：通常・回復・留年・分岐マスの扱い（効果計算後に完了通知を返して次へ）
       else {
         console.log(
@@ -1327,6 +1417,7 @@ function initMobileListeners() {
       document.getElementById("route-select-modal")?.remove();
       document.getElementById("insurance-inline-zone")?.remove();
       document.getElementById("insurance-confirm-modal")?.remove();
+      document.getElementById("takunomi-loser-zone")?.remove();
 
       console.log(
         `\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`,
