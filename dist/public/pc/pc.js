@@ -616,7 +616,18 @@ const RouletteAndTileZone = (0, react_1.memo)(({ currentLocation }) => {
                             color: "#2c3e50",
                         }, children: "\u30B9\u30DE\u30DB\u304B\u3089\u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3057\u3066\u304F\u3060\u3055\u3044\uFF01" })] })] }));
 }, (prev, next) => prev.currentLocation === next.currentLocation);
-const PCModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { id: "pc-event-modal", className: "event-modal-overlay", children: (0, jsx_runtime_1.jsxs)("div", { className: "event-card-container", children: [(0, jsx_runtime_1.jsx)("h1", { className: "event-title", id: "modal-event-title", children: "\uD83D\uDC95 \u30A4\u30D9\u30F3\u30C8\u30BF\u30A4\u30C8\u30EB \uD83D\uDC95" }), (0, jsx_runtime_1.jsx)("p", { className: "event-desc", id: "modal-event-desc", children: "\u30A4\u30D9\u30F3\u30C8\u306E\u8AAC\u660E\u6587\u304C\u3053\u3053\u306B\u8868\u793A\u3055\u308C\u307E\u3059\u3002" }), (0, jsx_runtime_1.jsxs)("div", { className: "event-main-flex", children: [(0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-area", children: [(0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-container", children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "result-display-zone", id: "modal-roulette-result-display", children: "\uD83C\uDFAF \u30B9\u30DE\u30DB\u304B\u3089\u56DE\u3057\u3066\u306D\uFF01" }), (0, jsx_runtime_1.jsx)("div", { id: "modal-event-result-box", className: "event-result-box", style: { display: "none" } })] }), (0, jsx_runtime_1.jsx)("div", { className: "event-table-area", id: "pc-event-table-dynamic-zone" })] })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-modal", className: "kanpai-overlay", style: { display: "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "kanpai-window", children: [(0, jsx_runtime_1.jsx)("div", { className: "kanpai-glow" }), (0, jsx_runtime_1.jsx)("h1", { className: "kanpai-header", children: "\uD83C\uDF7B \u7279\u5927\u4E7E\u676F\u30A4\u30D9\u30F3\u30C8\u767A\u751F\uFF01 \uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-members", className: "kanpai-buddies" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-at", children: "\u304C" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-location", className: "kanpai-spot" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-at", children: "\u3067" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-shout", children: "\uD83C\uDF7B \u4E7E\u676F\uFF01\uFF01\uFF01 \uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-footer-nav", children: "\u203B\u30B9\u30DE\u30DB\u306E\u300C\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078\u300D\u30DC\u30BF\u30F3\u3092\u62BC\u3057\u3066\u9032\u3081\u3066\u304F\u3060\u3055\u3044" })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-modal", className: "kanpai-overlay", style: { display: "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "kanpai-window", style: {
+const PCModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { id: "pc-event-modal", className: "event-modal-overlay", children: (0, jsx_runtime_1.jsxs)("div", { className: "event-card-container", children: [(0, jsx_runtime_1.jsx)("h1", { className: "event-title", id: "modal-event-title", children: "\uD83D\uDC95 \u30A4\u30D9\u30F3\u30C8\u30BF\u30A4\u30C8\u30EB \uD83D\uDC95" }), (0, jsx_runtime_1.jsx)("p", { className: "event-desc", id: "modal-event-desc", children: "\u30A4\u30D9\u30F3\u30C8\u306E\u8AAC\u660E\u6587\u304C\u3053\u3053\u306B\u8868\u793A\u3055\u308C\u307E\u3059\u3002" }), (0, jsx_runtime_1.jsxs)("div", { className: "event-main-flex", children: [(0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-area", children: [(0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-container", children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "event-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "result-display-zone", id: "modal-roulette-result-display", children: "\uD83C\uDFAF \u30B9\u30DE\u30DB\u304B\u3089\u56DE\u3057\u3066\u306D\uFF01" }), (0, jsx_runtime_1.jsx)("div", { id: "modal-event-result-box", className: "event-result-box", style: { display: "none" } })] }), (0, jsx_runtime_1.jsx)("div", { className: "event-table-area", id: "pc-event-table-dynamic-zone" })] })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-modal", className: "kanpai-overlay", style: { display: "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "kanpai-window", children: [(0, jsx_runtime_1.jsx)("div", { className: "kanpai-glow" }), (0, jsx_runtime_1.jsxs)("div", { id: "pc-kanpai-body", children: [(0, jsx_runtime_1.jsx)("h1", { className: "kanpai-header", children: "\uD83C\uDF7B \u7279\u5927\u4E7E\u676F\u30A4\u30D9\u30F3\u30C8\u767A\u751F\uFF01 \uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-members", className: "kanpai-buddies" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-at", children: "\u304C" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-kanpai-location", className: "kanpai-spot" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-at", children: "\u3067" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-shout", children: "\uD83C\uDF7B \u4E7E\u676F\uFF01\uFF01\uFF01 \uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { className: "kanpai-footer-nav", children: "\u203B\u30B9\u30DE\u30DB\u306E\u300C\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078\u300D\u30DC\u30BF\u30F3\u3092\u62BC\u3057\u3066\u9032\u3081\u3066\u304F\u3060\u3055\u3044" })] }), (0, jsx_runtime_1.jsxs)("div", { id: "pc-final-result-body", style: { display: "none", width: "100%" }, children: [(0, jsx_runtime_1.jsx)("h1", { className: "kanpai-header", style: { fontSize: "2.3rem", marginBottom: "16px" }, children: "\uD83C\uDF8A \u5168\u54E1\u5352\u696D\uFF01\u6700\u7D42\u7D50\u679C\u767A\u8868\uFF01 \uD83C\uDF8A" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-final-ranking-list", style: { width: "100%", maxWidth: "580px", margin: "0 auto" } }), (0, jsx_runtime_1.jsx)("div", { id: "pc-final-result-cheer", style: { fontSize: "1.4rem", fontWeight: "bold", margin: "16px 0", color: "#fff" }, children: "\u6700\u9AD8\u306E\u5B85\u98F2\u307F\u4EBA\u751F\u306B\u4E7E\u676F\uFF01\uFF01\uFF01\uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { style: { marginTop: "24px", textAlign: "center" }, children: (0, jsx_runtime_1.jsx)("button", { id: "btn-back-to-title-pc", style: {
+                                        background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
+                                        color: "#ffffff",
+                                        border: "none",
+                                        fontSize: "1.4rem",
+                                        fontWeight: "bold",
+                                        padding: "14px 44px",
+                                        borderRadius: "50px",
+                                        cursor: "pointer",
+                                        boxShadow: "0 8px 24px rgba(255, 87, 34, 0.4)",
+                                        transition: "all 0.2s ease-in-out",
+                                    }, children: "\uD83C\uDFE0 \u30BF\u30A4\u30C8\u30EB\u753B\u9762\u306B\u623B\u308B" }) })] })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-modal", className: "kanpai-overlay", style: { display: "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "kanpai-window", style: {
                     background: "linear-gradient(135deg, #ff6f00 0%, #f57c00 50%, #ffb300 100%)",
                 }, children: [(0, jsx_runtime_1.jsx)("div", { className: "kanpai-glow" }), (0, jsx_runtime_1.jsx)("h1", { className: "kanpai-header", children: "\uD83C\uDF7B \u5B85\u98F2\u307F\u30DF\u30CB\u30B2\u30FC\u30E0\u767A\u751F\uFF01 \uD83C\uDF7B" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-desc", style: {
                             fontSize: "1.5rem",
@@ -996,6 +1007,12 @@ function appendSocketListeners() {
         console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
         const pcModal = document.getElementById("pc-kanpai-modal");
         if (pcModal) {
+            const kanpaiBody = document.getElementById("pc-kanpai-body");
+            if (kanpaiBody)
+                kanpaiBody.style.display = "block";
+            const resultBody = document.getElementById("pc-final-result-body");
+            if (resultBody)
+                resultBody.style.display = "none";
             const titleEl = pcModal.querySelector(".kanpai-header");
             const membersEl = document.getElementById("pc-kanpai-members");
             const locationEl = document.getElementById("pc-kanpai-location");
@@ -1130,6 +1147,12 @@ function appendSocketListeners() {
         console.log(`💻 [PC 乾杯モーダル表示] メンバー: ${data.members} / 場所: ${data.location}`);
         const pcModal = document.getElementById("pc-kanpai-modal");
         if (pcModal) {
+            const kanpaiBody = document.getElementById("pc-kanpai-body");
+            if (kanpaiBody)
+                kanpaiBody.style.display = "block";
+            const resultBody = document.getElementById("pc-final-result-body");
+            if (resultBody)
+                resultBody.style.display = "none";
             const titleEl = pcModal.querySelector(".kanpai-header");
             const membersEl = document.getElementById("pc-kanpai-members");
             const locationEl = document.getElementById("pc-kanpai-location");
@@ -1343,12 +1366,14 @@ function appendSocketListeners() {
         }
         const kanpaiModal = document.getElementById("pc-kanpai-modal");
         if (kanpaiModal) {
-            const titleEl = kanpaiModal.querySelector(".kanpai-header");
-            const membersEl = document.getElementById("pc-kanpai-members");
-            const locationEl = document.getElementById("pc-kanpai-location");
-            if (titleEl)
-                titleEl.textContent = "🎊 全員卒業！最終結果発表！ 🎊";
-            if (membersEl) {
+            const kanpaiBody = document.getElementById("pc-kanpai-body");
+            if (kanpaiBody)
+                kanpaiBody.style.display = "none";
+            const resultBody = document.getElementById("pc-final-result-body");
+            if (resultBody)
+                resultBody.style.display = "block";
+            const rankingListEl = document.getElementById("pc-final-ranking-list");
+            if (rankingListEl) {
                 // 幸福度順で総合ランキング作成
                 const sortedByHappy = [...players].sort((a, b) => (b.happiness !== undefined ? b.happiness : 100) -
                     (a.happiness !== undefined ? a.happiness : 100));
@@ -1376,15 +1401,27 @@ function appendSocketListeners() {
                 🍺 <strong>本日の酒豪王:</strong> ${topDrinkers.join("・")}（${maxDrinks}杯）
               </div>`
                     : "";
-                membersEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
+                rankingListEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
             }
-            if (locationEl)
-                locationEl.textContent = "最高の宅飲み人生に乾杯！！！🍻";
+            const btnBack = document.getElementById("btn-back-to-title-pc");
+            if (btnBack) {
+                btnBack.onclick = () => {
+                    console.log("💻 [PC ACTION] タイトル画面に戻るボタンがクリックされました");
+                    socket.emit("returnToTitle", { roomCode });
+                    window.location.reload();
+                };
+            }
             kanpaiModal.style.display = "flex";
         }
         updateCurrentPlayerDisplay();
         if (window.boardManager)
             window.boardManager.draw(players, activePlayerIndex);
+    });
+    // 🏠 サーバーからのタイトル画面復帰号令を受信
+    socket.off("returnToTitle");
+    socket.on("returnToTitle", () => {
+        console.log("💻 [PC SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
+        window.location.reload();
     });
     // 🎲 宅飲みゲーム決着：スマホで選択された敗者をPCモーダルに表示
     socket.off("takunomiEventFinished");

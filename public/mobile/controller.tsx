@@ -665,6 +665,18 @@ const MobileActionButtonsZone = memo(
       if (nextBtn) {
         nextBtn.addEventListener("click", sendNextTurn);
       }
+      const returnBtn = document.getElementById("btn-phone-return-title");
+      if (returnBtn) {
+        returnBtn.addEventListener("click", () => {
+          console.log("📱 [PHONE ACTION] タイトル画面に戻るボタンが押されました");
+          socket.emit("returnToTitle", { roomCode: currentRoomCode });
+          try {
+            sessionStorage.removeItem("salmons_room_code");
+            sessionStorage.removeItem("salmons_player_name");
+          } catch (_e) {}
+          window.location.reload();
+        });
+      }
     }, []);
 
     return (
@@ -703,6 +715,27 @@ const MobileActionButtonsZone = memo(
 
         <button id="btn-phone-next" className="btn-blue">
           ➡ 次のプレイヤーへ
+        </button>
+
+        {/* 🏠 ゲーム終了時のタイトル画面に戻るボタン */}
+        <button
+          id="btn-phone-return-title"
+          style={{
+            display: "none",
+            background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
+            color: "#ffffff",
+            fontWeight: "bold",
+            fontSize: "1.15rem",
+            padding: "14px 20px",
+            borderRadius: "30px",
+            border: "none",
+            boxShadow: "0 6px 18px rgba(255, 87, 34, 0.4)",
+            cursor: "pointer",
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          🏠 タイトル画面に戻る
         </button>
       </div>
     );
@@ -2214,20 +2247,58 @@ function initMobileListeners() {
     const spinBtn = document.getElementById(
       "btn-phone-spin",
     ) as HTMLButtonElement;
-    if (spinBtn) spinBtn.disabled = true;
+    if (spinBtn) spinBtn.style.display = "none";
     const nextBtn = document.getElementById(
       "btn-phone-next",
     ) as HTMLButtonElement;
-    if (nextBtn) nextBtn.disabled = true;
+    if (nextBtn) nextBtn.style.display = "none";
+    const insBtn = document.getElementById(
+      "btn-phone-use-insurance",
+    ) as HTMLButtonElement;
+    if (insBtn) insBtn.style.display = "none";
+    const skillBtn = document.getElementById(
+      "btn-phone-use-skill",
+    ) as HTMLButtonElement;
+    if (skillBtn) skillBtn.style.display = "none";
+
+    const returnBtn = document.getElementById("btn-phone-return-title");
+    if (returnBtn) returnBtn.style.display = "block";
+
     if (document.getElementById("current-player-banner")) {
       document.getElementById("current-player-banner").textContent =
         "🎊 全員卒業！ゲーム終了！ 🎊";
     }
     if (document.getElementById("roulette-result-display")) {
+      // 最多飲酒プレイヤー（酒豪王）
+      const maxDrinks = Math.max(
+        0,
+        ...players.map((pl) => pl.drinkCount || 0),
+      );
+      const topDrinkers =
+        maxDrinks > 0
+          ? players
+              .filter((pl) => (pl.drinkCount || 0) === maxDrinks)
+              .map((pl) => pl.name)
+          : [];
+      const kingText =
+        topDrinkers.length > 0
+          ? `\n🍺 酒豪王: ${topDrinkers.join("・")}（${maxDrinks}杯）`
+          : "";
       document.getElementById("roulette-result-display").textContent =
-        "🎉 全員ゴール達成！お疲れ様でした！ 🎉";
+        `🎉 全員ゴール達成！お疲れ様でした！${kingText}`;
     }
     updatePhoneStatusDisplay();
+  });
+
+  // 🏠 サーバーからのタイトル画面復帰号令を受信
+  socket.off("returnToTitle");
+  socket.on("returnToTitle", () => {
+    console.log("📱 [PHONE SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
+    try {
+      sessionStorage.removeItem("salmons_room_code");
+      sessionStorage.removeItem("salmons_player_name");
+    } catch (_e) {}
+    window.location.reload();
   });
 
   // 🧭 【一本道リレー：手順1】スマホで「ゲーム開始」が手動タップされた瞬間

@@ -789,7 +789,7 @@ const PCModalsZone = memo(
         </div>
       </div>
 
-      {/* 🍻 一斉乾杯専用 特大デザインモーダル */}
+      {/* 🍻 一斉乾杯＆結果発表 特大デザインモーダル */}
       <div
         id="pc-kanpai-modal"
         className="kanpai-overlay"
@@ -797,14 +797,47 @@ const PCModalsZone = memo(
       >
         <div className="kanpai-window">
           <div className="kanpai-glow"></div>
-          <h1 className="kanpai-header">🍻 特大乾杯イベント発生！ 🍻</h1>
-          <div id="pc-kanpai-members" className="kanpai-buddies"></div>
-          <div className="kanpai-at">が</div>
-          <div id="pc-kanpai-location" className="kanpai-spot"></div>
-          <div className="kanpai-at">で</div>
-          <div className="kanpai-shout">🍻 乾杯！！！ 🍻</div>
-          <div className="kanpai-footer-nav">
-            ※スマホの「➡ 次のプレイヤーへ」ボタンを押して進めてください
+          {/* 通常乾杯イベント用 */}
+          <div id="pc-kanpai-body">
+            <h1 className="kanpai-header">🍻 特大乾杯イベント発生！ 🍻</h1>
+            <div id="pc-kanpai-members" className="kanpai-buddies"></div>
+            <div className="kanpai-at">が</div>
+            <div id="pc-kanpai-location" className="kanpai-spot"></div>
+            <div className="kanpai-at">で</div>
+            <div className="kanpai-shout">🍻 乾杯！！！ 🍻</div>
+            <div className="kanpai-footer-nav">
+              ※スマホの「➡ 次のプレイヤーへ」ボタンを押して進めてください
+            </div>
+          </div>
+
+          {/* 🎊 全員ゴール・最終結果発表用 */}
+          <div id="pc-final-result-body" style={{ display: "none", width: "100%" }}>
+            <h1 className="kanpai-header" style={{ fontSize: "2.3rem", marginBottom: "16px" }}>
+              🎊 全員卒業！最終結果発表！ 🎊
+            </h1>
+            <div id="pc-final-ranking-list" style={{ width: "100%", maxWidth: "580px", margin: "0 auto" }}></div>
+            <div id="pc-final-result-cheer" style={{ fontSize: "1.4rem", fontWeight: "bold", margin: "16px 0", color: "#fff" }}>
+              最高の宅飲み人生に乾杯！！！🍻
+            </div>
+            <div style={{ marginTop: "24px", textAlign: "center" }}>
+              <button
+                id="btn-back-to-title-pc"
+                style={{
+                  background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  fontSize: "1.4rem",
+                  fontWeight: "bold",
+                  padding: "14px 44px",
+                  borderRadius: "50px",
+                  cursor: "pointer",
+                  boxShadow: "0 8px 24px rgba(255, 87, 34, 0.4)",
+                  transition: "all 0.2s ease-in-out",
+                }}
+              >
+                🏠 タイトル画面に戻る
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1594,6 +1627,11 @@ function appendSocketListeners() {
     console.log(`💻 [PC 乾杯モーダル展開] プレイヤー: ${data.playerName}`);
     const pcModal = document.getElementById("pc-kanpai-modal");
     if (pcModal) {
+      const kanpaiBody = document.getElementById("pc-kanpai-body");
+      if (kanpaiBody) kanpaiBody.style.display = "block";
+      const resultBody = document.getElementById("pc-final-result-body");
+      if (resultBody) resultBody.style.display = "none";
+
       const titleEl = pcModal.querySelector(".kanpai-header");
       const membersEl = document.getElementById("pc-kanpai-members");
       const locationEl = document.getElementById("pc-kanpai-location");
@@ -1755,6 +1793,11 @@ function appendSocketListeners() {
     );
     const pcModal = document.getElementById("pc-kanpai-modal");
     if (pcModal) {
+      const kanpaiBody = document.getElementById("pc-kanpai-body");
+      if (kanpaiBody) kanpaiBody.style.display = "block";
+      const resultBody = document.getElementById("pc-final-result-body");
+      if (resultBody) resultBody.style.display = "none";
+
       const titleEl = pcModal.querySelector(".kanpai-header");
       const membersEl = document.getElementById("pc-kanpai-members");
       const locationEl = document.getElementById("pc-kanpai-location");
@@ -2000,12 +2043,13 @@ function appendSocketListeners() {
 
     const kanpaiModal = document.getElementById("pc-kanpai-modal");
     if (kanpaiModal) {
-      const titleEl = kanpaiModal.querySelector(".kanpai-header");
-      const membersEl = document.getElementById("pc-kanpai-members");
-      const locationEl = document.getElementById("pc-kanpai-location");
+      const kanpaiBody = document.getElementById("pc-kanpai-body");
+      if (kanpaiBody) kanpaiBody.style.display = "none";
+      const resultBody = document.getElementById("pc-final-result-body");
+      if (resultBody) resultBody.style.display = "block";
 
-      if (titleEl) titleEl.textContent = "🎊 全員卒業！最終結果発表！ 🎊";
-      if (membersEl) {
+      const rankingListEl = document.getElementById("pc-final-ranking-list");
+      if (rankingListEl) {
         // 幸福度順で総合ランキング作成
         const sortedByHappy = [...players].sort(
           (a, b) =>
@@ -2044,9 +2088,17 @@ function appendSocketListeners() {
               </div>`
             : "";
 
-        membersEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
+        rankingListEl.innerHTML = `<div style="width:100%; max-width:560px; margin:0 auto;">${rowsHtml}${drinkKingHtml}</div>`;
       }
-      if (locationEl) locationEl.textContent = "最高の宅飲み人生に乾杯！！！🍻";
+
+      const btnBack = document.getElementById("btn-back-to-title-pc");
+      if (btnBack) {
+        btnBack.onclick = () => {
+          console.log("💻 [PC ACTION] タイトル画面に戻るボタンがクリックされました");
+          socket.emit("returnToTitle", { roomCode });
+          window.location.reload();
+        };
+      }
 
       kanpaiModal.style.display = "flex";
     }
@@ -2054,6 +2106,13 @@ function appendSocketListeners() {
     updateCurrentPlayerDisplay();
     if (window.boardManager)
       window.boardManager.draw(players, activePlayerIndex);
+  });
+
+  // 🏠 サーバーからのタイトル画面復帰号令を受信
+  socket.off("returnToTitle");
+  socket.on("returnToTitle", () => {
+    console.log("💻 [PC SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
+    window.location.reload();
   });
 
   // 🎲 宅飲みゲーム決着：スマホで選択された敗者をPCモーダルに表示

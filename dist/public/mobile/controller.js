@@ -619,6 +619,19 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
         if (nextBtn) {
             nextBtn.addEventListener("click", sendNextTurn);
         }
+        const returnBtn = document.getElementById("btn-phone-return-title");
+        if (returnBtn) {
+            returnBtn.addEventListener("click", () => {
+                console.log("📱 [PHONE ACTION] タイトル画面に戻るボタンが押されました");
+                socket.emit("returnToTitle", { roomCode: currentRoomCode });
+                try {
+                    sessionStorage.removeItem("salmons_room_code");
+                    sessionStorage.removeItem("salmons_player_name");
+                }
+                catch (_e) { }
+                window.location.reload();
+            });
+        }
     }, []);
     return ((0, jsx_runtime_1.jsxs)("div", { style: {
             width: "100%",
@@ -633,7 +646,20 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
                     color: "#fff",
                     fontWeight: "bold",
                     border: "2px solid #ffd54f",
-                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" })] }));
+                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-return-title", style: {
+                    display: "none",
+                    background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    fontSize: "1.15rem",
+                    padding: "14px 20px",
+                    borderRadius: "30px",
+                    border: "none",
+                    boxShadow: "0 6px 18px rgba(255, 87, 34, 0.4)",
+                    cursor: "pointer",
+                    width: "100%",
+                    textAlign: "center",
+                }, children: "\uD83C\uDFE0 \u30BF\u30A4\u30C8\u30EB\u753B\u9762\u306B\u623B\u308B" })] }));
 }, () => true);
 const MobileModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { id: "job-modal-overlay", className: "event-modal-overlay", style: {
                 display: "none",
@@ -1646,19 +1672,49 @@ function initMobileListeners() {
             players = data.players;
         const spinBtn = document.getElementById("btn-phone-spin");
         if (spinBtn)
-            spinBtn.disabled = true;
+            spinBtn.style.display = "none";
         const nextBtn = document.getElementById("btn-phone-next");
         if (nextBtn)
-            nextBtn.disabled = true;
+            nextBtn.style.display = "none";
+        const insBtn = document.getElementById("btn-phone-use-insurance");
+        if (insBtn)
+            insBtn.style.display = "none";
+        const skillBtn = document.getElementById("btn-phone-use-skill");
+        if (skillBtn)
+            skillBtn.style.display = "none";
+        const returnBtn = document.getElementById("btn-phone-return-title");
+        if (returnBtn)
+            returnBtn.style.display = "block";
         if (document.getElementById("current-player-banner")) {
             document.getElementById("current-player-banner").textContent =
                 "🎊 全員卒業！ゲーム終了！ 🎊";
         }
         if (document.getElementById("roulette-result-display")) {
+            // 最多飲酒プレイヤー（酒豪王）
+            const maxDrinks = Math.max(0, ...players.map((pl) => pl.drinkCount || 0));
+            const topDrinkers = maxDrinks > 0
+                ? players
+                    .filter((pl) => (pl.drinkCount || 0) === maxDrinks)
+                    .map((pl) => pl.name)
+                : [];
+            const kingText = topDrinkers.length > 0
+                ? `\n🍺 酒豪王: ${topDrinkers.join("・")}（${maxDrinks}杯）`
+                : "";
             document.getElementById("roulette-result-display").textContent =
-                "🎉 全員ゴール達成！お疲れ様でした！ 🎉";
+                `🎉 全員ゴール達成！お疲れ様でした！${kingText}`;
         }
         updatePhoneStatusDisplay();
+    });
+    // 🏠 サーバーからのタイトル画面復帰号令を受信
+    socket.off("returnToTitle");
+    socket.on("returnToTitle", () => {
+        console.log("📱 [PHONE SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
+        try {
+            sessionStorage.removeItem("salmons_room_code");
+            sessionStorage.removeItem("salmons_player_name");
+        }
+        catch (_e) { }
+        window.location.reload();
     });
     // 🧭 【一本道リレー：手順1】スマホで「ゲーム開始」が手動タップされた瞬間
     socket.off("gameStarted");

@@ -370,6 +370,18 @@ io.on("connection", (socket) => {
     });
   });
 
+  // 【タイトル画面に戻る（ゲーム終了時など）】
+  socket.on("returnToTitle", (data) => {
+    const code = (socket as any).roomCode || (data && data.roomCode);
+    if (code) {
+      console.log(`🏠 [SERVER] ルーム ${code} がタイトル画面へ戻るため初期化されました`);
+      io.to(code).emit("returnToTitle");
+      if (rooms[code]) {
+        delete rooms[code];
+      }
+    }
+  });
+
   // 【ルーム参加（ゲーム進行中の途中復帰・リロード自動再接続にも対応）】
   socket.on("joinRoom", (data) => {
     const roomCode = data && data.roomCode ? data.roomCode : null;
