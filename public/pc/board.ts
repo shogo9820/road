@@ -335,6 +335,113 @@ window.boardManager = {
       ctx.fillText(b.text, bx, by);
       ctx.restore();
     });
+
+    // 4. 周辺マスのエピソード・季節感にちなんだスタンプ風絵文字の描画
+    this.drawSeasonalEmojiStamps(ctx, isRepeatDark);
+  },
+
+  drawSeasonalEmojiStamps(ctx, isRepeatDark) {
+    const stamps = [
+      // 🌸 1回生 春（入学式・新歓: マス18〜20）
+      { x: 56.5, y: 19.5, emoji: "🌸", size: 26, rotate: -8 },
+      { x: 56.5, y: 23, emoji: "🎒", size: 20, rotate: 6 },
+      { x: 54, y: 14.5, emoji: "🍡", size: 20, rotate: 10 },
+
+      // 🌻 1回生 夏（夏合宿・バス飲み: マス21〜24）
+      { x: 47, y: 8, emoji: "🌻", size: 26, rotate: 10 },
+      { x: 44, y: 7.5, emoji: "🍉", size: 21, rotate: -6 },
+      { x: 41, y: 8, emoji: "🚌", size: 22, rotate: -8 },
+
+      // 🍁 1回生 秋（秋キャン・黒潮市場・龍祭: マス25〜27）
+      { x: 40, y: 15.5, emoji: "🍁", size: 25, rotate: -12 },
+      { x: 39, y: 18.5, emoji: "⛺", size: 21, rotate: 6 },
+      { x: 33.5, y: 15, emoji: "🏮", size: 21, rotate: 8 },
+
+      // ❄️ 1〜2回生 冬（忘年会・冬合宿: マス28〜29, 32）
+      { x: 42.5, y: 25, emoji: "❄️", size: 26, rotate: 0 },
+      { x: 42.5, y: 28.5, emoji: "⛄", size: 21, rotate: -8 },
+      { x: 43.5, y: 35.5, emoji: "🎿", size: 22, rotate: 15 },
+
+      // 🌸 2回生 春（新歓キャンプ・お花見ももじ: マス33〜34）
+      { x: 44, y: 40, emoji: "🌸", size: 26, rotate: 8 },
+      { x: 44, y: 43.5, emoji: "🍡", size: 21, rotate: -10 },
+
+      // 🌻 2回生 夏（花火・沖縄・夏合宿: マス46〜48）
+      { x: 2, y: 49, emoji: "🌻", size: 26, rotate: 12 },
+      { x: 1.5, y: 52.5, emoji: "🎆", size: 22, rotate: -5 },
+      { x: 5, y: 54, emoji: "🍉", size: 20, rotate: 10 },
+
+      // 🍓 3回生 Aルート 春〜初夏（いちご狩り・お菓子: マス53〜55）
+      { x: 2.5, y: 21, emoji: "🍓", size: 22, rotate: 12 },
+      { x: 5, y: 20, emoji: "🌸", size: 22, rotate: -8 },
+
+      // 🌻 3回生 Bルート 夏（夏合宿・琵琶湖HAMIKIN: マス59〜60）
+      { x: 8, y: 44.5, emoji: "🌻", size: 26, rotate: -10 },
+      { x: 11, y: 45.5, emoji: "🏊", size: 22, rotate: 5 },
+      { x: 14, y: 46, emoji: "🌊", size: 20, rotate: -5 },
+
+      // 🍁 3回生 Bルート 秋（秋キャン・龍祭バケツタピオカ: マス64〜68）
+      { x: 26, y: 46, emoji: "🍁", size: 25, rotate: 10 },
+      { x: 23, y: 47, emoji: "⛺", size: 21, rotate: -8 },
+      { x: 30, y: 42, emoji: "🧋", size: 22, rotate: 8 },
+
+      // ❄️ 3回生 Bルート 冬（忘年会・成人式・冬合宿: マス70〜74）
+      { x: 35.5, y: 22, emoji: "❄️", size: 26, rotate: 0 },
+      { x: 35.5, y: 25.5, emoji: "👘", size: 22, rotate: -10 },
+      { x: 28, y: 16, emoji: "🏂", size: 22, rotate: 12 },
+      { x: 31, y: 16.5, emoji: "⛄", size: 20, rotate: -5 },
+
+      // 🌸 4回生直前 春（新歓・川飲み: マス76）
+      { x: 26.5, y: 24.5, emoji: "🌸", size: 24, rotate: 8 },
+      { x: 25, y: 27.5, emoji: "🏞️", size: 21, rotate: -6 },
+
+      // 🌻 4回生 夏（引退合宿: マス79〜81）
+      { x: 18.5, y: 34.5, emoji: "🌻", size: 26, rotate: 12 },
+      { x: 21.5, y: 34, emoji: "🍉", size: 21, rotate: -8 },
+
+      // 🍁 4回生 秋（秋キャン・HOT LIMIT・龍祭ガイモン: マス82〜84）
+      { x: 17, y: 20, emoji: "🍁", size: 25, rotate: -10 },
+      { x: 16.5, y: 23, emoji: "⛺", size: 21, rotate: 8 },
+
+      // ❄️ 4回生 冬（忘年会・ゲレンデカレー: マス85〜86）
+      { x: 7, y: 18.5, emoji: "❄️", size: 26, rotate: 0 },
+      { x: 9.5, y: 19, emoji: "🍛", size: 22, rotate: 10 },
+      { x: 4, y: 17, emoji: "⛄", size: 20, rotate: -8 },
+
+      // 🌸 卒業シーズン 春（追いコン・卒業式: マス87, 89, 99）
+      { x: 2.5, y: 10.5, emoji: "🌸", size: 26, rotate: 8 },
+      { x: 2.5, y: 7, emoji: "💐", size: 22, rotate: -10 },
+      { x: 4, y: 3.5, emoji: "🌸", size: 28, rotate: -15 },
+      { x: 5.5, y: 1.5, emoji: "🎊", size: 22, rotate: 12 },
+      { x: 16, y: 2, emoji: "🎓", size: 24, rotate: -8 },
+    ];
+
+    if (isRepeatDark) {
+      stamps.push(
+        { x: 18.5, y: 7.5, emoji: "🎂", size: 22, rotate: 8 },
+        { x: 24.5, y: 5, emoji: "🍂", size: 22, rotate: -12 },
+        { x: 24, y: 8, emoji: "💀", size: 24, rotate: 5 }
+      );
+    }
+
+    stamps.forEach((s) => {
+      const sx = s.x * this.cellSize;
+      const sy = s.y * this.cellSize;
+      ctx.save();
+      ctx.translate(sx, sy);
+      if (s.rotate) {
+        ctx.rotate((s.rotate * Math.PI) / 180);
+      }
+      ctx.font = `${s.size || 20}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.12)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      ctx.fillText(s.emoji, 0, 0);
+      ctx.restore();
+    });
   },
 
   drawRoutePaths(ctx, currentPlayer, isRepeatDark) {
