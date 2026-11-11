@@ -258,18 +258,15 @@ window.SQ_MODULES[41] = {
               `;
             }
 
-            setTimeout(() => {
-              const targetModalEl = document.getElementById("pc-event-modal");
-              if (targetModalEl) {
-                targetModalEl.className = "event-modal-overlay";
-                targetModalEl.style.display = "none";
-              }
-              const btnNext = document.getElementById("btn-next-turn");
-              if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
+            // PC手動クローズボタンを表示
+            const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
+            if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
 
-              document.body.classList.remove(cfg.themeClass);
-              socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
-            }, 3500);
+            const btnNext = document.getElementById("btn-next-turn");
+            if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
+
+            document.body.classList.remove(cfg.themeClass);
+            socket.emit("playerAction", { roomCode: targetRoom, action: "squareEventFinished", updatedPlayer: player });
           }
         };
         socket.on("customRouletteFinished", mod._onFinished);

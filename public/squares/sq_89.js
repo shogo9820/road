@@ -118,26 +118,21 @@ window.SQ_MODULES[89] = {
                 <div style="font-size:1.4rem; font-weight:bold;">${data.isPass ? "卒業！" : "留年..."}</div>
               `;
             }
+
+            // PC手動クローズボタンを表示
+            const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
+            if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
           }, 3000);
         };
         socket.on("spinGraduateRoulette", mod._onPcSpin);
 
-        // 💀 留年：画面ダークモード化（ルーレット終了1秒後にモーダル消去と同時に暗転）
+        // 💀 留年：画面ダークモード化（背景を暗転させ、モーダルは手動で閉じるまで維持）
         if (mod._onPcRepeat) socket.off("applyRepeatDarkTheme", mod._onPcRepeat);
         mod._onPcRepeat = (data) => {
-          if (typeof isPCEventMode !== "undefined") isPCEventMode = false;
-
-          // 卒業判定モーダルを完全に消去（.active の display:flex !important も解除）
-          const targetModal = document.getElementById("pc-event-modal");
-          if (targetModal) {
-            targetModal.className = "event-modal-overlay";
-            targetModal.style.display = "none";
-          }
-
           console.log(
             `💻 [PC 暗黒留年演出] ${data.playerName} が留年ルートへ突入しました。`
           );
-          // モーダル消去と同時に背景を暗くする
+          // 背景を暗くする
           document.body.classList.add(cfg.repeatThemeClass);
 
           const tileDescEl =

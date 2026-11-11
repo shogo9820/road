@@ -459,9 +459,22 @@ function showJobChoiceDialog(jobId, jobName, playerId) {
     });
     overlay.style.display = "flex";
 }
+// 📱 PC上のモーダル閉じるボタンの表示/非表示ヘルパー
+function showPhoneClosePcModalBtn() {
+    const btn = document.getElementById("btn-phone-close-pc-modal");
+    if (btn)
+        btn.style.display = "block";
+}
+function hidePhoneClosePcModalBtn() {
+    const btn = document.getElementById("btn-phone-close-pc-modal");
+    if (btn)
+        btn.style.display = "none";
+}
 // 🧭 【基本ルーティン：行程⑥】手動進行でボタンをタップし、次の手番交代へバトンを繋ぐ瞬間
 function sendNextTurn() {
     console.log("📱 [⑥. 手動進行 Trigger] ➔ カチッと手動交代されました！サーバーへ次ターン要求（nextTurn）を発射します。");
+    socket.emit("closePcModal", { roomCode: currentRoomCode });
+    hidePhoneClosePcModalBtn();
     socket.emit("playerAction", {
         roomCode: currentRoomCode,
         action: "nextTurn",
@@ -632,6 +645,14 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
                 window.location.reload();
             });
         }
+        const closePcBtn = document.getElementById("btn-phone-close-pc-modal");
+        if (closePcBtn) {
+            closePcBtn.addEventListener("click", () => {
+                console.log("📱 [PHONE ACTION] PCモーダル閉じるボタンが押されました");
+                socket.emit("closePcModal", { roomCode: currentRoomCode });
+                closePcBtn.style.display = "none";
+            });
+        }
     }, []);
     return ((0, jsx_runtime_1.jsxs)("div", { style: {
             width: "100%",
@@ -646,7 +667,20 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
                     color: "#fff",
                     fontWeight: "bold",
                     border: "2px solid #ffd54f",
-                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-return-title", style: {
+                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-close-pc-modal", style: {
+                    display: "none",
+                    background: "linear-gradient(135deg, #37474f 0%, #212121 100%)",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                    padding: "13px 20px",
+                    borderRadius: "30px",
+                    border: "2px solid #78909c",
+                    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.4)",
+                    cursor: "pointer",
+                    width: "100%",
+                    textAlign: "center",
+                }, children: "\u2716 PC\u753B\u9762\u306E\u30E2\u30FC\u30C0\u30EB\u3092\u9589\u3058\u308B" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-return-title", style: {
                     display: "none",
                     background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
                     color: "#ffffff",
@@ -1358,6 +1392,7 @@ function initMobileListeners() {
     socket.off("applyPlayerAction");
     socket.on("applyPlayerAction", (data) => {
         if (data.action === "turnUpdated") {
+            hidePhoneClosePcModalBtn();
             document.body.classList.remove("theme-couple", "theme-entrance", "theme-insurance", "theme-rankup");
             activePlayerIndex =
                 data.activePlayerIndex !== undefined
@@ -1421,6 +1456,7 @@ function initMobileListeners() {
             updatePhoneStatusDisplay();
         }
         else if (data.action === "turnSkipped") {
+            hidePhoneClosePcModalBtn();
             if (data.activePlayerIndex !== undefined) {
                 activePlayerIndex = data.activePlayerIndex;
             }
@@ -1482,7 +1518,7 @@ function initMobileListeners() {
         }
         modal.style.display = "flex";
     });
-    // 🎯 決着通知（手元のモーダルを閉じる）
+    // 🎯 決着通知（手元のモーダルを閉じる ＆ PCモーダル閉じるボタン表示）
     socket.off("customRouletteFinished");
     socket.on("customRouletteFinished", (data) => {
         const modal = document.getElementById("mobile-couple-event-modal");
@@ -1494,6 +1530,7 @@ function initMobileListeners() {
             document.getElementById("roulette-result-display").textContent =
                 `🎯 結果: ${data.message}`;
         }
+        showPhoneClosePcModalBtn();
     });
     socket.off("skillEffectResolved");
     socket.on("skillEffectResolved", (data) => {
@@ -1503,6 +1540,11 @@ function initMobileListeners() {
             document.getElementById("roulette-result-display").textContent =
                 `⚡ ${data.resultMessage}`;
         }
+        showPhoneClosePcModalBtn();
+    });
+    socket.off("skillUsed");
+    socket.on("skillUsed", () => {
+        showPhoneClosePcModalBtn();
     });
     // ==========================================================================
     // 🧭 syncGameState 受信部（ステータス同期・ターン開始制御 専用版）
@@ -1738,7 +1780,47 @@ function initMobileListeners() {
         const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
         currentRotation +=
             1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
-        playMobileRouletteAnimation(resNum, currentRotation, () => { });
+        playMobileRouletteAnimation(resNum, currentRotation, () => {
+            showPhoneClosePcModalBtn();
+        });
+    });
+    // ✖ サーバーからPCモーダル手動クローズ号令を受信
+    socket.off("closePcModal");
+    socket.on("closePcModal", () => {
+        console.log("📱 [PHONE SOCKET] closePcModal 受信 ➔ 閉じるボタンを非表示");
+        hidePhoneClosePcModalBtn();
+    });
+    // 乾杯イベント受信時：スマホに「PCモーダルを閉じる」ボタンを表示
+    socket.off("showKanpaiModal");
+    socket.on("showKanpaiModal", () => {
+        showPhoneClosePcModalBtn();
+    });
+    socket.off("openBijinKanpaiModal");
+    socket.on("openBijinKanpaiModal", () => {
+        showPhoneClosePcModalBtn();
+    });
+    // 宅飲みミニゲーム終了時
+    socket.off("takunomiEventFinished");
+    socket.on("takunomiEventFinished", () => {
+        showPhoneClosePcModalBtn();
+    });
+    // ゴール祝福時
+    socket.off("showGoalModal");
+    socket.on("showGoalModal", () => {
+        showPhoneClosePcModalBtn();
+    });
+    socket.off("triggerGoalCelebration");
+    socket.on("triggerGoalCelebration", () => {
+        showPhoneClosePcModalBtn();
+    });
+    // 卒業判定（89番）
+    socket.off("showGraduateNextButton");
+    socket.on("showGraduateNextButton", () => {
+        showPhoneClosePcModalBtn();
+    });
+    socket.off("graduateFailedRepeat");
+    socket.on("graduateFailedRepeat", () => {
+        showPhoneClosePcModalBtn();
     });
     // ドキュメントクリックイベント（生命保険確認モーダル ＆ デバッグワープ）
     if (!hasBoundDocumentClicks) {

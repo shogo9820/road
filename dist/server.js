@@ -321,6 +321,14 @@ io.on("connection", (socket) => {
             }
         }
     });
+    // 【PC画面のモーダルを手動で閉じる（スマホ操作など）】
+    socket.on("closePcModal", (data) => {
+        const code = socket.roomCode || (data && data.roomCode);
+        if (code) {
+            console.log(`💻 [SERVER] ルーム ${code} のPCモーダル手動クローズ要求を受信`);
+            io.to(code).emit("closePcModal");
+        }
+    });
     // 【ルーム参加（ゲーム進行中の途中復帰・リロード自動再接続にも対応）】
     socket.on("joinRoom", (data) => {
         const roomCode = data && data.roomCode ? data.roomCode : null;

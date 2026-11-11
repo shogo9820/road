@@ -642,7 +642,42 @@ function loadAndApplySquareComponent(squareId: number, callback: () => void) {
   document.head.appendChild(script);
 }
 
+// 💻 全PCモーダルを一括クローズする共通関数
+function closeAllPCModals() {
+  isPCEventMode = false;
+  const pcModal = document.getElementById("pc-event-modal");
+  if (pcModal) {
+    pcModal.className = "event-modal-overlay";
+    pcModal.style.display = "none";
+    pcModal.classList.remove("active");
+  }
+  const closeBtn = document.getElementById("pc-event-modal-close-btn");
+  if (closeBtn) closeBtn.style.display = "none";
+
+  const kanpaiModal = document.getElementById("pc-kanpai-modal");
+  if (kanpaiModal) {
+    const finalResult = document.getElementById("pc-final-result-body");
+    // 全員ゴール時の最終結果発表画面でなければ閉じる
+    if (!finalResult || finalResult.style.display !== "block") {
+      kanpaiModal.style.display = "none";
+    }
+  }
+
+  const takunomiModal = document.getElementById("pc-takunomi-modal");
+  if (takunomiModal) {
+    takunomiModal.style.display = "none";
+  }
+
+  const skillModal = document.getElementById("pc-skill-modal");
+  if (skillModal) {
+    skillModal.style.display = "none";
+    const skillBackBtn = document.getElementById("pc-skill-back-btn");
+    if (skillBackBtn) skillBackBtn.style.display = "none";
+  }
+}
+
 // グローバル関数の公開
+(window as any).closeAllPCModals = closeAllPCModals;
 window.loadAndApplySquareComponent = loadAndApplySquareComponent;
 window.executeSyncedRoulette = executeSyncedRoulette;
 window.triggerDelayedDisplay = triggerDelayedDisplay;
@@ -786,6 +821,27 @@ const PCModalsZone = memo(
               id="pc-event-table-dynamic-zone"
             ></div>
           </div>
+
+          {/* PC画面直接操作用 閉じるボタン */}
+          <div style={{ textAlign: "center", marginTop: "16px" }}>
+            <button
+              id="pc-event-modal-close-btn"
+              style={{
+                display: "none",
+                background: "linear-gradient(135deg, #455a64 0%, #263238 100%)",
+                color: "#ffffff",
+                border: "2px solid #90a4ae",
+                fontSize: "1.15rem",
+                fontWeight: "bold",
+                padding: "10px 36px",
+                borderRadius: "30px",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+              }}
+            >
+              ✖ モーダルを閉じる
+            </button>
+          </div>
         </div>
       </div>
 
@@ -807,6 +863,23 @@ const PCModalsZone = memo(
             <div className="kanpai-shout">🍻 乾杯！！！ 🍻</div>
             <div className="kanpai-footer-nav">
               ※スマホの「➡ 次のプレイヤーへ」ボタンを押して進めてください
+            </div>
+            <div style={{ textAlign: "center", marginTop: "16px" }}>
+              <button
+                id="pc-kanpai-close-btn"
+                style={{
+                  background: "rgba(0, 0, 0, 0.4)",
+                  color: "#ffffff",
+                  border: "2px solid rgba(255, 255, 255, 0.7)",
+                  fontSize: "1.15rem",
+                  fontWeight: "bold",
+                  padding: "10px 32px",
+                  borderRadius: "30px",
+                  cursor: "pointer",
+                }}
+              >
+                ✖ モーダルを閉じる
+              </button>
             </div>
           </div>
 
@@ -882,6 +955,23 @@ const PCModalsZone = memo(
             style={{ fontSize: "1.25rem", color: "#fff" }}
           >
             ※実際にゲームをして、負けた人をスマホ画面で選択してください
+          </div>
+          <div style={{ textAlign: "center", marginTop: "16px" }}>
+            <button
+              id="pc-takunomi-close-btn"
+              style={{
+                background: "rgba(0, 0, 0, 0.4)",
+                color: "#ffffff",
+                border: "2px solid rgba(255, 255, 255, 0.7)",
+                fontSize: "1.15rem",
+                fontWeight: "bold",
+                padding: "10px 32px",
+                borderRadius: "30px",
+                cursor: "pointer",
+              }}
+            >
+              ✖ モーダルを閉じる
+            </button>
           </div>
         </div>
       </div>
@@ -1847,13 +1937,8 @@ function appendSocketListeners() {
             <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：タイミングが悪い...</div>
           `;
         }
-        setTimeout(() => {
-          const targetModalEl = document.getElementById("pc-event-modal");
-          if (targetModalEl) {
-            targetModalEl.className = "event-modal-overlay";
-            targetModalEl.style.display = "none";
-          }
-        }, 3500);
+        const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
+        if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
       } else {
         console.log(
           "💻 [PC GUARD] カップルイベント進行中のため、専用の通知を待ちます。",
@@ -1960,19 +2045,15 @@ function appendSocketListeners() {
       `;
     }
 
-    setTimeout(() => {
-      const targetModalEl = document.getElementById("pc-event-modal");
-      if (targetModalEl) {
-        targetModalEl.className = "event-modal-overlay";
-        targetModalEl.style.display = "none";
-      }
-      const btnNext = document.getElementById(
-        "btn-next-turn",
-      ) as HTMLButtonElement;
-      if (btnNext) {
-        btnNext.disabled = false;
-      }
-    }, 4500);
+    // 手動で閉じるボタンを表示（自動タイマークローズを撤廃）
+    const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
+    if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
+    const btnNext = document.getElementById(
+      "btn-next-turn",
+    ) as HTMLButtonElement;
+    if (btnNext) {
+      btnNext.disabled = false;
+    }
   });
 
   // 🎓 89番マス：卒業判定イベント（sq_89.js へ委譲）
@@ -2290,6 +2371,43 @@ function appendSocketListeners() {
       if (backBtn) backBtn.style.display = "block";
     }
   });
+
+  // ✖ PC上のモーダル手動クローズ要求を受信（スマホからの操作など）
+  socket.off("closePcModal");
+  socket.on("closePcModal", () => {
+    console.log("💻 [PC SOCKET] closePcModal 受信 ➔ モーダルを全クローズ");
+    closeAllPCModals();
+  });
+
+  // PC画面上の閉じるボタンのクリックハンドラ登録
+  const btnEventClose = document.getElementById("pc-event-modal-close-btn");
+  if (btnEventClose) {
+    btnEventClose.onclick = () => {
+      socket.emit("closePcModal", { roomCode });
+      closeAllPCModals();
+    };
+  }
+  const btnKanpaiClose = document.getElementById("pc-kanpai-close-btn");
+  if (btnKanpaiClose) {
+    btnKanpaiClose.onclick = () => {
+      socket.emit("closePcModal", { roomCode });
+      closeAllPCModals();
+    };
+  }
+  const btnTakunomiClose = document.getElementById("pc-takunomi-close-btn");
+  if (btnTakunomiClose) {
+    btnTakunomiClose.onclick = () => {
+      socket.emit("closePcModal", { roomCode });
+      closeAllPCModals();
+    };
+  }
+  const btnSkillClose = document.getElementById("pc-skill-back-btn");
+  if (btnSkillClose) {
+    btnSkillClose.onclick = () => {
+      socket.emit("closePcModal", { roomCode });
+      closeAllPCModals();
+    };
+  }
 
   socket.off("enableNextTurnButton");
   socket.on("enableNextTurnButton", () => {
