@@ -1,9 +1,74 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = require("react");
+const react_1 = __importStar(require("react"));
 const client_1 = require("react-dom/client");
+const jsqr_1 = __importDefault(require("jsqr"));
 const socket = io();
+// 📲 PWAインストールプロンプト（Android/Chrome）の保持
+let deferredInstallPrompt = null;
+let setInstallAvailableRef = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (setInstallAvailableRef)
+        setInstallAvailableRef(true);
+});
+window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    if (setInstallAvailableRef)
+        setInstallAvailableRef(false);
+});
+// 📷 QRコードの中身（参加URL または 4桁コード）からルームコードを取り出す
+function extractRoomCodeFromQR(text) {
+    if (!text)
+        return null;
+    try {
+        const u = new URL(text);
+        const r = u.searchParams.get("room");
+        if (r && /^\d{4}$/.test(r))
+            return r;
+    }
+    catch (_e) { }
+    const m = text.match(/room=(\d{4})/) || text.match(/^\s*(\d{4})\s*$/);
+    return m ? m[1] : null;
+}
 let currentRoomCode = "";
 let activePlayerIndex = 0;
 let players = [];
@@ -633,9 +698,136 @@ const MobileModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_ru
                             backgroundColor: "#ff4081",
                             color: "#fff",
                         }, children: "\uD83D\uDC96 \u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3059\uFF01" })] }) })] })), () => true);
+// 📷 QRコード読み取りオーバーレイ（カメラ起動→QR検出→ルームコード通知）
+function QRScannerOverlay({ onDetected, onClose, }) {
+    const videoRef = react_1.default.useRef(null);
+    const [errorMsg, setErrorMsg] = (0, react_1.useState)("");
+    const [hint, setHint] = (0, react_1.useState)("PC画面のQRコードを枠に合わせてください");
+    (0, react_1.useEffect)(() => {
+        let stream = null;
+        let rafId = 0;
+        let stopped = false;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const Detector = window.BarcodeDetector;
+        const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+        const handleText = (text) => {
+            const code = extractRoomCodeFromQR(text);
+            if (code) {
+                stopped = true;
+                onDetected(code);
+                return true;
+            }
+            setHint("このQRコードは参加用ではありません。PC画面のQRを読み取ってください");
+            return false;
+        };
+        const tick = async () => {
+            if (stopped)
+                return;
+            const video = videoRef.current;
+            if (video && video.readyState >= 2 && video.videoWidth > 0) {
+                try {
+                    if (detector) {
+                        const found = await detector.detect(video);
+                        if (found && found.length > 0 && handleText(found[0].rawValue))
+                            return;
+                    }
+                    else if (ctx) {
+                        const w = video.videoWidth;
+                        const h = video.videoHeight;
+                        canvas.width = w;
+                        canvas.height = h;
+                        ctx.drawImage(video, 0, 0, w, h);
+                        const img = ctx.getImageData(0, 0, w, h);
+                        const res = (0, jsqr_1.default)(img.data, w, h, { inversionAttempts: "dontInvert" });
+                        if (res && res.data && handleText(res.data))
+                            return;
+                    }
+                }
+                catch (_e) { }
+            }
+            rafId = requestAnimationFrame(tick);
+        };
+        (async () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setErrorMsg("この接続（http）ではカメラを使えません。HTTPS接続またはlocalhostで開いてください。ルームコードの手入力は可能です。");
+                return;
+            }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false,
+                });
+                if (stopped) {
+                    stream.getTracks().forEach((t) => t.stop());
+                    return;
+                }
+                const video = videoRef.current;
+                if (video) {
+                    video.srcObject = stream;
+                    video.setAttribute("playsinline", "true");
+                    await video.play();
+                }
+                rafId = requestAnimationFrame(tick);
+            }
+            catch (_e) {
+                setErrorMsg("カメラを起動できませんでした。ブラウザのカメラ許可を確認してください。");
+            }
+        })();
+        return () => {
+            stopped = true;
+            cancelAnimationFrame(rafId);
+            if (stream)
+                stream.getTracks().forEach((t) => t.stop());
+        };
+    }, []);
+    return ((0, jsx_runtime_1.jsxs)("div", { id: "qr-scanner-overlay", style: {
+            position: "fixed",
+            inset: 0,
+            background: "#000",
+            zIndex: 1000000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+        }, children: [(0, jsx_runtime_1.jsxs)("div", { style: { position: "relative", width: "100%", flex: 1 }, children: [(0, jsx_runtime_1.jsx)("video", { ref: videoRef, muted: true, playsInline: true, style: { width: "100%", height: "100%", objectFit: "cover" } }), (0, jsx_runtime_1.jsx)("div", { style: {
+                            position: "absolute",
+                            top: "50%",
+                            left: "50%",
+                            width: "62vw",
+                            maxWidth: "280px",
+                            aspectRatio: "1 / 1",
+                            transform: "translate(-50%, -50%)",
+                            border: "4px solid #ffeb3b",
+                            borderRadius: "18px",
+                            boxShadow: "0 0 0 100vmax rgba(0,0,0,0.5)",
+                            pointerEvents: "none",
+                        } })] }), (0, jsx_runtime_1.jsxs)("div", { style: {
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "16px",
+                    background: "#222",
+                    color: "#fff",
+                    textAlign: "center",
+                    fontWeight: "bold",
+                }, children: [(0, jsx_runtime_1.jsx)("div", { style: { marginBottom: "12px", fontSize: "0.95rem", lineHeight: 1.5 }, children: errorMsg ? `⚠️ ${errorMsg}` : `📷 ${hint}` }), (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: onClose, style: {
+                            width: "100%",
+                            maxWidth: "320px",
+                            padding: "12px",
+                            fontSize: "1rem",
+                            fontWeight: "bold",
+                            border: "none",
+                            borderRadius: "10px",
+                            background: "#eee",
+                            color: "#333",
+                            cursor: "pointer",
+                        }, children: "\u2716 \u9589\u3058\u308B" })] })] }));
+}
 function ControllerApp() {
     const [activeScreen, setActiveScreen] = (0, react_1.useState)("phone-screen-join");
     const [roomInput, setRoomInput] = (0, react_1.useState)("");
+    const [isScanning, setIsScanning] = (0, react_1.useState)(false);
+    const [installAvailable, setInstallAvailable] = (0, react_1.useState)(Boolean(deferredInstallPrompt));
     const [playersState, setPlayersState] = (0, react_1.useState)([]);
     const [activeIdxState, setActiveIdxState] = (0, react_1.useState)(0);
     const [modeState, setModeState] = (0, react_1.useState)("normal");
@@ -647,6 +839,7 @@ function ControllerApp() {
         setRoomInputRef = (code) => {
             setRoomInput(code);
         };
+        setInstallAvailableRef = (v) => setInstallAvailable(v);
         syncMobileReactStateRef = () => {
             setPlayersState([...players]);
             setActiveIdxState(activePlayerIndex);
@@ -656,9 +849,27 @@ function ControllerApp() {
         return () => {
             setMobileScreenRef = null;
             setRoomInputRef = null;
+            setInstallAvailableRef = null;
             syncMobileReactStateRef = null;
         };
     }, []);
+    const handleQRDetected = (code) => {
+        setIsScanning(false);
+        setRoomInput(code);
+        currentRoomCode = String(code);
+        socket.emit("joinRoom", { roomCode: currentRoomCode });
+    };
+    const handleInstallApp = async () => {
+        if (!deferredInstallPrompt)
+            return;
+        deferredInstallPrompt.prompt();
+        try {
+            await deferredInstallPrompt.userChoice;
+        }
+        catch (_e) { }
+        deferredInstallPrompt = null;
+        setInstallAvailable(false);
+    };
     const handleJoinRoom = (e) => {
         e.preventDefault();
         const codeInput = roomInput.trim();
@@ -749,7 +960,12 @@ function ControllerApp() {
                                                     border: "2px solid #ccc",
                                                     textAlign: "center",
                                                     boxSizing: "border-box",
-                                                } })] }), (0, jsx_runtime_1.jsx)("button", { id: "btn-join-room", className: "btn-orange", onClick: handleJoinRoom, children: "\uD83D\uDD11 \u30EB\u30FC\u30E0\u306B\u63A5\u7D9A\u3059\u308B" })] })] }), (0, jsx_runtime_1.jsxs)("div", { id: "phone-screen-setup", className: `card phone-card ${activeScreen === "phone-screen-setup" ? "active" : ""}`, style: {
+                                                } })] }), (0, jsx_runtime_1.jsx)("button", { type: "button", id: "btn-scan-qr", className: "btn-blue", onClick: () => setIsScanning(true), children: "\uD83D\uDCF7 QR\u30B3\u30FC\u30C9\u3092\u8AAD\u307F\u53D6\u3063\u3066\u53C2\u52A0" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-join-room", className: "btn-orange", onClick: handleJoinRoom, children: "\uD83D\uDD11 \u30EB\u30FC\u30E0\u306B\u63A5\u7D9A\u3059\u308B" }), installAvailable && ((0, jsx_runtime_1.jsx)("button", { type: "button", id: "btn-install-pwa", onClick: handleInstallApp, style: {
+                                            background: "#fff",
+                                            color: "#6a11cb",
+                                            border: "2px solid #6a11cb",
+                                            fontWeight: "bold",
+                                        }, children: "\uD83D\uDCF2 \u30A2\u30D7\u30EA\u3068\u3057\u3066\u30DB\u30FC\u30E0\u753B\u9762\u306B\u8FFD\u52A0" }))] })] }), isScanning && ((0, jsx_runtime_1.jsx)(QRScannerOverlay, { onDetected: handleQRDetected, onClose: () => setIsScanning(false) })), (0, jsx_runtime_1.jsxs)("div", { id: "phone-screen-setup", className: `card phone-card ${activeScreen === "phone-screen-setup" ? "active" : ""}`, style: {
                             display: activeScreen === "phone-screen-setup" ? "block" : "none",
                         }, children: [(0, jsx_runtime_1.jsx)("h2", { style: {
                                     marginTop: 0,

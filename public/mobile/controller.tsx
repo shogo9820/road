@@ -1,7 +1,33 @@
 import React, { useState, useEffect, memo } from "react";
 import { createRoot } from "react-dom/client";
+import jsQR from "jsqr";
 
 const socket = io();
+
+// 📲 PWAインストールプロンプト（Android/Chrome）の保持
+let deferredInstallPrompt: any = null;
+let setInstallAvailableRef: ((v: boolean) => void) | null = null;
+window.addEventListener("beforeinstallprompt", (e: any) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (setInstallAvailableRef) setInstallAvailableRef(true);
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  if (setInstallAvailableRef) setInstallAvailableRef(false);
+});
+
+// 📷 QRコードの中身（参加URL または 4桁コード）からルームコードを取り出す
+function extractRoomCodeFromQR(text: string): string | null {
+  if (!text) return null;
+  try {
+    const u = new URL(text);
+    const r = u.searchParams.get("room");
+    if (r && /^\d{4}$/.test(r)) return r;
+  } catch (_e) {}
+  const m = text.match(/room=(\d{4})/) || text.match(/^\s*(\d{4})\s*$/);
+  return m ? m[1] : null;
+}
 let currentRoomCode = "";
 let activePlayerIndex = 0;
 let players: any[] = [];
@@ -821,10 +847,180 @@ const MobileModalsZone = memo(
   () => true,
 );
 
+// 📷 QRコード読み取りオーバーレイ（カメラ起動→QR検出→ルームコード通知）
+function QRScannerOverlay({
+  onDetected,
+  onClose,
+}: {
+  onDetected: (code: string) => void;
+  onClose: () => void;
+}) {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [hint, setHint] = useState<string>("PC画面のQRコードを枠に合わせてください");
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let rafId = 0;
+    let stopped = false;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const Detector = (window as any).BarcodeDetector;
+    const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+
+    const handleText = (text: string): boolean => {
+      const code = extractRoomCodeFromQR(text);
+      if (code) {
+        stopped = true;
+        onDetected(code);
+        return true;
+      }
+      setHint("このQRコードは参加用ではありません。PC画面のQRを読み取ってください");
+      return false;
+    };
+
+    const tick = async () => {
+      if (stopped) return;
+      const video = videoRef.current;
+      if (video && video.readyState >= 2 && video.videoWidth > 0) {
+        try {
+          if (detector) {
+            const found = await detector.detect(video);
+            if (found && found.length > 0 && handleText(found[0].rawValue)) return;
+          } else if (ctx) {
+            const w = video.videoWidth;
+            const h = video.videoHeight;
+            canvas.width = w;
+            canvas.height = h;
+            ctx.drawImage(video, 0, 0, w, h);
+            const img = ctx.getImageData(0, 0, w, h);
+            const res = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
+            if (res && res.data && handleText(res.data)) return;
+          }
+        } catch (_e) {}
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    (async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setErrorMsg(
+          "この接続（http）ではカメラを使えません。HTTPS接続またはlocalhostで開いてください。ルームコードの手入力は可能です。",
+        );
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (stopped) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        const video = videoRef.current;
+        if (video) {
+          video.srcObject = stream;
+          video.setAttribute("playsinline", "true");
+          await video.play();
+        }
+        rafId = requestAnimationFrame(tick);
+      } catch (_e) {
+        setErrorMsg(
+          "カメラを起動できませんでした。ブラウザのカメラ許可を確認してください。",
+        );
+      }
+    })();
+
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(rafId);
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  return (
+    <div
+      id="qr-scanner-overlay"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "#000",
+        zIndex: 1000000,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div style={{ position: "relative", width: "100%", flex: 1 }}>
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: "62vw",
+            maxWidth: "280px",
+            aspectRatio: "1 / 1",
+            transform: "translate(-50%, -50%)",
+            border: "4px solid #ffeb3b",
+            borderRadius: "18px",
+            boxShadow: "0 0 0 100vmax rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "16px",
+          background: "#222",
+          color: "#fff",
+          textAlign: "center",
+          fontWeight: "bold",
+        }}
+      >
+        <div style={{ marginBottom: "12px", fontSize: "0.95rem", lineHeight: 1.5 }}>
+          {errorMsg ? `⚠️ ${errorMsg}` : `📷 ${hint}`}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            width: "100%",
+            maxWidth: "320px",
+            padding: "12px",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            border: "none",
+            borderRadius: "10px",
+            background: "#eee",
+            color: "#333",
+            cursor: "pointer",
+          }}
+        >
+          ✖ 閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ControllerApp() {
   const [activeScreen, setActiveScreen] =
     useState<string>("phone-screen-join");
   const [roomInput, setRoomInput] = useState<string>("");
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [installAvailable, setInstallAvailable] = useState<boolean>(
+    Boolean(deferredInstallPrompt),
+  );
   const [playersState, setPlayersState] = useState<any[]>([]);
   const [activeIdxState, setActiveIdxState] = useState<number>(0);
   const [modeState, setModeState] = useState<string>("normal");
@@ -837,6 +1033,7 @@ function ControllerApp() {
     setRoomInputRef = (code: string) => {
       setRoomInput(code);
     };
+    setInstallAvailableRef = (v: boolean) => setInstallAvailable(v);
     syncMobileReactStateRef = () => {
       setPlayersState([...players]);
       setActiveIdxState(activePlayerIndex);
@@ -848,9 +1045,27 @@ function ControllerApp() {
     return () => {
       setMobileScreenRef = null;
       setRoomInputRef = null;
+      setInstallAvailableRef = null;
       syncMobileReactStateRef = null;
     };
   }, []);
+
+  const handleQRDetected = (code: string) => {
+    setIsScanning(false);
+    setRoomInput(code);
+    currentRoomCode = String(code);
+    socket.emit("joinRoom", { roomCode: currentRoomCode });
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    try {
+      await deferredInstallPrompt.userChoice;
+    } catch (_e) {}
+    deferredInstallPrompt = null;
+    setInstallAvailable(false);
+  };
 
   const handleJoinRoom = (e: React.MouseEvent | React.FormEvent) => {
     e.preventDefault();
@@ -993,14 +1208,44 @@ function ControllerApp() {
               />
             </div>
             <button
+              type="button"
+              id="btn-scan-qr"
+              className="btn-blue"
+              onClick={() => setIsScanning(true)}
+            >
+              📷 QRコードを読み取って参加
+            </button>
+            <button
               id="btn-join-room"
               className="btn-orange"
               onClick={handleJoinRoom}
             >
               🔑 ルームに接続する
             </button>
+            {installAvailable && (
+              <button
+                type="button"
+                id="btn-install-pwa"
+                onClick={handleInstallApp}
+                style={{
+                  background: "#fff",
+                  color: "#6a11cb",
+                  border: "2px solid #6a11cb",
+                  fontWeight: "bold",
+                }}
+              >
+                📲 アプリとしてホーム画面に追加
+              </button>
+            )}
           </form>
         </div>
+
+        {isScanning && (
+          <QRScannerOverlay
+            onDetected={handleQRDetected}
+            onClose={() => setIsScanning(false)}
+          />
+        )}
 
         {/* 【2】ゲーム設定・参加待機画面 */}
         <div

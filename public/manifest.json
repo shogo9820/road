@@ -1,8 +1,11 @@
 {
-  "name": "宅飲み人生ゲーム",
-  "short_name": "宅飲み人生ゲーム",
-  "description": "サークル生活の思い出とアルコールを楽しむすごろくゲーム",
-  "start_url": "/",
+  "id": "/mobile/index.html",
+  "name": "宅飲み人生ゲーム コントローラー",
+  "short_name": "宅飲み人生",
+  "description": "サークル生活の思い出とアルコールを楽しむ、すごろくゲームのスマホコントローラー",
+  "lang": "ja",
+  "start_url": "/mobile/index.html",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f5f5f5",
@@ -11,12 +14,20 @@
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
