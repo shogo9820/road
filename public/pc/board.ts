@@ -330,17 +330,17 @@ window.boardManager = {
             color: "#01579b",
           },
           {
-            x: 6,
-            y: 20,
+            x: 5.5,
+            y: 21,
             text: "🍹 A: 激シャバルート",
-            bg: "rgba(0, 150, 136, 0.15)",
+            bg: "rgba(0, 150, 136, 0.18)",
             color: "#00695c",
           },
           {
-            x: 20,
-            y: 36,
+            x: 20.5,
+            y: 40.5,
             text: "🔥 B: 激おもろルート",
-            bg: "rgba(255, 152, 0, 0.18)",
+            bg: "rgba(255, 152, 0, 0.22)",
             color: "#e65100",
           },
         ];
@@ -469,7 +469,8 @@ window.boardManager = {
       ctx.font = `${scaledSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.15)";
+      ctx.fillStyle = "#000000";
+      ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.2)";
       ctx.shadowBlur = 4;
       ctx.shadowOffsetX = 1;
       ctx.shadowOffsetY = 1;
