@@ -1539,12 +1539,6 @@ function PCApp() {
           {/* 【中央カラム】残りの画面幅（1fr）を限界まで使い切ってすごろくを最大化 */}
           <div className="layout-center">
             <div className="map-card-maximized">
-              <div className="map-header">
-                <span className="map-title-text">🗺️ すごろくマップ</span>
-                <span className="mode-badge" id="pc-game-mode-badge">
-                  {gameModeState === "short" ? "ショートモード" : "通常モード"}
-                </span>
-              </div>
               <canvas id="board-canvas"></canvas>
             </div>
           </div>
