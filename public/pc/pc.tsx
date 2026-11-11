@@ -1766,6 +1766,9 @@ function appendSocketListeners() {
 
     p.position = Number(data.position);
     p.location = data.location || "家";
+    if (data.rankupFails) {
+      p._rankupFails = data.rankupFails;
+    }
 
     console.log(
       `💻 [PC ROUTINE-演出開始] サーバーから着地号令(startSquareEvent)を受信。マスID: ${p.position}`,

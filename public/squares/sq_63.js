@@ -60,6 +60,19 @@ window.SQ_MODULES[63] = {
         return;
       }
 
+      // 🎲 ランダムに決定された外れ2枠（80%成功）
+      const fails =
+        player._rankupFails &&
+        Array.isArray(player._rankupFails) &&
+        player._rankupFails.length === 2
+          ? player._rankupFails
+          : [1, 4];
+      const failSet = new Set(fails);
+      const winNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(
+        (n) => !failSet.has(n)
+      );
+      const daihyoSet = new Set(winNumbers.slice(0, 4));
+
       // 💻 ① 【PC大画面側の直接処理】
       const pcModal = document.getElementById("pc-event-modal");
       if (pcModal) {
@@ -75,7 +88,7 @@ window.SQ_MODULES[63] = {
         pcModal.style.display = "flex";
         document.getElementById("modal-event-title").textContent = cfg.pcTitle;
         document.getElementById("modal-event-desc").textContent =
-          `${player.name} ${cfg.pcDesc}（現在: ${currentJobName} ➔ 成功時: ${rankUpJobName}）`;
+          `${player.name} さんの実力が試される時！${fails[0]}・${fails[1]}以外（80%）を出して役職ランクアップを掴み取れ！（現在: ${currentJobName} ➔ 成功時: ${rankUpJobName}）`;
 
         const resultBox = document.getElementById("modal-event-result-box");
         if (resultBox) {
@@ -85,13 +98,13 @@ window.SQ_MODULES[63] = {
         }
 
         let tableHTML = `
-          <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">👑 ランクアップ判定対応表</div>
+          <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">👑 ランクアップ判定対応表（外れ: ${fails[0]}・${fails[1]}）</div>
           <ul class="event-table-list">`;
         for (let i = 1; i <= 10; i++) {
-          const isRankUp = i !== 1 && i !== 4;
+          const isRankUp = !failSet.has(i);
           const targetTitle =
-            (player.jobId === "mob" || currentJobName === "モブ")
-              ? i % 2 === 0
+            player.jobId === "mob" || currentJobName === "モブ"
+              ? daihyoSet.has(i)
                 ? "代表"
                 : "副代表"
               : rankUpJobName;
@@ -115,7 +128,8 @@ window.SQ_MODULES[63] = {
         const resultDisplay = document.getElementById("roulette-result-display");
 
         document.body.classList.add(cfg.themeClass);
-        if (resultDisplay) resultDisplay.textContent = cfg.mobileDisplay;
+        if (resultDisplay)
+          resultDisplay.textContent = `🎯 ${fails[0]}・${fails[1]}以外（80%）を出して役職ランクアップを狙え！`;
 
         if (spinBtn) {
           const newSpinBtn = spinBtn.cloneNode(true);
@@ -130,10 +144,10 @@ window.SQ_MODULES[63] = {
 
             const rankupMapping = {};
             for (let i = 1; i <= 10; i++) {
-              if (i !== 1 && i !== 4) {
+              if (!failSet.has(i)) {
                 const targetTitle =
-                  (player.jobId === "mob" || currentJobName === "モブ")
-                    ? i % 2 === 0
+                  player.jobId === "mob" || currentJobName === "モブ"
+                    ? daihyoSet.has(i)
                       ? "代表"
                       : "副代表"
                     : rankUpJobName;
@@ -206,10 +220,10 @@ window.SQ_MODULES[63] = {
             socket.off("customRouletteFinished", mod._onFinished);
 
           const resNum = data && data.result !== undefined ? data.result : 1;
-          if (resNum !== 1 && resNum !== 4) {
+          if (!failSet.has(resNum)) {
             const targetTitle =
-              (player.jobId === "mob" || currentJobName === "モブ")
-                ? resNum % 2 === 0
+              player.jobId === "mob" || currentJobName === "モブ"
+                ? daihyoSet.has(resNum)
                   ? "代表"
                   : "副代表"
                 : rankUpJobName;

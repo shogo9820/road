@@ -1671,6 +1671,9 @@ function initMobileListeners() {
     const currentPos = Number(data.position);
     p.position = currentPos;
     if (data.location) p.location = data.location;
+    if (data.rankupFails) {
+      p._rankupFails = data.rankupFails;
+    }
 
     console.log(
       `📱 [4.0 到着イベント開始] サーバー号令を受信。マスID: ${currentPos} のコンポーネントをロードします...`,

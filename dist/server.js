@@ -954,6 +954,17 @@ io.on("connection", (socket) => {
         // 移動が完了したので、前回の進路選択を破棄（次の分岐マスでの誤表示防止）
         delete p.chosenRouteIdx;
         console.log(`🚨 [SERVER ROUTINE] ➔ 4. マス着地確定: ${p.name} 氏 (マスID: ${p.position}, 場所: ${p.location})`);
+        // 👑 ランクアップマスの場合は外れの2枠（20%）をランダムに決定
+        let rankupFails;
+        if (p.position === 49 || p.position === 54 || p.position === 63) {
+            const candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            for (let i = candidates.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+            }
+            rankupFails = [candidates[0], candidates[1]].sort((a, b) => a - b);
+            console.log(`👑 [SERVER ランクアップ設定] マス${p.position}: 外れ出目は ${rankupFails.join(" と ")} に決定！`);
+        }
         // 🎯 1. PC・スマホ双方へ「マスイベント開始」を同時に号令
         io.to(roomCode).emit("startSquareEvent", {
             position: p.position,
@@ -961,6 +972,7 @@ io.on("connection", (socket) => {
             playerId: p.id,
             playerName: p.name,
             activePlayerIndex: room.activePlayerIndex,
+            rankupFails,
         });
         // 🎯 2. 最新の盤面ステータスを全員へ同期
         io.to(roomCode).emit("syncGameState", {
@@ -1363,12 +1375,22 @@ io.on("connection", (socket) => {
                 }
                 // 🎯 サーバーの着地ハブと同じ合図を即時発行
                 room.currentPhase = PHASES.SQUARE_LANDED;
+                let rankupFails;
+                if (targetId === 49 || targetId === 54 || targetId === 63) {
+                    const candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                    for (let i = candidates.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+                    }
+                    rankupFails = [candidates[0], candidates[1]].sort((a, b) => a - b);
+                }
                 io.to(roomCode).emit("startSquareEvent", {
                     position: targetId,
                     location: p.location,
                     playerId: p.id,
                     playerName: p.name,
                     activePlayerIndex: room.activePlayerIndex,
+                    rankupFails,
                 });
                 io.to(roomCode).emit("syncGameState", {
                     players: room.gamePlayers,

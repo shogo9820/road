@@ -1202,6 +1202,9 @@ function initMobileListeners() {
         p.position = currentPos;
         if (data.location)
             p.location = data.location;
+        if (data.rankupFails) {
+            p._rankupFails = data.rankupFails;
+        }
         console.log(`📱 [4.0 到着イベント開始] サーバー号令を受信。マスID: ${currentPos} のコンポーネントをロードします...`);
         loadAndApplySquareComponent(currentPos, () => {
             // 1. 個別モジュール（sq_XX.js）を取得
