@@ -476,7 +476,32 @@ function executeSyncedRoulette(resultNum: number) {
 
 // 📢 右下「現在のマスの内容」を、杯数・条件が一目で分かる表示に整形
 function buildTileHtml(text: string, drink: number, happiness: number): string {
-  const body = String(text)
+  let cleaned = String(text);
+
+  // 1. drink > 0 の場合（上に「○杯飲む！」が出る場合）、下のテキストの（）の中（杯数表記など）を削除
+  if (drink > 0) {
+    cleaned = cleaned.replace(
+      /[（(]\s*[0-9０-９]+杯(?:飲む)?\s*(【[^】]+】[^）)]*)[）)]/g,
+      "$1",
+    );
+    cleaned = cleaned.replace(
+      /[（(][^）)]*(?:[0-9０-９]+杯|飲む|乾杯)[^）)]*[）)]/g,
+      "",
+    );
+  }
+
+  // 条件マスで外側に（【...】...）がついている場合、外側の（）を外す
+  cleaned = cleaned.replace(/[（(]\s*(【[^】]+】[^）)]*)[）)]/g, "$1");
+  // 残った空の（）を削除
+  cleaned = cleaned.replace(/[（(]\s*[)）]/g, "").trim();
+
+  // 2. 【】がある場合、そこで改行
+  // 先頭の【...】の直後にテキストが続く場合は直後で改行
+  cleaned = cleaned.replace(/^(【[^】]+】)\s*/, "$1<br>");
+  // 途中に現れる【...】の手前で改行（直前が<br>でない場合）
+  cleaned = cleaned.replace(/([^\n>])\s*(【[^】]+】)/g, "$1<br>$2");
+
+  const body = cleaned
     .replace(
       /(【[^】]*(?:場合|回避)[^】]*】)/g,
       '<span class="tile-cond">$1</span>',
@@ -492,7 +517,7 @@ function buildTileHtml(text: string, drink: number, happiness: number): string {
   } else if (hasCondition || hasCupsInText) {
     badge = `<div class="tile-badge tile-badge-cond">⚠️ 条件に当てはまる人は飲む！（下の文を確認）</div>`;
   } else {
-    badge = `<div class="tile-badge tile-badge-safe">✨ セーフ！飲まなくてOK</div>`;
+    badge = `<div class="tile-badge tile-badge-safe">飲まない！</div>`;
   }
 
   let happy = "";

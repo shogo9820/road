@@ -438,12 +438,12 @@ button:active { transform: scale(0.98); }
   background: #fff3cd; color: #b34700; border: 3px solid #ff9800; font-size: 1.25rem;
 }
 .tile-badge-safe {
-  background: #e8f5e9; color: #1b5e20; border: 3px solid #43a047; font-size: 1.4rem;
+  background: #e8f5e9; color: #1b5e20; border: 3px solid #43a047; font-size: 1.6rem; padding: 12px 14px;
 }
 .tile-text { font-size: 1.35rem; font-weight: 800; line-height: 1.55; color: #1f2d3d; }
 .tile-cups {
-  display: inline-block; padding: 0 8px; margin: 0 2px; border-radius: 8px;
-  background: #ffe0b2; color: #d84315; font-size: 1.6em; font-weight: 900;
+  display: inline-block; padding: 2px 8px; margin: 0 2px; border-radius: 6px;
+  background: #ffe0b2; color: #d84315; font-size: 1.15em; font-weight: 900;
 }
 .tile-cond {
   display: inline-block; padding: 1px 8px; margin-right: 4px; border-radius: 8px;

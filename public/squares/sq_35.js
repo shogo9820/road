@@ -4,7 +4,7 @@ window.SQ_MODULES[35] = {
     id: 35,
     type: "normal",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
-    drink: 1,
+    drink: 0,
     happiness: 5,
     location: "ぱいぱい",
     event: function (player, square) {
@@ -80,7 +80,7 @@ window.SQ_MODULES[35] = {
     id: 35,
     type: "normal",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
-    drink: 1,
+    drink: 0,
     happiness: 5,
     location: "ぱいぱい",
     event: function (p, s) { window.SQ_MODULES[35].normal.event(p, s); }
@@ -89,7 +89,7 @@ window.SQ_MODULES[35] = {
     id: 35,
     type: "normal",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
-    drink: 1,
+    drink: 0,
     happiness: 5,
     location: "ぱいぱい",
     event: function (p, s) { window.SQ_MODULES[35].normal.event(p, s); }
