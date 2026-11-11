@@ -5,7 +5,7 @@ window.SQ_MODULES[97] = {
     type: "repeat",
     text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
     drink: 1,
-    happiness: -20,
+    happiness: -15,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -47,7 +47,7 @@ window.SQ_MODULES[97] = {
         }
       }
 
-      applyDrinkAndHappiness(player, 0, -20);
+      applyDrinkAndHappiness(player, 0, -15);
       if (typeof players !== "undefined" && Array.isArray(players)) {
         players.forEach((p) => {
           if (p && p.isRepeat) {
@@ -82,7 +82,7 @@ window.SQ_MODULES[97] = {
     type: "repeat",
     text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
     drink: 1,
-    happiness: -20,
+    happiness: -15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[97].normal.event(p, s); }
   },
@@ -91,7 +91,7 @@ window.SQ_MODULES[97] = {
     type: "repeat",
     text: "【留年】留年したものの絆（留年したもの全員で乾杯）",
     drink: 1,
-    happiness: -20,
+    happiness: -15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[97].normal.event(p, s); }
   }

@@ -5,7 +5,7 @@ window.SQ_MODULES[74] = {
     type: "normal",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -76,7 +76,7 @@ window.SQ_MODULES[74] = {
     type: "normal",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[74].normal.event(p, s); }
   },
@@ -85,7 +85,7 @@ window.SQ_MODULES[74] = {
     type: "normal",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[74].normal.event(p, s); }
   }

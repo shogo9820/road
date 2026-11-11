@@ -5,7 +5,7 @@ window.SQ_MODULES[71] = {
     type: "normal",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -76,7 +76,7 @@ window.SQ_MODULES[71] = {
     type: "normal",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[71].normal.event(p, s); }
   },
@@ -85,7 +85,7 @@ window.SQ_MODULES[71] = {
     type: "normal",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[71].normal.event(p, s); }
   }

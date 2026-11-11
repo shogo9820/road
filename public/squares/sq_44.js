@@ -5,7 +5,7 @@ window.SQ_MODULES[44] = {
     type: "normal",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: 10,
     location: "とりき",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -76,7 +76,7 @@ window.SQ_MODULES[44] = {
     type: "normal",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: 10,
     location: "とりき",
     event: function (p, s) { window.SQ_MODULES[44].normal.event(p, s); }
   },
@@ -85,7 +85,7 @@ window.SQ_MODULES[44] = {
     type: "normal",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: 10,
     location: "とりき",
     event: function (p, s) { window.SQ_MODULES[44].normal.event(p, s); }
   }

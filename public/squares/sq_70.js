@@ -5,7 +5,7 @@ window.SQ_MODULES[70] = {
     type: "normal",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -87,7 +87,7 @@ window.SQ_MODULES[70] = {
     type: "normal",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[70].normal.event(p, s); }
   },
@@ -96,7 +96,7 @@ window.SQ_MODULES[70] = {
     type: "normal",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
-    happiness: 0,
+    happiness: -5,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[70].normal.event(p, s); }
   }

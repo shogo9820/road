@@ -5,7 +5,7 @@ window.SQ_MODULES[67] = {
     type: "normal",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
-    happiness: 0,
+    happiness: 20,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -83,7 +83,7 @@ window.SQ_MODULES[67] = {
     type: "normal",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
-    happiness: 0,
+    happiness: 20,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[67].normal.event(p, s); }
   },
@@ -92,7 +92,7 @@ window.SQ_MODULES[67] = {
     type: "normal",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
-    happiness: 0,
+    happiness: 20,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[67].normal.event(p, s); }
   }

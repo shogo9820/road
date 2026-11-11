@@ -5,7 +5,7 @@ window.SQ_MODULES[57] = {
     type: "normal",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -10,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -76,7 +76,7 @@ window.SQ_MODULES[57] = {
     type: "normal",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -10,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[57].normal.event(p, s); }
   },
@@ -85,7 +85,7 @@ window.SQ_MODULES[57] = {
     type: "normal",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -10,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[57].normal.event(p, s); }
   }

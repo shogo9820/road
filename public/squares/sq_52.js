@@ -5,7 +5,7 @@ window.SQ_MODULES[52] = {
     type: "normal",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 2,
-    happiness: 0,
+    happiness: 15,
     location: "家",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -87,7 +87,7 @@ window.SQ_MODULES[52] = {
     type: "normal",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 2,
-    happiness: 0,
+    happiness: 15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[52].normal.event(p, s); }
   },
@@ -96,7 +96,7 @@ window.SQ_MODULES[52] = {
     type: "normal",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 2,
-    happiness: 0,
+    happiness: 15,
     location: "家",
     event: function (p, s) { window.SQ_MODULES[52].normal.event(p, s); }
   }

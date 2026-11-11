@@ -6,7 +6,7 @@ window.SQ_MODULES[87] = {
     text: "【追いコン】みんな今までありがとう！全員で乾杯！（全員１杯飲む）",
     drink: 1,
     degree: 25,
-    happiness: 30,
+    happiness: 25,
     location: "家",
     event: function (player, square) {
       // PC側は着地時のテキスト反映に任せるため早期リターン
@@ -21,7 +21,7 @@ window.SQ_MODULES[87] = {
 
       // 止まった本人の幸福度 +30
       if (player.happiness === undefined) player.happiness = 100;
-      player.happiness += 30;
+      player.happiness += 25;
 
       // 参加プレイヤー全員に 1杯（HP -10）を加算
       if (typeof players !== "undefined" && Array.isArray(players)) {
@@ -93,7 +93,7 @@ window.SQ_MODULES[87] = {
     text: "追いコンで全員感謝の乾杯！",
     drink: 2,
     degree: 25,
-    happiness: 20,
+    happiness: 25,
     location: "Qoo"
   }
 };

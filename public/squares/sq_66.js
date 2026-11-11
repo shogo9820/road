@@ -5,7 +5,7 @@ window.SQ_MODULES[66] = {
     type: "normal",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "ぱいぱい",
     event: function (player, square) {
       if (document.getElementById("pc-event-modal")) return;
@@ -74,7 +74,7 @@ window.SQ_MODULES[66] = {
     type: "normal",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "ぱいぱい",
     event: function (p, s) { window.SQ_MODULES[66].normal.event(p, s); }
   },
@@ -83,7 +83,7 @@ window.SQ_MODULES[66] = {
     type: "normal",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
-    happiness: 0,
+    happiness: -15,
     location: "ぱいぱい",
     event: function (p, s) { window.SQ_MODULES[66].normal.event(p, s); }
   }
