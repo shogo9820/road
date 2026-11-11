@@ -218,6 +218,13 @@ function startTurnRoutine(room, roomCode) {
                 pl.usedSkillThisTurn = false;
                 pl._lastDrinkBaseline = pl.drinkCount || 0;
                 ensureSkillUsesInitialized(pl);
+                // ㊗️ 既にゴールしたプレイヤーは毎ターン内部的に幸福度 +5（余生ボーナス）
+                if (pl.hasFinished) {
+                    if (pl.happiness === undefined)
+                        pl.happiness = 100;
+                    pl.happiness += 5;
+                    console.log(`✨ [GOAL BONUS] ${pl.name} はゴール後の余生を満喫中 (幸福度 +5 ➔ ${pl.happiness}pt)`);
+                }
             }
         });
     }
