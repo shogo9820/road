@@ -368,7 +368,7 @@ function executeSyncedRoulette(resultNum) {
         return;
     const resEl = document.getElementById("roulette-result-display");
     if (resEl)
-        resEl.textContent = "🎯 回転中...";
+        resEl.textContent = "出目: 🌀";
     const descEl = document.getElementById("event-text") ||
         document.getElementById("current-tile-desc");
     if (descEl && !isPCEventMode)
@@ -638,22 +638,12 @@ window.renderLocationPlayersList = renderLocationPlayersList;
 window.handleForceStopSquare = handleForceStopSquare;
 // sq_XX.js やルーレットアニメーションが直接DOM操作する領域を保護するメモ化コンポーネント
 const RouletteAndTileZone = (0, react_1.memo)(({ currentLocation }) => {
-    (0, react_1.useEffect)(() => {
-        const locEl = document.querySelector(".roulette-card #current-player-location");
-        if (locEl)
-            locEl.textContent = currentLocation || "-";
-    }, [currentLocation]);
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "layout-right", children: [(0, jsx_runtime_1.jsxs)("div", { className: "card roulette-card", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-result-display", id: "roulette-result-display", children: "\uD83C\uDFAF \u30BF\u30C3\u30D7\u3057\u3066\u56DE\u305D\u3046\uFF01" }), (0, jsx_runtime_1.jsxs)("div", { style: {
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "layout-right", children: [(0, jsx_runtime_1.jsxs)("div", { className: "card roulette-card", children: [(0, jsx_runtime_1.jsxs)("div", { style: {
                             position: "relative",
                             width: "200px",
                             height: "200px",
                             margin: "0 auto",
-                        }, children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "roulette-wheel-board", id: "pc-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] }), (0, jsx_runtime_1.jsx)("div", { id: "current-player-location", style: {
-                            fontWeight: "bold",
-                            marginTop: "8px",
-                            color: "#555",
-                            fontSize: "1.1rem",
-                        }, children: "\u30B9\u30BF\u30FC\u30C8\u524D" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "card tile-event-card", style: { flex: 1, minHeight: "150px" }, children: [(0, jsx_runtime_1.jsx)("div", { className: "card-title", style: {
+                        }, children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "roulette-wheel-board", id: "pc-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-result-display", id: "roulette-result-display", style: { marginTop: "12px" }, children: "\u51FA\u76EE: -" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "card tile-event-card", style: { flex: 1, minHeight: "150px" }, children: [(0, jsx_runtime_1.jsx)("div", { className: "card-title", style: {
                             borderBottom: "2px solid #e0e0e0",
                             paddingBottom: "4px",
                             marginBottom: "8px",
@@ -1755,10 +1745,16 @@ function appendSocketListeners() {
             if (coupleModal) {
                 coupleModal.style.display = "none";
             }
+            const pcResEl = document.getElementById("roulette-result-display");
+            if (pcResEl)
+                pcResEl.textContent = "出目: -";
             updateCurrentPlayerDisplay();
         }
         else if (data && data.action === "turnSkipped") {
             isPCEventMode = false;
+            const pcResEl = document.getElementById("roulette-result-display");
+            if (pcResEl)
+                pcResEl.textContent = "出目: -";
             if (data.activePlayerIndex !== undefined) {
                 activePlayerIndex = data.activePlayerIndex;
             }

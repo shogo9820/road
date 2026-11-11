@@ -146,6 +146,50 @@ function updatePhoneStatusDisplay() {
     const activeP = players && players[activePlayerIndex];
     syncKoreanDOMMode(Boolean(activeP && activeP.koreanModeThisTurn));
 }
+// 📢 スマホ画面「現在のマスの内容」表示更新
+function updatePhoneCurrentTileDisplay(targetModule, player) {
+    const tileDescEl = document.getElementById("phone-current-tile-desc");
+    if (!tileDescEl || !targetModule)
+        return;
+    const rawText = targetModule.text || "通常マス";
+    const drink = Number(targetModule.drink || 0);
+    const happy = Number(targetModule.happiness || 0);
+    let cleaned = String(rawText);
+    if (drink > 0) {
+        cleaned = cleaned.replace(/[（(]\s*[0-9０-９]+杯(?:飲む)?\s*(【[^】]+】[^）)]*)[）)]/g, "$1");
+        cleaned = cleaned.replace(/[（(][^）)]*(?:[0-9０-９]+杯|飲む|乾杯)[^）)]*[）)]/g, "");
+    }
+    cleaned = cleaned.replace(/[（(]\s*(【[^】]+】[^）)]*)[）)]/g, "$1");
+    cleaned = cleaned.replace(/[（(]\s*[)）]/g, "").trim();
+    // 【】での改行
+    cleaned = cleaned.replace(/^(【[^】]+】)\s*/, "$1<br>");
+    cleaned = cleaned.replace(/([^\n>])\s*(【[^】]+】)/g, "$1<br>$2");
+    const hasCond = /場合|回避/.test(rawText);
+    const hasCups = /[0-9０-９]+杯/.test(rawText);
+    let badgeHtml = "";
+    if (drink > 0) {
+        badgeHtml = `<span style="background:linear-gradient(135deg,#ff6f00,#e53935); color:#fff; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.95rem; display:inline-block; margin-bottom:4px;">🍺 ${drink}杯飲む！</span>`;
+    }
+    else if (hasCond || hasCups) {
+        badgeHtml = `<span style="background:#fff3cd; color:#b34700; border:1px solid #ff9800; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.85rem; display:inline-block; margin-bottom:4px;">⚠️ 条件に当てはまる人は飲む！</span>`;
+    }
+    else {
+        badgeHtml = `<span style="background:#e8f5e9; color:#1b5e20; border:1px solid #43a047; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.95rem; display:inline-block; margin-bottom:4px;">飲まない！</span>`;
+    }
+    let happyHtml = "";
+    if (happy > 0) {
+        happyHtml = `<div style="color:#f39c12; font-weight:bold; font-size:0.85rem; margin-top:3px;">😊 幸福度 +${happy}pt</div>`;
+    }
+    else if (happy < 0) {
+        happyHtml = `<div style="color:#e74c3c; font-weight:bold; font-size:0.85rem; margin-top:3px;">😢 幸福度 ${happy}pt</div>`;
+    }
+    tileDescEl.innerHTML = `
+    <div>${badgeHtml}</div>
+    <div style="font-weight:800; line-height:1.4; margin-top:2px;">🎲 ${cleaned}</div>
+    ${happyHtml}
+  `;
+}
+window.updatePhoneCurrentTileDisplay = updatePhoneCurrentTileDisplay;
 // ==========================================================================
 // 🇰🇷 【イ専用必殺技：한국어로 변환（韓国語モード）】DOM自動変換＆完全復元エンジン
 // ==========================================================================
@@ -393,14 +437,17 @@ function playMobileRouletteAnimation(finalSteps, targetRotation, callback) {
         document.getElementById("btn-phone-next").disabled =
             true;
     if (resultDisplay)
-        resultDisplay.textContent = "🌀 回転中...";
+        resultDisplay.textContent = "出目: 🌀";
+    const tileDesc = document.getElementById("phone-current-tile-desc");
+    if (tileDesc)
+        tileDesc.innerHTML = `<span style="color:#888;">🌀 移動中... どこに止まるかな？</span>`;
     if (wheel) {
         wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
         wheel.style.transform = `rotate(${targetRotation}deg)`;
     }
     setTimeout(() => {
         if (resultDisplay)
-            resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
+            resultDisplay.textContent = `出目: ${finalSteps}`;
         if (typeof callback === "function")
             callback(finalSteps);
     }, 3000);
@@ -584,7 +631,11 @@ function checkBranchSquareOnTurnStart(syncData) {
                 document.getElementById("btn-phone-spin").disabled = false;
             if (document.getElementById("roulette-result-display"))
                 document.getElementById("roulette-result-display").textContent =
-                    "🎯 タップして回そう！";
+                    "出目: -";
+            const tileDesc = document.getElementById("phone-current-tile-desc");
+            if (tileDesc) {
+                tileDesc.innerHTML = `<span style="color:#888;">🎯 ルーレットを回して進もう！</span>`;
+            }
         };
     }
 }
@@ -621,7 +672,24 @@ window.showJobChoiceDialog = showJobChoiceDialog;
 window.updatePhoneStatusDisplay = updatePhoneStatusDisplay;
 window.loadAndApplySquareComponent = loadAndApplySquareComponent;
 // sq_18.js / sq_30.js / sq_41.js が cloneNode & replaceChild を行うルーレット・ボタン領域を保護するメモ化コンポーネント
-const MobileRouletteZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { className: "player-banner-zone", id: "current-player-banner", children: "TURN: ----" }), (0, jsx_runtime_1.jsxs)("div", { className: "roulette-section-container", style: { width: "100%", maxWidth: "340px", margin: "0 auto" }, children: [(0, jsx_runtime_1.jsx)("div", { className: "result-display-zone", id: "roulette-result-display", children: "\uD83C\uDFAF \u30BF\u30C3\u30D7\u3057\u3066\u56DE\u305D\u3046\uFF01" }), (0, jsx_runtime_1.jsxs)("div", { className: "controller-roulette-container", children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "roulette-wheel-board", id: "controller-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] })] })] })), () => true);
+const MobileRouletteZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)("div", { className: "roulette-section-container", style: {
+        width: "100%",
+        maxWidth: "360px",
+        margin: "0 auto",
+        padding: "10px 8px 6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+    }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "controller-roulette-container", style: { width: "175px", height: "175px" }, children: [(0, jsx_runtime_1.jsx)("div", { className: "event-roulette-pointer" }), (0, jsx_runtime_1.jsxs)("div", { className: "roulette-wheel-board", id: "controller-roulette-wheel", children: [(0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-1", children: "1" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-2", children: "2" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-3", children: "3" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-4", children: "4" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-5", children: "5" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-6", children: "6" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-7", children: "7" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-8", children: "8" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-9", children: "9" }), (0, jsx_runtime_1.jsx)("div", { className: "roulette-num num-10", children: "10" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "result-display-zone", id: "roulette-result-display", style: {
+                marginTop: "6px",
+                fontSize: "1.25rem",
+                fontWeight: 900,
+                color: "#e65100",
+                minHeight: "28px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }, children: "\u51FA\u76EE: -" })] })), () => true);
 const MobileActionButtonsZone = (0, react_1.memo)(() => {
     (0, react_1.useEffect)(() => {
         const spinBtn = document.getElementById("btn-phone-spin");
@@ -658,25 +726,24 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
             width: "100%",
             display: "flex",
             flexDirection: "column",
-            gap: "10px",
+            gap: "8px",
             alignItems: "center",
-            marginTop: "4px",
         }, children: [(0, jsx_runtime_1.jsx)("button", { id: "btn-phone-spin", className: "btn-orange", children: "\u26A1 \u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3059\uFF01" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-use-insurance", disabled: true, children: "\uD83D\uDEE1\uFE0F \u751F\u547D\u4FDD\u967A\u3092\u5229\u7528\u3059\u308B" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-use-skill", disabled: true, style: {
                     display: "none",
                     background: "linear-gradient(135deg, #d84315 0%, #ff8f00 100%)",
                     color: "#fff",
                     fontWeight: "bold",
                     border: "2px solid #ffd54f",
-                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-close-pc-modal", style: {
+                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-close-pc-modal", style: {
                     display: "none",
                     background: "linear-gradient(135deg, #37474f 0%, #212121 100%)",
                     color: "#ffffff",
                     fontWeight: "bold",
-                    fontSize: "1.1rem",
-                    padding: "13px 20px",
-                    borderRadius: "30px",
+                    fontSize: "1.05rem",
+                    padding: "10px 18px",
+                    borderRadius: "12px",
                     border: "2px solid #78909c",
-                    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.4)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
                     cursor: "pointer",
                     width: "100%",
                     textAlign: "center",
@@ -685,15 +752,15 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
                     background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
                     color: "#ffffff",
                     fontWeight: "bold",
-                    fontSize: "1.15rem",
-                    padding: "14px 20px",
-                    borderRadius: "30px",
+                    fontSize: "1.1rem",
+                    padding: "12px 18px",
+                    borderRadius: "12px",
                     border: "none",
                     boxShadow: "0 6px 18px rgba(255, 87, 34, 0.4)",
                     cursor: "pointer",
                     width: "100%",
                     textAlign: "center",
-                }, children: "\uD83C\uDFE0 \u30BF\u30A4\u30C8\u30EB\u753B\u9762\u306B\u623B\u308B" })] }));
+                }, children: "\uD83C\uDFE0 \u30BF\u30A4\u30C8\u30EB\u753B\u9762\u306B\u623B\u308B" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" })] }));
 }, () => true);
 const MobileModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { id: "job-modal-overlay", className: "event-modal-overlay", style: {
                 display: "none",
@@ -1068,51 +1135,74 @@ function ControllerApp() {
                                             borderRadius: "10px",
                                             justifyContent: "space-around",
                                         }, children: [(0, jsx_runtime_1.jsxs)("label", { style: { fontWeight: "bold", cursor: "pointer" }, children: [(0, jsx_runtime_1.jsx)("input", { type: "radio", name: "phone-mode", value: "normal", checked: modeState === "normal", onChange: () => handleModeChange("normal") }), " ", "\u901A\u5E38"] }), (0, jsx_runtime_1.jsxs)("label", { style: { fontWeight: "bold", cursor: "pointer" }, children: [(0, jsx_runtime_1.jsx)("input", { type: "radio", name: "phone-mode", value: "short", checked: modeState === "short", onChange: () => handleModeChange("short") }), " ", "\u30B7\u30E7\u30FC\u30C8"] })] })] }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-start", className: "btn-orange", onClick: sendStartGame, children: "\uD83C\uDFAE \u30B2\u30FC\u30E0\u30B9\u30BF\u30FC\u30C8\uFF01" })] }), (0, jsx_runtime_1.jsxs)("div", { id: "phone-screen-play", className: `card phone-card ${activeScreen === "phone-screen-play" ? "active" : ""}`, style: {
-                            display: activeScreen === "phone-screen-play" ? "block" : "none",
+                            display: activeScreen === "phone-screen-play" ? "flex" : "none",
+                            flexDirection: "column",
                             width: "100%",
-                        }, children: [(0, jsx_runtime_1.jsx)(MobileRouletteZone, {}), (0, jsx_runtime_1.jsxs)("div", { className: "current-tile-or-event-status-box", style: {
-                                    flexDirection: "column",
-                                    gap: "4px",
-                                    padding: "10px",
-                                    fontSize: "0.95rem",
-                                }, children: [(0, jsx_runtime_1.jsxs)("div", { style: {
+                            padding: 0,
+                            background: "transparent",
+                            boxShadow: "none",
+                            border: "none",
+                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "phone-main-viewport-zone", children: [(0, jsx_runtime_1.jsxs)("div", { style: {
                                             display: "flex",
-                                            justifyContent: "space-between",
+                                            flexDirection: "column",
+                                            gap: "8px",
                                             width: "100%",
-                                        }, children: [(0, jsx_runtime_1.jsxs)("span", { children: ["\uD83D\uDC64 ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-name", children: p ? p.name : "----" }), " (", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-job", children: jobLabel }), ")"] }), (0, jsx_runtime_1.jsxs)("span", { style: { fontWeight: 900, color: "#e74c3c" }, children: ["\u2764 HP:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-hp", children: p ? `${currentHp} / ${maxHp}` : "-- / --" })] })] }), (0, jsx_runtime_1.jsx)("div", { style: {
-                                            display: "flex",
-                                            justifyContent: "flex-end",
-                                            width: "100%",
-                                            fontSize: "0.9rem",
-                                            fontWeight: "bold",
-                                            color: "#f39c12",
-                                        }, children: (0, jsx_runtime_1.jsxs)("span", { children: ["\uD83D\uDE0A \u5E78\u798F\u5EA6:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-happiness", children: `${happinessVal} pt` })] }) })] }), (0, jsx_runtime_1.jsx)(MobileActionButtonsZone, {}), (0, jsx_runtime_1.jsx)("div", { className: "developer-debug-zone-panel", style: {
+                                            alignItems: "center",
+                                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "player-banner-zone", children: [(0, jsx_runtime_1.jsxs)("div", { id: "current-player-banner", style: { fontSize: "1.15rem", fontWeight: 900 }, children: ["TURN: ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-name", children: p ? p.name : "----" }), (0, jsx_runtime_1.jsxs)("span", { id: "phone-current-job", style: {
+                                                                    fontSize: "0.85rem",
+                                                                    color: "#666",
+                                                                    marginLeft: "6px",
+                                                                }, children: ["(", jobLabel, ")"] })] }), (0, jsx_runtime_1.jsxs)("div", { style: {
+                                                            display: "flex",
+                                                            justifyContent: "center",
+                                                            gap: "14px",
+                                                            marginTop: "3px",
+                                                            fontSize: "0.85rem",
+                                                            fontWeight: "bold",
+                                                        }, children: [(0, jsx_runtime_1.jsxs)("span", { style: { color: "#e74c3c" }, children: ["\u2764 HP:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-hp", children: p ? `${currentHp} / ${maxHp}` : "-- / --" })] }), (0, jsx_runtime_1.jsxs)("span", { style: { color: "#f39c12" }, children: ["\uD83D\uDE0A \u5E78\u798F\u5EA6:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-happiness", children: `${happinessVal} pt` })] })] })] }), (0, jsx_runtime_1.jsx)(MobileRouletteZone, {}), (0, jsx_runtime_1.jsxs)("div", { id: "phone-current-tile-box", className: "phone-current-tile-box", children: [(0, jsx_runtime_1.jsx)("div", { style: {
+                                                            fontSize: "0.78rem",
+                                                            color: "#888",
+                                                            fontWeight: 900,
+                                                            borderBottom: "1px solid #eee",
+                                                            paddingBottom: "2px",
+                                                            marginBottom: "4px",
+                                                        }, children: "\uD83D\uDCE2 \u73FE\u5728\u306E\u30DE\u30B9\u306E\u5185\u5BB9" }), (0, jsx_runtime_1.jsx)("div", { id: "phone-current-tile-desc", style: {
+                                                            fontSize: "0.95rem",
+                                                            fontWeight: 800,
+                                                            lineHeight: 1.4,
+                                                            color: "#2c3e50",
+                                                        }, children: "\uD83C\uDFAF \u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3057\u3066\u9032\u3082\u3046\uFF01" })] })] }), (0, jsx_runtime_1.jsx)("div", { style: { width: "100%", marginTop: "8px" }, children: (0, jsx_runtime_1.jsx)(MobileActionButtonsZone, {}) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "developer-debug-zone-panel", style: {
                                     marginTop: "20px",
-                                    paddingTop: "12px",
-                                    borderTop: "2px dashed #ccc",
+                                    marginBottom: "30px",
+                                    paddingTop: "14px",
+                                    borderTop: "2px dashed #bbb",
                                     width: "100%",
                                     display: "flex",
                                     flexDirection: "column",
                                     alignItems: "center",
                                     gap: "8px",
-                                }, children: (0, jsx_runtime_1.jsxs)("div", { style: {
-                                        display: "flex",
-                                        gap: "8px",
-                                        width: "100%",
-                                        maxWidth: "280px",
-                                    }, children: [(0, jsx_runtime_1.jsx)("input", { type: "number", id: "input-debug-square", placeholder: "\u30DE\u30B9\u756A\u53F7 (0\u301C99)", min: "0", max: "99", value: debugSquareInput, onChange: (e) => setDebugSquareInput(e.target.value), style: {
-                                                flex: 1,
-                                                padding: "8px",
-                                                fontSize: "1rem",
-                                                borderRadius: "8px",
-                                                border: "1px solid #ccc",
-                                                textAlign: "center",
-                                            } }), (0, jsx_runtime_1.jsx)("button", { type: "button", id: "btn-debug-warp", className: "btn-dark-debug", style: {
-                                                width: "auto",
-                                                padding: "8px 16px",
-                                                margin: 0,
-                                                fontSize: "0.95rem",
-                                            }, children: "\u30EF\u30FC\u30D7" })] }) })] })] }), (0, jsx_runtime_1.jsx)(MobileModalsZone, {})] }));
+                                }, children: [(0, jsx_runtime_1.jsx)("div", { style: {
+                                            fontSize: "0.85rem",
+                                            color: "#888",
+                                            fontWeight: "bold",
+                                        }, children: "\uD83D\uDEE0\uFE0F \u958B\u767A\u7528\u30C7\u30D0\u30C3\u30B0\u30EF\u30FC\u30D7" }), (0, jsx_runtime_1.jsxs)("div", { style: {
+                                            display: "flex",
+                                            gap: "8px",
+                                            width: "100%",
+                                            maxWidth: "280px",
+                                        }, children: [(0, jsx_runtime_1.jsx)("input", { type: "number", id: "input-debug-square", placeholder: "\u30DE\u30B9\u756A\u53F7 (0\u301C99)", min: "0", max: "99", value: debugSquareInput, onChange: (e) => setDebugSquareInput(e.target.value), style: {
+                                                    flex: 1,
+                                                    padding: "8px",
+                                                    fontSize: "1rem",
+                                                    borderRadius: "8px",
+                                                    border: "1px solid #ccc",
+                                                    textAlign: "center",
+                                                } }), (0, jsx_runtime_1.jsx)("button", { type: "button", id: "btn-debug-warp", className: "btn-dark-debug", style: {
+                                                    width: "auto",
+                                                    padding: "8px 16px",
+                                                    margin: 0,
+                                                    fontSize: "0.95rem",
+                                                }, children: "\u30EF\u30FC\u30D7" })] })] })] })] }), (0, jsx_runtime_1.jsx)(MobileModalsZone, {})] }));
 }
 let hasBoundDocumentClicks = false;
 function initMobileListeners() {
@@ -1230,6 +1320,7 @@ function initMobileListeners() {
             if (targetModule.location) {
                 p.location = targetModule.location;
             }
+            updatePhoneCurrentTileDisplay(targetModule, p);
             // 🚀 パターンA：役職マスの場合（就職ダイアログを確実に展開）
             if (targetModule.type === "jobChallenge" && targetModule.jobId) {
                 if (p.hasJob === true) {
@@ -1362,10 +1453,7 @@ function initMobileListeners() {
                     p.skipTurn = true;
                     p.currentHp = maxHp;
                 }
-                const resDisplay = document.getElementById("roulette-result-display");
-                if (resDisplay && targetModule.text) {
-                    resDisplay.textContent = `🎲 ${targetModule.text}`;
-                }
+                updatePhoneCurrentTileDisplay(targetModule, p);
                 updatePhoneStatusDisplay();
                 socket.emit("playerAction", {
                     roomCode: currentRoomCode,
@@ -1454,7 +1542,11 @@ function initMobileListeners() {
                 document.getElementById("btn-phone-next").disabled = true;
             if (document.getElementById("roulette-result-display"))
                 document.getElementById("roulette-result-display").textContent =
-                    "進路を選択してください";
+                    "出目: -";
+            const tileDesc = document.getElementById("phone-current-tile-desc");
+            if (tileDesc) {
+                tileDesc.innerHTML = `<span style="color:#888;">🎯 ルーレットを回して進もう！</span>`;
+            }
             isSpinning = false;
             updatePhoneStatusDisplay();
         }
@@ -1480,14 +1572,18 @@ function initMobileListeners() {
                 document.getElementById("btn-phone-next").disabled = false;
             if (document.getElementById("roulette-result-display"))
                 document.getElementById("roulette-result-display").textContent =
-                    "💤 二日酔い（1回休み）のためスキップ！「次のプレイヤーへ」を押してね";
+                    "出目: -";
+            const skipTileDesc = document.getElementById("phone-current-tile-desc");
+            if (skipTileDesc) {
+                skipTileDesc.innerHTML = `<span style="color:#888;">💤 二日酔い（1回休み）のためスキップ！「次のプレイヤーへ」を押してね</span>`;
+            }
             isSpinning = false;
             updatePhoneStatusDisplay();
         }
         else if (data.action === "insuranceUsed") {
-            if (document.getElementById("roulette-result-display")) {
-                document.getElementById("roulette-result-display").textContent =
-                    "🛡️ 生命保険を発動！飲酒ペナルティを無効化しました！";
+            const insTileDesc = document.getElementById("phone-current-tile-desc");
+            if (insTileDesc) {
+                insTileDesc.innerHTML = `<span style="color:#9c27b0; font-weight:bold;">🛡️ 生命保険を発動！飲酒ペナルティを無効化しました！</span>`;
             }
             updatePhoneStatusDisplay();
         }

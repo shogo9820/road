@@ -105,6 +105,60 @@ function updatePhoneStatusDisplay() {
   syncKoreanDOMMode(Boolean(activeP && activeP.koreanModeThisTurn));
 }
 
+// 📢 スマホ画面「現在のマスの内容」表示更新
+function updatePhoneCurrentTileDisplay(targetModule: any, player?: any) {
+  const tileDescEl = document.getElementById("phone-current-tile-desc");
+  if (!tileDescEl || !targetModule) return;
+
+  const rawText = targetModule.text || "通常マス";
+  const drink = Number(targetModule.drink || 0);
+  const happy = Number(targetModule.happiness || 0);
+
+  let cleaned = String(rawText);
+  if (drink > 0) {
+    cleaned = cleaned.replace(
+      /[（(]\s*[0-9０-９]+杯(?:飲む)?\s*(【[^】]+】[^）)]*)[）)]/g,
+      "$1",
+    );
+    cleaned = cleaned.replace(
+      /[（(][^）)]*(?:[0-9０-９]+杯|飲む|乾杯)[^）)]*[）)]/g,
+      "",
+    );
+  }
+  cleaned = cleaned.replace(/[（(]\s*(【[^】]+】[^）)]*)[）)]/g, "$1");
+  cleaned = cleaned.replace(/[（(]\s*[)）]/g, "").trim();
+
+  // 【】での改行
+  cleaned = cleaned.replace(/^(【[^】]+】)\s*/, "$1<br>");
+  cleaned = cleaned.replace(/([^\n>])\s*(【[^】]+】)/g, "$1<br>$2");
+
+  const hasCond = /場合|回避/.test(rawText);
+  const hasCups = /[0-9０-９]+杯/.test(rawText);
+
+  let badgeHtml = "";
+  if (drink > 0) {
+    badgeHtml = `<span style="background:linear-gradient(135deg,#ff6f00,#e53935); color:#fff; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.95rem; display:inline-block; margin-bottom:4px;">🍺 ${drink}杯飲む！</span>`;
+  } else if (hasCond || hasCups) {
+    badgeHtml = `<span style="background:#fff3cd; color:#b34700; border:1px solid #ff9800; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.85rem; display:inline-block; margin-bottom:4px;">⚠️ 条件に当てはまる人は飲む！</span>`;
+  } else {
+    badgeHtml = `<span style="background:#e8f5e9; color:#1b5e20; border:1px solid #43a047; padding:2px 8px; border-radius:8px; font-weight:900; font-size:0.95rem; display:inline-block; margin-bottom:4px;">飲まない！</span>`;
+  }
+
+  let happyHtml = "";
+  if (happy > 0) {
+    happyHtml = `<div style="color:#f39c12; font-weight:bold; font-size:0.85rem; margin-top:3px;">😊 幸福度 +${happy}pt</div>`;
+  } else if (happy < 0) {
+    happyHtml = `<div style="color:#e74c3c; font-weight:bold; font-size:0.85rem; margin-top:3px;">😢 幸福度 ${happy}pt</div>`;
+  }
+
+  tileDescEl.innerHTML = `
+    <div>${badgeHtml}</div>
+    <div style="font-weight:800; line-height:1.4; margin-top:2px;">🎲 ${cleaned}</div>
+    ${happyHtml}
+  `;
+}
+(window as any).updatePhoneCurrentTileDisplay = updatePhoneCurrentTileDisplay;
+
 // ==========================================================================
 // 🇰🇷 【イ専用必殺技：한국어로 변환（韓国語モード）】DOM自動変換＆完全復元エンジン
 // ==========================================================================
@@ -371,13 +425,16 @@ function playMobileRouletteAnimation(
   if (document.getElementById("btn-phone-next"))
     (document.getElementById("btn-phone-next") as HTMLButtonElement).disabled =
       true;
-  if (resultDisplay) resultDisplay.textContent = "🌀 回転中...";
+  if (resultDisplay) resultDisplay.textContent = "出目: 🌀";
+  const tileDesc = document.getElementById("phone-current-tile-desc");
+  if (tileDesc)
+    tileDesc.innerHTML = `<span style="color:#888;">🌀 移動中... どこに止まるかな？</span>`;
   if (wheel) {
     wheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
     wheel.style.transform = `rotate(${targetRotation}deg)`;
   }
   setTimeout(() => {
-    if (resultDisplay) resultDisplay.textContent = `🎯 出目: ${finalSteps}`;
+    if (resultDisplay) resultDisplay.textContent = `出目: ${finalSteps}`;
     if (typeof callback === "function") callback(finalSteps);
   }, 3000);
 }
@@ -587,7 +644,11 @@ function checkBranchSquareOnTurnStart(syncData: any) {
         ).disabled = false;
       if (document.getElementById("roulette-result-display"))
         document.getElementById("roulette-result-display").textContent =
-          "🎯 タップして回そう！";
+          "出目: -";
+      const tileDesc = document.getElementById("phone-current-tile-desc");
+      if (tileDesc) {
+        tileDesc.innerHTML = `<span style="color:#888;">🎯 ルーレットを回して進もう！</span>`;
+      }
     };
   }
 }
@@ -632,36 +693,56 @@ window.loadAndApplySquareComponent = loadAndApplySquareComponent;
 // sq_18.js / sq_30.js / sq_41.js が cloneNode & replaceChild を行うルーレット・ボタン領域を保護するメモ化コンポーネント
 const MobileRouletteZone = memo(
   () => (
-    <>
-      <div className="player-banner-zone" id="current-player-banner">
-        TURN: ----
-      </div>
-
+    <div
+      className="roulette-section-container"
+      style={{
+        width: "100%",
+        maxWidth: "360px",
+        margin: "0 auto",
+        padding: "10px 8px 6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      {/* 2. ルーレット */}
       <div
-        className="roulette-section-container"
-        style={{ width: "100%", maxWidth: "340px", margin: "0 auto" }}
+        className="controller-roulette-container"
+        style={{ width: "175px", height: "175px" }}
       >
-        <div className="result-display-zone" id="roulette-result-display">
-          🎯 タップして回そう！
-        </div>
-
-        <div className="controller-roulette-container">
-          <div className="event-roulette-pointer"></div>
-          <div className="roulette-wheel-board" id="controller-roulette-wheel">
-            <div className="roulette-num num-1">1</div>
-            <div className="roulette-num num-2">2</div>
-            <div className="roulette-num num-3">3</div>
-            <div className="roulette-num num-4">4</div>
-            <div className="roulette-num num-5">5</div>
-            <div className="roulette-num num-6">6</div>
-            <div className="roulette-num num-7">7</div>
-            <div className="roulette-num num-8">8</div>
-            <div className="roulette-num num-9">9</div>
-            <div className="roulette-num num-10">10</div>
-          </div>
+        <div className="event-roulette-pointer"></div>
+        <div className="roulette-wheel-board" id="controller-roulette-wheel">
+          <div className="roulette-num num-1">1</div>
+          <div className="roulette-num num-2">2</div>
+          <div className="roulette-num num-3">3</div>
+          <div className="roulette-num num-4">4</div>
+          <div className="roulette-num num-5">5</div>
+          <div className="roulette-num num-6">6</div>
+          <div className="roulette-num num-7">7</div>
+          <div className="roulette-num num-8">8</div>
+          <div className="roulette-num num-9">9</div>
+          <div className="roulette-num num-10">10</div>
         </div>
       </div>
-    </>
+
+      {/* 3. 出目 */}
+      <div
+        className="result-display-zone"
+        id="roulette-result-display"
+        style={{
+          marginTop: "6px",
+          fontSize: "1.25rem",
+          fontWeight: 900,
+          color: "#e65100",
+          minHeight: "28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        出目: -
+      </div>
+    </div>
   ),
   () => true,
 );
@@ -705,9 +786,8 @@ const MobileActionButtonsZone = memo(
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          gap: "10px",
+          gap: "8px",
           alignItems: "center",
-          marginTop: "4px",
         }}
       >
         <button id="btn-phone-spin" className="btn-orange">
@@ -733,10 +813,6 @@ const MobileActionButtonsZone = memo(
           ⚡ 必殺技を発動（残り1回）
         </button>
 
-        <button id="btn-phone-next" className="btn-blue">
-          ➡ 次のプレイヤーへ
-        </button>
-
         {/* ✖ PC画面のモーダルを手動で閉じるボタン */}
         <button
           id="btn-phone-close-pc-modal"
@@ -745,11 +821,11 @@ const MobileActionButtonsZone = memo(
             background: "linear-gradient(135deg, #37474f 0%, #212121 100%)",
             color: "#ffffff",
             fontWeight: "bold",
-            fontSize: "1.1rem",
-            padding: "13px 20px",
-            borderRadius: "30px",
+            fontSize: "1.05rem",
+            padding: "10px 18px",
+            borderRadius: "12px",
             border: "2px solid #78909c",
-            boxShadow: "0 4px 15px rgba(0, 0, 0, 0.4)",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
             cursor: "pointer",
             width: "100%",
             textAlign: "center",
@@ -766,9 +842,9 @@ const MobileActionButtonsZone = memo(
             background: "linear-gradient(135deg, #ff5722 0%, #ff9800 100%)",
             color: "#ffffff",
             fontWeight: "bold",
-            fontSize: "1.15rem",
-            padding: "14px 20px",
-            borderRadius: "30px",
+            fontSize: "1.1rem",
+            padding: "12px 18px",
+            borderRadius: "12px",
             border: "none",
             boxShadow: "0 6px 18px rgba(255, 87, 34, 0.4)",
             cursor: "pointer",
@@ -777,6 +853,11 @@ const MobileActionButtonsZone = memo(
           }}
         >
           🏠 タイトル画面に戻る
+        </button>
+
+        {/* ➡ 次のプレイヤーへ（画面の底辺に配置） */}
+        <button id="btn-phone-next" className="btn-blue">
+          ➡ 次のプレイヤーへ
         </button>
       </div>
     );
@@ -1462,68 +1543,116 @@ function ControllerApp() {
           id="phone-screen-play"
           className={`card phone-card ${activeScreen === "phone-screen-play" ? "active" : ""}`}
           style={{
-            display: activeScreen === "phone-screen-play" ? "block" : "none",
+            display: activeScreen === "phone-screen-play" ? "flex" : "none",
+            flexDirection: "column",
             width: "100%",
+            padding: 0,
+            background: "transparent",
+            boxShadow: "none",
+            border: "none",
           }}
         >
-          {/* 1, 2, 3. バナー＆スマホ用ルーレットコンテナ */}
-          <MobileRouletteZone />
+          {/* 📱 画面の高さ（100dvh）にぴったり収まるメイン操作エリア */}
+          <div className="phone-main-viewport-zone">
+            {/* 上部グループ: 1. TURN, 2. ルーレット, 3. 出目, 4. 現在のマスの内容 */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                width: "100%",
+                alignItems: "center",
+              }}
+            >
+              {/* 1. TURN: プレイヤー名 */}
+              <div className="player-banner-zone">
+                <div
+                  id="current-player-banner"
+                  style={{ fontSize: "1.15rem", fontWeight: 900 }}
+                >
+                  TURN: <span id="phone-current-name">{p ? p.name : "----"}</span>
+                  <span
+                    id="phone-current-job"
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "#666",
+                      marginLeft: "6px",
+                    }}
+                  >
+                    ({jobLabel})
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "14px",
+                    marginTop: "3px",
+                    fontSize: "0.85rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  <span style={{ color: "#e74c3c" }}>
+                    ❤ HP:{" "}
+                    <span id="phone-current-hp">
+                      {p ? `${currentHp} / ${maxHp}` : "-- / --"}
+                    </span>
+                  </span>
+                  <span style={{ color: "#f39c12" }}>
+                    😊 幸福度:{" "}
+                    <span id="phone-current-happiness">{`${happinessVal} pt`}</span>
+                  </span>
+                </div>
+              </div>
 
-          {/* 4. プレイヤーの簡易ステータス表示板 */}
-          <div
-            className="current-tile-or-event-status-box"
-            style={{
-              flexDirection: "column",
-              gap: "4px",
-              padding: "10px",
-              fontSize: "0.95rem",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                width: "100%",
-              }}
-            >
-              <span>
-                👤 <span id="phone-current-name">{p ? p.name : "----"}</span> (
-                <span id="phone-current-job">{jobLabel}</span>)
-              </span>
-              <span style={{ fontWeight: 900, color: "#e74c3c" }}>
-                ❤ HP:{" "}
-                <span id="phone-current-hp">
-                  {p ? `${currentHp} / ${maxHp}` : "-- / --"}
-                </span>
-              </span>
+              {/* 2. ルーレット & 3. 出目 */}
+              <MobileRouletteZone />
+
+              {/* 4. 現在のマスの内容 */}
+              <div
+                id="phone-current-tile-box"
+                className="phone-current-tile-box"
+              >
+                <div
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "#888",
+                    fontWeight: 900,
+                    borderBottom: "1px solid #eee",
+                    paddingBottom: "2px",
+                    marginBottom: "4px",
+                  }}
+                >
+                  📢 現在のマスの内容
+                </div>
+                <div
+                  id="phone-current-tile-desc"
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 800,
+                    lineHeight: 1.4,
+                    color: "#2c3e50",
+                  }}
+                >
+                  🎯 ルーレットを回して進もう！
+                </div>
+              </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                width: "100%",
-                fontSize: "0.9rem",
-                fontWeight: "bold",
-                color: "#f39c12",
-              }}
-            >
-              <span>
-                😊 幸福度:{" "}
-                <span id="phone-current-happiness">{`${happinessVal} pt`}</span>
-              </span>
+
+            {/* 下部グループ: 5. ボタン類（次のプレイヤーボタンが画面の底辺に来る） */}
+            <div style={{ width: "100%", marginTop: "8px" }}>
+              <MobileActionButtonsZone />
             </div>
           </div>
 
-          {/* 5 & 6. メインアクション操作ボタン */}
-          <MobileActionButtonsZone />
-
-          {/* 🛠️ 開発デバッグ専用隠しメニューパネル */}
+          {/* 6. 🛠️ 開発デバッグ専用隠しメニューパネル（スクロールでアクセス） */}
           <div
             className="developer-debug-zone-panel"
             style={{
               marginTop: "20px",
-              paddingTop: "12px",
-              borderTop: "2px dashed #ccc",
+              marginBottom: "30px",
+              paddingTop: "14px",
+              borderTop: "2px dashed #bbb",
               width: "100%",
               display: "flex",
               flexDirection: "column",
@@ -1531,6 +1660,15 @@ function ControllerApp() {
               gap: "8px",
             }}
           >
+            <div
+              style={{
+                fontSize: "0.85rem",
+                color: "#888",
+                fontWeight: "bold",
+              }}
+            >
+              🛠️ 開発用デバッグワープ
+            </div>
             <div
               style={{
                 display: "flex",
@@ -1710,6 +1848,7 @@ function initMobileListeners() {
       if (targetModule.location) {
         p.location = targetModule.location;
       }
+      updatePhoneCurrentTileDisplay(targetModule, p);
 
       // 🚀 パターンA：役職マスの場合（就職ダイアログを確実に展開）
       if (targetModule.type === "jobChallenge" && targetModule.jobId) {
@@ -1874,10 +2013,7 @@ function initMobileListeners() {
           p.currentHp = maxHp;
         }
 
-        const resDisplay = document.getElementById("roulette-result-display");
-        if (resDisplay && targetModule.text) {
-          resDisplay.textContent = `🎲 ${targetModule.text}`;
-        }
+        updatePhoneCurrentTileDisplay(targetModule, p);
 
         updatePhoneStatusDisplay();
 
@@ -1990,7 +2126,11 @@ function initMobileListeners() {
         ).disabled = true;
       if (document.getElementById("roulette-result-display"))
         document.getElementById("roulette-result-display").textContent =
-          "進路を選択してください";
+          "出目: -";
+      const tileDesc = document.getElementById("phone-current-tile-desc");
+      if (tileDesc) {
+        tileDesc.innerHTML = `<span style="color:#888;">🎯 ルーレットを回して進もう！</span>`;
+      }
       isSpinning = false;
       updatePhoneStatusDisplay();
     } else if (data.action === "turnSkipped") {
@@ -2018,13 +2158,17 @@ function initMobileListeners() {
         ).disabled = false;
       if (document.getElementById("roulette-result-display"))
         document.getElementById("roulette-result-display").textContent =
-          "💤 二日酔い（1回休み）のためスキップ！「次のプレイヤーへ」を押してね";
+          "出目: -";
+      const skipTileDesc = document.getElementById("phone-current-tile-desc");
+      if (skipTileDesc) {
+        skipTileDesc.innerHTML = `<span style="color:#888;">💤 二日酔い（1回休み）のためスキップ！「次のプレイヤーへ」を押してね</span>`;
+      }
       isSpinning = false;
       updatePhoneStatusDisplay();
     } else if (data.action === "insuranceUsed") {
-      if (document.getElementById("roulette-result-display")) {
-        document.getElementById("roulette-result-display").textContent =
-          "🛡️ 生命保険を発動！飲酒ペナルティを無効化しました！";
+      const insTileDesc = document.getElementById("phone-current-tile-desc");
+      if (insTileDesc) {
+        insTileDesc.innerHTML = `<span style="color:#9c27b0; font-weight:bold;">🛡️ 生命保険を発動！飲酒ペナルティを無効化しました！</span>`;
       }
       updatePhoneStatusDisplay();
     }

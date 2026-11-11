@@ -7,57 +7,79 @@ body.theme-couple {
   background-color: #fff5f7 !important;
 }
 
+/* スマホ画面全体の縦スクロール設定 */
+.phone-screen-body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color, #f5f5f5);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 /* スマホ用全画面ベース：余白を詰める */
 .phone-screen {
   box-sizing: border-box;
   width: 100%;
   max-width: 440px; /* 横幅を設計図比率にカチッと合わせる */
   margin: 0 auto;
-  padding: 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* 縦並びの要素同士をピタッと綺麗な等間隔で密着させる */
   align-items: center;
+}
+
+/* メイン操作画面：画面の高さ（100dvh）にぴったりフィットさせ、次のプレイヤーボタンを底辺に配置 */
+.phone-main-viewport-zone {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 8px 12px 12px 12px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 /* 1. 現在操作中のプレイヤー名バナー */
 .player-banner-zone {
   width: 100%;
+  max-width: 360px;
   background: #ffffff;
-  padding: 12px;
+  padding: 8px 12px;
   border-radius: 12px;
   text-align: center;
-  font-size: 1.2rem;
-  font-weight: 900;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
   box-sizing: border-box;
 }
 
-/* 2. ルーレットサークルのサイズのみ規定（色や数字配置は共通CSSを100%再利用） */
+/* 2. ルーレットサークルのサイズのみ規定 */
 .controller-roulette-container {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: 175px;
+  height: 175px;
   margin: 0 auto;
 }
 
-/* 4. 現在のマスもしくはイベント内容のテキストボックス */
-.current-tile-or-event-status-box {
+/* 4. 現在のマスの内容ボックス */
+.phone-current-tile-box {
   width: 100%;
+  max-width: 360px;
   background: #ffffff;
-  padding: 12px;
+  padding: 8px 12px;
   border-radius: 12px;
   text-align: center;
-  font-size: 1.05rem;
-  font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   box-sizing: border-box;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* 5 & 6. ボタン共通設定（はみ出しを完全ガードするブロック100%配置） */
@@ -126,7 +148,7 @@ button:active { transform: scale(0.97); }
   display: block !important; /* 🎯 プログラムから消されるのを100%防ぎ、永久に常時表示 */
   background-color: #9c27b0 !important; /* 高級感と安心感のあるパープルカラー */
   color: #ffffff !important;
-  margin: 10px auto;
+  margin: 0 auto;
   border-radius: 12px;
   font-weight: 900;
   transition: opacity 0.3s ease, filter 0.3s ease;

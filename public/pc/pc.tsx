@@ -376,7 +376,7 @@ function executeSyncedRoulette(resultNum: number) {
   if (!p) return;
 
   const resEl = document.getElementById("roulette-result-display");
-  if (resEl) resEl.textContent = "🎯 回転中...";
+  if (resEl) resEl.textContent = "出目: 🌀";
   const descEl =
     document.getElementById("event-text") ||
     document.getElementById("current-tile-desc");
@@ -715,18 +715,9 @@ window.handleForceStopSquare = handleForceStopSquare;
 // sq_XX.js やルーレットアニメーションが直接DOM操作する領域を保護するメモ化コンポーネント
 const RouletteAndTileZone = memo(
   ({ currentLocation }: { currentLocation: string }) => {
-    useEffect(() => {
-      const locEl = document.querySelector(".roulette-card #current-player-location");
-      if (locEl) locEl.textContent = currentLocation || "-";
-    }, [currentLocation]);
-
     return (
       <div className="layout-right">
         <div className="card roulette-card">
-          <div className="roulette-result-display" id="roulette-result-display">
-            🎯 タップして回そう！
-          </div>
-
           <div
             style={{
               position: "relative",
@@ -749,16 +740,13 @@ const RouletteAndTileZone = memo(
               <div className="roulette-num num-10">10</div>
             </div>
           </div>
+
           <div
-            id="current-player-location"
-            style={{
-              fontWeight: "bold",
-              marginTop: "8px",
-              color: "#555",
-              fontSize: "1.1rem",
-            }}
+            className="roulette-result-display"
+            id="roulette-result-display"
+            style={{ marginTop: "12px" }}
           >
-            スタート前
+            出目: -
           </div>
         </div>
 
@@ -2502,9 +2490,13 @@ function appendSocketListeners() {
       if (coupleModal) {
         coupleModal.style.display = "none";
       }
+      const pcResEl = document.getElementById("roulette-result-display");
+      if (pcResEl) pcResEl.textContent = "出目: -";
       updateCurrentPlayerDisplay();
     } else if (data && data.action === "turnSkipped") {
       isPCEventMode = false;
+      const pcResEl = document.getElementById("roulette-result-display");
+      if (pcResEl) pcResEl.textContent = "出目: -";
       if (data.activePlayerIndex !== undefined) {
         activePlayerIndex = data.activePlayerIndex;
       }
