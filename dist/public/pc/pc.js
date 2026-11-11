@@ -354,7 +354,25 @@ const PCModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtim
                             borderRadius: "16px",
                             margin: "12px auto",
                             maxWidth: "85%",
-                        } }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-main", className: "kanpai-shout", style: { margin: "18px 0", fontSize: "3.2rem" }, children: "\u30D7\u30EC\u30A4\u30E4\u30FC\u304B\u3089\u59CB\u307E\u308B\uFF01" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-sub", className: "kanpai-footer-nav", style: { fontSize: "1.25rem", color: "#fff" }, children: "\u203B\u5B9F\u969B\u306B\u30B2\u30FC\u30E0\u3092\u3057\u3066\u3001\u8CA0\u3051\u305F\u4EBA\u3092\u30B9\u30DE\u30DB\u753B\u9762\u3067\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044" })] }) })] })), () => true);
+                        } }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-main", className: "kanpai-shout", style: { margin: "18px 0", fontSize: "3.2rem" }, children: "\u30D7\u30EC\u30A4\u30E4\u30FC\u304B\u3089\u59CB\u307E\u308B\uFF01" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-takunomi-sub", className: "kanpai-footer-nav", style: { fontSize: "1.25rem", color: "#fff" }, children: "\u203B\u5B9F\u969B\u306B\u30B2\u30FC\u30E0\u3092\u3057\u3066\u3001\u8CA0\u3051\u305F\u4EBA\u3092\u30B9\u30DE\u30DB\u753B\u9762\u3067\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044" })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "pc-skill-modal", className: "kanpai-overlay", style: { display: "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "kanpai-window", style: {
+                    background: "linear-gradient(135deg, #1a237e 0%, #4a148c 50%, #b71c1c 100%)",
+                    border: "4px solid #ffd54f",
+                }, children: [(0, jsx_runtime_1.jsx)("div", { className: "kanpai-glow" }), (0, jsx_runtime_1.jsx)("h1", { id: "pc-skill-header", className: "kanpai-header", style: { color: "#ffd54f", fontSize: "2.3rem" }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF01 \u26A1" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-skill-name", className: "kanpai-shout", style: { margin: "12px 0", fontSize: "2.8rem", color: "#ffffff" }, children: "\uD83D\uDD25 \u5FC5\u6BBA\u6280\u540D \uD83D\uDD25" }), (0, jsx_runtime_1.jsx)("div", { id: "pc-skill-desc", style: {
+                            fontSize: "1.45rem",
+                            fontWeight: "bold",
+                            color: "#fff8e1",
+                            background: "rgba(0, 0, 0, 0.35)",
+                            padding: "14px 24px",
+                            borderRadius: "16px",
+                            margin: "12px auto",
+                            maxWidth: "88%",
+                            lineHeight: 1.5,
+                        } }), (0, jsx_runtime_1.jsx)("div", { id: "pc-skill-result", className: "kanpai-footer-nav", style: {
+                            fontSize: "1.6rem",
+                            fontWeight: "bold",
+                            color: "#ffeb3b",
+                            marginTop: "16px",
+                        }, children: "\uD83D\uDCF1 \u30B9\u30DE\u30DB\u3067\u5BFE\u8C61\u3092\u9078\u629E\u4E2D..." })] }) })] })), () => true);
 function PCApp() {
     const [activeScreen, setActiveScreen] = (0, react_1.useState)("screen-setup");
     const [hostName, setHostName] = (0, react_1.useState)("やじま");
@@ -1093,6 +1111,59 @@ function appendSocketListeners() {
             }
         }
     });
+    // ⚡ 必殺技発動開始：PC画面にカットインモーダルを表示
+    socket.off("skillActivated");
+    socket.on("skillActivated", (data) => {
+        if (!data)
+            return;
+        const skillModal = document.getElementById("pc-skill-modal");
+        if (skillModal) {
+            const headerEl = document.getElementById("pc-skill-header");
+            const nameEl = document.getElementById("pc-skill-name");
+            const descEl = document.getElementById("pc-skill-desc");
+            const resEl = document.getElementById("pc-skill-result");
+            if (headerEl) {
+                headerEl.textContent = `⚡ 【${data.jobTitle || "上位役職"}】${data.playerName || "プレイヤー"} が必殺技を発動！ ⚡`;
+            }
+            if (nameEl) {
+                nameEl.textContent = `🔥 ${data.skillName || "必殺技"} 🔥`;
+            }
+            if (descEl) {
+                descEl.textContent = data.skillDesc || "";
+            }
+            if (resEl) {
+                resEl.textContent =
+                    data.targetType && data.targetType !== "none"
+                        ? "📱 スマホ画面で対象を選択中..."
+                        : "⚡ 必殺技効果を発動中...！";
+            }
+            skillModal.style.display = "flex";
+        }
+    });
+    // ⚡ 必殺技効果の確定通知：結果をPCモーダルに表示して一定時間後にクローズ
+    socket.off("skillEffectResolved");
+    socket.on("skillEffectResolved", (data) => {
+        if (!data)
+            return;
+        const skillModal = document.getElementById("pc-skill-modal");
+        if (skillModal) {
+            skillModal.style.display = "flex";
+            const resEl = document.getElementById("pc-skill-result");
+            if (resEl && data.resultMessage) {
+                resEl.textContent = `🎯 ${data.resultMessage}`;
+            }
+            const descCardEl = document.getElementById("event-text") ||
+                document.getElementById("current-tile-desc");
+            if (descCardEl && data.resultMessage) {
+                descCardEl.innerHTML = `<p class="event-msg" style="color: #d84315; font-weight: bold; font-size: 1.15rem; margin: 0;">⚡ 【必殺技】${data.resultMessage}</p>`;
+            }
+            setTimeout(() => {
+                const modalNow = document.getElementById("pc-skill-modal");
+                if (modalNow)
+                    modalNow.style.display = "none";
+            }, 3200);
+        }
+    });
     socket.off("enableNextTurnButton");
     socket.on("enableNextTurnButton", () => {
         const pcModal = document.getElementById("pc-event-modal");
@@ -1140,6 +1211,10 @@ function appendSocketListeners() {
             if (takunomiModal) {
                 takunomiModal.style.display = "none";
             }
+            const skillModal = document.getElementById("pc-skill-modal");
+            if (skillModal) {
+                skillModal.style.display = "none";
+            }
             const coupleModal = document.getElementById("pc-couple-event-modal");
             if (coupleModal) {
                 coupleModal.style.display = "none";
@@ -1170,6 +1245,10 @@ function appendSocketListeners() {
             const takunomiModal = document.getElementById("pc-takunomi-modal");
             if (takunomiModal) {
                 takunomiModal.style.display = "none";
+            }
+            const skillModal = document.getElementById("pc-skill-modal");
+            if (skillModal) {
+                skillModal.style.display = "none";
             }
             const descEl = document.getElementById("event-text") ||
                 document.getElementById("current-tile-desc");

@@ -457,8 +457,14 @@ io.on("connection", (socket) => {
             target.skipTurn = data.updatedPlayer.skipTurn;
           if (data.updatedPlayer.isRepeat !== undefined)
             target.isRepeat = data.updatedPlayer.isRepeat;
-          if (data.updatedPlayer.isRankedUp !== undefined)
+          if (data.updatedPlayer.isRankedUp !== undefined) {
             target.isRankedUp = data.updatedPlayer.isRankedUp;
+            if (target.isRankedUp && target.skillUsesLeft === undefined) {
+              target.skillUsesLeft = 1;
+            }
+          }
+          if (data.updatedPlayer.skillUsesLeft !== undefined)
+            target.skillUsesLeft = data.updatedPlayer.skillUsesLeft;
           if (data.updatedPlayer.hasFinished !== undefined)
             target.hasFinished = data.updatedPlayer.hasFinished;
 
@@ -851,6 +857,7 @@ io.on("connection", (socket) => {
           if (jobObj && jobObj.title) {
             p.job = jobObj.title;
             p.isRankedUp = true;
+            if (p.skillUsesLeft === undefined) p.skillUsesLeft = 1;
             console.log(
               `👑 [SERVER ランクアップ] ${p.name} さんが「${jobObj.title}」にランクアップ！`,
             );
@@ -1132,8 +1139,14 @@ io.on("connection", (socket) => {
                 : target.insurance || 0;
             if (updatedP.isRepeat !== undefined)
               target.isRepeat = updatedP.isRepeat;
-            if (updatedP.isRankedUp !== undefined)
+            if (updatedP.isRankedUp !== undefined) {
               target.isRankedUp = updatedP.isRankedUp;
+              if (target.isRankedUp && target.skillUsesLeft === undefined) {
+                target.skillUsesLeft = 1;
+              }
+            }
+            if (updatedP.skillUsesLeft !== undefined)
+              target.skillUsesLeft = updatedP.skillUsesLeft;
             if (updatedP.hasFinished !== undefined)
               target.hasFinished = updatedP.hasFinished;
           }
@@ -1148,6 +1161,188 @@ io.on("connection", (socket) => {
         currentPhase: rooms[roomCode].currentPhase,
       });
     }
+  });
+
+  // ==========================================================================
+  // ⚡ 【必殺技システム（ランクアップ後1回限定）】
+  // ==========================================================================
+  socket.on("skillActivated", (data) => {
+    const roomCode = data?.roomCode || socket.roomCode;
+    if (!roomCode || !rooms[roomCode]) return;
+    io.to(roomCode).emit("skillActivated", data);
+  });
+
+  socket.on("executeSkillEffect", (data) => {
+    const roomCode = data?.roomCode || socket.roomCode;
+    if (!roomCode || !rooms[roomCode]) return;
+    const room = rooms[roomCode];
+    const p =
+      room.gamePlayers.find((pl) => String(pl.id) === String(data.playerId)) ||
+      room.gamePlayers[room.activePlayerIndex];
+
+    if (
+      !p ||
+      !p.isRankedUp ||
+      (p.skillUsesLeft !== undefined && p.skillUsesLeft <= 0)
+    ) {
+      return;
+    }
+
+    p.skillUsesLeft = Math.max(
+      0,
+      (p.skillUsesLeft !== undefined ? p.skillUsesLeft : 1) - 1,
+    );
+
+    const addDrinksToPlayer = (targetP: any, count: number) => {
+      if (!targetP || count <= 0) return;
+      targetP.drinkCount = (targetP.drinkCount || 0) + count;
+      const maxHp = (targetP.baseCap || 80) + (targetP.bonusCap || 0);
+      targetP.currentHp = Math.max(
+        0,
+        (targetP.currentHp !== undefined ? targetP.currentHp : maxHp) -
+          count * 10,
+      );
+      if (targetP.currentHp <= 0) {
+        targetP.happiness = Math.max(
+          0,
+          (targetP.happiness !== undefined ? targetP.happiness : 100) - 30,
+        );
+        targetP.skipTurn = true;
+        targetP.currentHp = maxHp;
+      }
+    };
+
+    const refundActivePlayerTurnDrinks = (
+      activeP: any,
+      maxRefund: number | null,
+    ) => {
+      if (!activeP) return 0;
+      const drunkThisTurn = Math.max(
+        0,
+        (activeP.drinkCount || 0) - (activeP.turnStartDrinkCount || 0),
+      );
+      const refund =
+        maxRefund !== null
+          ? Math.min(drunkThisTurn, maxRefund)
+          : drunkThisTurn;
+      if (refund > 0) {
+        activeP.drinkCount = Math.max(0, (activeP.drinkCount || 0) - refund);
+        const maxHp = (activeP.baseCap || 80) + (activeP.bonusCap || 0);
+        activeP.currentHp = Math.min(
+          maxHp,
+          (activeP.currentHp !== undefined ? activeP.currentHp : maxHp) +
+            refund * 10,
+        );
+        if (activeP.currentHp > 0) activeP.skipTurn = false;
+      }
+      return refund;
+    };
+
+    const targetIds: string[] = Array.isArray(data.targetIds)
+      ? data.targetIds.map(String)
+      : [];
+    const targetPlayers = targetIds
+      .map((tid) => room.gamePlayers.find((pl) => String(pl.id) === tid))
+      .filter(Boolean);
+    const t1 = targetPlayers[0];
+
+    let resultMessage = "必殺技の効果が発動した！";
+    const jobId = p.jobId || data.jobId;
+
+    if (jobId === "ikemen" && t1) {
+      addDrinksToPlayer(t1, 2);
+      resultMessage = `🎯 ${t1.name} に特製カクテルを処方して 2杯 飲ませた！`;
+    } else if (jobId === "okinawa") {
+      room.gamePlayers.forEach((pl) => addDrinksToPlayer(pl, 1));
+      p.happiness = (p.happiness ?? 100) + 30;
+      resultMessage = `🌺 オトーリ開催！全員で1杯ずつ乾杯＆${p.name}の幸福度+30pt！`;
+    } else if (jobId === "korean" && t1) {
+      addDrinksToPlayer(p, 1);
+      addDrinksToPlayer(t1, 2);
+      resultMessage = `🍶 爆弾酒発動！${p.name}が1杯飲み、${t1.name}に道連れで2杯飲ませた！`;
+    } else if (jobId === "mob") {
+      p.insurance = Math.min(3, (p.insurance || 0) + 2);
+      p.currentHp = (p.baseCap || 90) + (p.bonusCap || 0);
+      resultMessage = `👑 代表特権！生命保険を無償で2枚獲得＆体力全回復！`;
+    } else if (jobId === "heian") {
+      const chosenDice = Math.min(
+        10,
+        Math.max(1, Number(data.chosenDice) || 1),
+      );
+      resultMessage = `🎓 エスカレーター進学！指定した出目【${chosenDice}】でそのまま進みます！`;
+      room.currentPhase = PHASES.PIECE_MOVING;
+      setTimeout(() => {
+        if (!rooms[roomCode]) return;
+        io.to(roomCode).emit("spinRoulette", {
+          result: chosenDice,
+          activePlayerIndex: room.activePlayerIndex,
+          players: room.gamePlayers,
+          currentPhase: room.currentPhase,
+        });
+      }, 1500);
+    } else if (jobId === "bijin" && t1) {
+      const refund = refundActivePlayerTurnDrinks(p, null);
+      const passCups = Math.max(1, refund);
+      addDrinksToPlayer(t1, passCups);
+      resultMessage = `💖 ${p.name}の飲酒(${passCups}杯)を無効化し、${t1.name}にすべて肩代わりさせた！`;
+    } else if (jobId === "omoshiro" && t1) {
+      addDrinksToPlayer(t1, 2);
+      p.happiness = (p.happiness ?? 100) + 30;
+      resultMessage = `🤣 鉄板ネタ大ウケ！${t1.name}に2杯飲ませ、${p.name}の幸福度+30pt！`;
+    } else if (jobId === "ijirare" && t1) {
+      const drunk = Math.max(
+        1,
+        (p.drinkCount || 0) - (p.turnStartDrinkCount || 0),
+      );
+      addDrinksToPlayer(t1, drunk);
+      const maxHp = (p.baseCap || 120) + (p.bonusCap || 0);
+      p.currentHp = Math.min(maxHp, (p.currentHp ?? maxHp) + 30);
+      resultMessage = `🪆 道連れカウンター！${t1.name}にも同じ${drunk}杯を飲ませ、体力30回復！`;
+    } else if (jobId === "p_char" && targetPlayers.length > 0) {
+      targetPlayers.forEach((tp) => addDrinksToPlayer(tp, 1));
+      resultMessage = `🎬 プロデューサー権限で ${targetPlayers.map((x) => x.name).join(" と ")} を強制乾杯（各+1杯）させた！`;
+    } else if (jobId === "zako" && t1) {
+      refundActivePlayerTurnDrinks(p, 1);
+      p.currentHp = (p.baseCap || 60) + (p.bonusCap || 0);
+      addDrinksToPlayer(t1, 1);
+      resultMessage = `🍼 泣き落とし成功！自分の1杯を無効化＆体力全回復し、${t1.name}に1杯飲ませた！`;
+    } else if (jobId === "psychopath" && t1) {
+      t1.happiness = (t1.happiness ?? 100) + 20;
+      addDrinksToPlayer(t1, 2);
+      resultMessage = `💸 ${t1.name}にお小遣い(幸福度+20pt)をあげて、強制的に2杯飲ませた！`;
+    } else if (jobId === "shugo" && t1) {
+      addDrinksToPlayer(t1, 2);
+      resultMessage = `🍶 タイマン勝負決着！負けた ${t1.name} が 2杯 飲む！`;
+    } else if (jobId === "soccer" && t1) {
+      const refund = refundActivePlayerTurnDrinks(p, null);
+      const passCups = Math.max(1, refund);
+      addDrinksToPlayer(t1, passCups);
+      resultMessage = `⚽ 華麗なるキラーパス！このターンの${passCups}杯を ${t1.name} へパスした！`;
+    } else if (jobId === "busaiku") {
+      const riajuList = room.gamePlayers.filter(
+        (op) =>
+          String(op.id) !== String(p.id) &&
+          (op.jobId === "ikemen" || op.jobId === "bijin" || op.isLover),
+      );
+      if (riajuList.length > 0) {
+        riajuList.forEach((op) => addDrinksToPlayer(op, 2));
+        resultMessage = `😈 非モテの怨念発動！対象（${riajuList.map((x) => x.name).join("・")}）に2杯ずつ飲ませた！`;
+      } else if (t1) {
+        addDrinksToPlayer(t1, 2);
+        resultMessage = `😈 非モテの怨念発動！${t1.name} に2杯飲ませた！`;
+      }
+    }
+
+    io.to(roomCode).emit("skillEffectResolved", {
+      playerId: p.id,
+      resultMessage,
+    });
+
+    io.to(roomCode).emit("syncGameState", {
+      players: room.gamePlayers,
+      activePlayerIndex: room.activePlayerIndex,
+      currentPhase: room.currentPhase,
+    });
   });
 
   // ==========================================================================

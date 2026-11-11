@@ -4,6 +4,12 @@ declare const _exports: {
         label: string;
         title: string;
         cap: number;
+        skill: {
+            name: string;
+            desc: string;
+            timing: string;
+            targetType: string;
+        };
         special?: undefined;
     } | {
         id: string;
@@ -11,6 +17,12 @@ declare const _exports: {
         title: string;
         cap: number;
         special: string;
+        skill: {
+            name: string;
+            desc: string;
+            timing: string;
+            targetType: string;
+        };
     })[];
     MAP_SQUARES: ({
         id: number;
@@ -57,5 +69,6 @@ declare function createPlayer(id: any, name: any): {
     skipTurn: boolean;
     hasJob: boolean;
     lovers: undefined[];
+    skillUsesLeft: number;
 };
 //# sourceMappingURL=gameMaster.d.ts.map

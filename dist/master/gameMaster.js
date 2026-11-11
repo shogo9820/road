@@ -6,20 +6,175 @@
 // 余分な drink や degree などの数値だけを綺麗に省いた完全な骨組みカタログです。
 // ==========================================================================
 const JOBS = [
-    { id: "ikemen", label: "イケメン", title: "いかれバーテンダー", cap: 140 },
-    { id: "okinawa", label: "沖縄出身", title: "比嘉んちゅ", cap: 140 },
-    { id: "korean", label: "韓国人", title: "イ", cap: 140 },
-    { id: "mob", label: "モブ", title: "代表or副代表", cap: 90 },
-    { id: "heian", label: "平安生", title: "龍大生", cap: 100 },
-    { id: "bijin", label: "美人", title: "ミス龍大", cap: 70, special: "bijin" },
-    { id: "omoshiro", label: "おもしろキャラ", title: "松竹所属芸人", cap: 130 },
-    { id: "ijirare", label: "いじられキャラ", title: "おもちゃ", cap: 120 },
-    { id: "p_char", label: "p", title: "P", cap: 80 },
-    { id: "zako", label: "雑魚", title: "いくらちゃん", cap: 60 },
-    { id: "psychopath", label: "サイコパス", title: "パパ", cap: 150 },
-    { id: "shugo", label: "酒豪", title: "飲み会番長", cap: 150 },
-    { id: "soccer", label: "サッカーキャラ", title: "超絶イケメン天才カリスマフットボールプレイヤー", cap: 150 },
-    { id: "busaiku", label: "ブサイク", title: "ブサイク", cap: 110 }
+    {
+        id: "ikemen",
+        label: "イケメン",
+        title: "いかれバーテンダー",
+        cap: 140,
+        skill: {
+            name: "特製カクテル処方",
+            desc: "指名したプレイヤー1人に特製カクテルを振る舞い、その場で2杯飲ませる！",
+            timing: "any", // ルーレット前・到着時どちらも可
+            targetType: "single"
+        }
+    },
+    {
+        id: "okinawa",
+        label: "沖縄出身",
+        title: "比嘉んちゅ",
+        cap: 140,
+        skill: {
+            name: "オトーリ開催",
+            desc: "沖縄伝統の回し飲み！全員で一斉に1杯ずつ乾杯し、自分の幸福度が+30pt上がる！",
+            timing: "any",
+            targetType: "none"
+        }
+    },
+    {
+        id: "korean",
+        label: "韓国人",
+        title: "イ",
+        cap: 140,
+        skill: {
+            name: "爆弾酒（ソメク）道連れ",
+            desc: "自分が1杯飲む代わりに、指名したプレイヤー1人に道連れで2杯飲ませる！",
+            timing: "any",
+            targetType: "single"
+        }
+    },
+    {
+        id: "mob",
+        label: "モブ",
+        title: "代表or副代表",
+        cap: 90,
+        skill: {
+            name: "代表権限・サークル費精算",
+            desc: "代表特権で生命保険を飲酒なしで2枚獲得し、自分の体力も全回復する！",
+            timing: "before_spin", // ルーレットを回す前
+            targetType: "none"
+        }
+    },
+    {
+        id: "heian",
+        label: "平安生",
+        title: "龍大生",
+        cap: 100,
+        skill: {
+            name: "エスカレーター指定進学",
+            desc: "ルーレットを回さず、1〜10の中から好きな出目を指定してそのまま進める！",
+            timing: "before_spin", // ルーレットを回す前専用
+            targetType: "dice"
+        }
+    },
+    {
+        id: "bijin",
+        label: "美人",
+        title: "ミス龍大",
+        cap: 70,
+        special: "bijin",
+        skill: {
+            name: "お酌のおねだり♡",
+            desc: "このターン自分が飲んだお酒をすべて無効化し、指名したプレイヤー1人に肩代わりさせる！",
+            timing: "after_land_drink", // マス到着後・飲酒発生時
+            targetType: "single"
+        }
+    },
+    {
+        id: "omoshiro",
+        label: "おもしろキャラ",
+        title: "松竹所属芸人",
+        cap: 130,
+        skill: {
+            name: "渾身のすべらない鉄板ネタ",
+            desc: "鉄板ネタで爆笑をさらう！指名した1人に2杯飲ませ、自分の幸福度が+30pt上がる！",
+            timing: "any",
+            targetType: "single"
+        }
+    },
+    {
+        id: "ijirare",
+        label: "いじられキャラ",
+        title: "おもちゃ",
+        cap: 120,
+        skill: {
+            name: "道連れカウンター",
+            desc: "このターン自分が飲んだ杯数と同じ杯数を、指名した1人にも道連れで飲ませる！（体力+30回復）",
+            timing: "after_land_drink", // マス到着後・飲酒発生時
+            targetType: "single"
+        }
+    },
+    {
+        id: "p_char",
+        label: "p",
+        title: "P",
+        cap: 80,
+        skill: {
+            name: "プロデューサー強制キャスティング",
+            desc: "プレイヤーを2人指名し、その2人を強制的に乾杯させる（2人とも1杯ずつ飲む）！",
+            timing: "any",
+            targetType: "double"
+        }
+    },
+    {
+        id: "zako",
+        label: "雑魚",
+        title: "いくらちゃん",
+        cap: 60,
+        skill: {
+            name: "バブー！泣き落とし",
+            desc: "このターンの自分の飲酒を1杯無効化して体力を全回復し、指名した1人に代わりに1杯飲んでもらう！",
+            timing: "after_land_drink", // マス到着後・飲酒発生時
+            targetType: "single"
+        }
+    },
+    {
+        id: "psychopath",
+        label: "サイコパス",
+        title: "パパ",
+        cap: 150,
+        skill: {
+            name: "パパのお小遣い（飴と鞭）",
+            desc: "指名したプレイヤー1人に幸福度+20ptをあげる代わりに、強制的に2杯飲ませる！",
+            timing: "any",
+            targetType: "single"
+        }
+    },
+    {
+        id: "shugo",
+        label: "酒豪",
+        title: "飲み会番長",
+        cap: 150,
+        skill: {
+            name: "番長のタイマン勝負",
+            desc: "リアルでタイマン勝負を行い、スマホで「負けた人」を選択してその人に2杯飲ませる！",
+            timing: "any",
+            targetType: "single_any" // 自分含む全員から敗者を選択
+        }
+    },
+    {
+        id: "soccer",
+        label: "サッカーキャラ",
+        title: "超絶イケメン天才カリスマフットボールプレイヤー",
+        cap: 150,
+        skill: {
+            name: "華麗なるキラーパス",
+            desc: "このターン自分が飲んだ杯数をすべて帳消しにし、指名したプレイヤー1人へパスして飲ませる！",
+            timing: "after_land_drink", // マス到着後・飲酒発生時
+            targetType: "single"
+        }
+    },
+    {
+        id: "busaiku",
+        label: "ブサイク",
+        title: "ブサイク",
+        cap: 110,
+        skill: {
+            name: "非モテの怨念・顔面偏差値リセット",
+            desc: "イケメン・美人・恋人がいるリア充全員に2杯ずつ飲ませる！（該当者なしの場合は指名した1人に2杯）",
+            timing: "any",
+            targetType: "busaiku_special"
+        }
+    }
 ];
 const MAP_SQUARES = [
     // 🎯 【0番マスの完全一致】sq_0.js のルーティンに合わせ、type を完璧に "branch" に統一！
@@ -150,7 +305,8 @@ function createPlayer(id, name) {
         isLover: false,
         skipTurn: false,
         hasJob: false,
-        lovers: []
+        lovers: [],
+        skillUsesLeft: 1
     };
 }
 if (typeof module !== "undefined" && module.exports) {

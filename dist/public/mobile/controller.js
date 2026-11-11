@@ -351,7 +351,13 @@ const MobileActionButtonsZone = (0, react_1.memo)(() => {
             gap: "10px",
             alignItems: "center",
             marginTop: "4px",
-        }, children: [(0, jsx_runtime_1.jsx)("button", { id: "btn-phone-spin", className: "btn-orange", children: "\u26A1 \u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3059\uFF01" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-use-insurance", disabled: true, children: "\uD83D\uDEE1\uFE0F \u751F\u547D\u4FDD\u967A\u3092\u5229\u7528\u3059\u308B" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" })] }));
+        }, children: [(0, jsx_runtime_1.jsx)("button", { id: "btn-phone-spin", className: "btn-orange", children: "\u26A1 \u30EB\u30FC\u30EC\u30C3\u30C8\u3092\u56DE\u3059\uFF01" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-use-insurance", disabled: true, children: "\uD83D\uDEE1\uFE0F \u751F\u547D\u4FDD\u967A\u3092\u5229\u7528\u3059\u308B" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-use-skill", disabled: true, style: {
+                    display: "none",
+                    background: "linear-gradient(135deg, #d84315 0%, #ff8f00 100%)",
+                    color: "#fff",
+                    fontWeight: "bold",
+                    border: "2px solid #ffd54f",
+                }, children: "\u26A1 \u5FC5\u6BBA\u6280\u3092\u767A\u52D5\uFF08\u6B8B\u308A1\u56DE\uFF09" }), (0, jsx_runtime_1.jsx)("button", { id: "btn-phone-next", className: "btn-blue", children: "\u27A1 \u6B21\u306E\u30D7\u30EC\u30A4\u30E4\u30FC\u3078" })] }));
 }, () => true);
 const MobileModalsZone = (0, react_1.memo)(() => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)("div", { id: "job-modal-overlay", className: "event-modal-overlay", style: {
                 display: "none",
@@ -944,6 +950,8 @@ function initMobileListeners() {
             document.getElementById("insurance-inline-zone")?.remove();
             document.getElementById("insurance-confirm-modal")?.remove();
             document.getElementById("takunomi-loser-zone")?.remove();
+            document.getElementById("skill-confirm-modal")?.remove();
+            document.getElementById("skill-target-modal")?.remove();
             console.log(`\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`);
             if (document.getElementById("current-player-banner")) {
                 document.getElementById("current-player-banner").textContent =
@@ -1032,6 +1040,15 @@ function initMobileListeners() {
                 `🎯 結果: ${data.message}`;
         }
     });
+    socket.off("skillEffectResolved");
+    socket.on("skillEffectResolved", (data) => {
+        if (document.getElementById("roulette-result-display") &&
+            data &&
+            data.resultMessage) {
+            document.getElementById("roulette-result-display").textContent =
+                `⚡ ${data.resultMessage}`;
+        }
+    });
     // ==========================================================================
     // 🧭 syncGameState 受信部（ステータス同期・ターン開始制御 専用版）
     // ==========================================================================
@@ -1081,6 +1098,54 @@ function initMobileListeners() {
             else {
                 insuranceBtn.disabled = true;
                 insuranceBtn.textContent = `🛡️ 生命保険を利用する (${insuranceCount}枚)`;
+            }
+        }
+        // ⚡ 必殺技ボタンの更新（ランクアップ後のみ表示し、効果ごとのタイミングで有効化）
+        const skillBtn = document.getElementById("btn-phone-use-skill");
+        if (skillBtn) {
+            if (!p.isRankedUp) {
+                skillBtn.style.display = "none";
+            }
+            else {
+                skillBtn.style.display = "block";
+                const skillUses = p.skillUsesLeft !== undefined ? Number(p.skillUsesLeft) : 1;
+                const jobMaster = typeof JOBS !== "undefined" && Array.isArray(JOBS)
+                    ? JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job)
+                    : null;
+                const skillCfg = jobMaster && jobMaster.skill ? jobMaster.skill : null;
+                const timing = skillCfg ? skillCfg.timing : "any";
+                const isWaitSpin = window.serverCurrentPhase === "2.WAIT_SPIN";
+                const isWaitNext = window.serverCurrentPhase === "6.WAIT_NEXT";
+                const turnStartDrinks = p.turnStartDrinkCount !== undefined ? p.turnStartDrinkCount : 0;
+                const hasDrunkThisTurn = (p.drinkCount || 0) > turnStartDrinks && Number(p.position) !== 30;
+                let canUseTiming = false;
+                if (timing === "before_spin") {
+                    canUseTiming = isWaitSpin;
+                }
+                else if (timing === "after_land_drink") {
+                    canUseTiming = isWaitNext && hasDrunkThisTurn;
+                }
+                else if (timing === "after_land") {
+                    canUseTiming = isWaitNext;
+                }
+                else {
+                    canUseTiming = isWaitSpin || isWaitNext;
+                }
+                if (skillUses <= 0) {
+                    skillBtn.disabled = true;
+                    skillBtn.textContent = `⚡ 必殺技を発動（残り0回）`;
+                    skillBtn.style.opacity = "0.5";
+                }
+                else if (currentIdx === activePlayerIndex && canUseTiming) {
+                    skillBtn.disabled = false;
+                    skillBtn.textContent = `⚡ 必殺技を発動（残り${skillUses}回）`;
+                    skillBtn.style.opacity = "1";
+                }
+                else {
+                    skillBtn.disabled = true;
+                    skillBtn.textContent = `⚡ 必殺技を発動（残り${skillUses}回）`;
+                    skillBtn.style.opacity = "0.6";
+                }
             }
         }
         // ------------------------------------------------------------------------
@@ -1215,6 +1280,226 @@ function initMobileListeners() {
                 };
             }
         });
+        // ⚡ 【必殺技の発動確認 ＆ 対象選択モーダル】
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest("#btn-phone-use-skill");
+            if (!btn || btn.disabled)
+                return;
+            e.preventDefault();
+            const p = players[activePlayerIndex];
+            if (!p || !p.isRankedUp)
+                return;
+            const skillUses = p.skillUsesLeft !== undefined ? Number(p.skillUsesLeft) : 1;
+            if (skillUses <= 0)
+                return;
+            const jobMaster = typeof JOBS !== "undefined" && Array.isArray(JOBS)
+                ? JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job)
+                : null;
+            const skillCfg = jobMaster && jobMaster.skill
+                ? jobMaster.skill
+                : {
+                    name: "必殺技",
+                    desc: "上位役職の必殺技を発動します！",
+                    timing: "any",
+                    targetType: "none",
+                };
+            const jobTitle = jobMaster ? jobMaster.title : p.job || "上位役職";
+            const timingLabel = skillCfg.timing === "before_spin"
+                ? "ルーレットを回す前"
+                : skillCfg.timing === "after_land_drink"
+                    ? "マス到着・飲酒発生時"
+                    : "ルーレット前 / マス到着後";
+            const confirmHtml = `
+        <div id="skill-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+          <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box; border:3px solid #ff8f00;">
+            <div style="font-size:0.85rem; font-weight:bold; color:#e65100; margin-bottom:4px;">👑 ${jobTitle} 専用必殺技</div>
+            <h3 style="margin:0 0 10px 0; color:#d84315; font-size:1.3rem; font-weight:900;">⚡ ${skillCfg.name}</h3>
+            <div style="background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:12px; font-size:0.9rem; color:#333; margin-bottom:12px; line-height:1.5; font-weight:bold;">
+              ${skillCfg.desc}
+            </div>
+            <div style="font-size:0.78rem; color:#666; margin-bottom:14px;">使用タイミング: ${timingLabel}</div>
+            <p style="font-size:0.95rem; font-weight:bold; color:#222; margin:0 0 16px 0;">必殺技を発動しますか？（残り${skillUses}回）</p>
+            <div style="display:flex; gap:10px;">
+              <button id="btn-skill-yes" style="flex:1; padding:12px; font-weight:bold; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:1rem;">はい</button>
+              <button id="btn-skill-no" style="flex:1; padding:12px; font-weight:bold; background:#eee; color:#333; border:none; border-radius:10px; cursor:pointer; font-size:1rem;">いいえ</button>
+            </div>
+          </div>
+        </div>
+      `;
+            const playScreen = document.getElementById("phone-screen-play") || document.body;
+            document.getElementById("skill-confirm-modal")?.remove();
+            playScreen.insertAdjacentHTML("beforeend", confirmHtml);
+            const btnNo = document.getElementById("btn-skill-no");
+            if (btnNo) {
+                btnNo.onclick = () => {
+                    document.getElementById("skill-confirm-modal")?.remove();
+                };
+            }
+            const btnYes = document.getElementById("btn-skill-yes");
+            if (btnYes) {
+                btnYes.onclick = () => {
+                    document.getElementById("skill-confirm-modal")?.remove();
+                    // ブサイク必殺技でイケメン・美人・恋人がいるか事前判定
+                    let effectiveTargetType = skillCfg.targetType || "none";
+                    if (effectiveTargetType === "busaiku_special") {
+                        const hasRiajuu = (players || []).some((op) => op &&
+                            String(op.id) !== String(p.id) &&
+                            (op.jobId === "ikemen" || op.jobId === "bijin" || op.isLover));
+                        effectiveTargetType = hasRiajuu ? "none" : "single";
+                    }
+                    // 1. PC大画面に「〇〇が必殺技を発動！」モーダルを表示させる
+                    socket.emit("skillActivated", {
+                        roomCode: currentRoomCode,
+                        playerId: p.id,
+                        playerName: p.name,
+                        jobId: p.jobId,
+                        jobTitle: jobTitle,
+                        skillName: skillCfg.name,
+                        skillDesc: skillCfg.desc,
+                        targetType: effectiveTargetType,
+                    });
+                    // 2. 対象選択が不要な技はそのまま効果発動
+                    if (effectiveTargetType === "none") {
+                        socket.emit("executeSkillEffect", {
+                            roomCode: currentRoomCode,
+                            playerId: p.id,
+                        });
+                        return;
+                    }
+                    // 3. 効果に応じたスマホ専用ターゲット選択モーダルを展開
+                    openSkillTargetSelectionModal(p, skillCfg, effectiveTargetType, playScreen);
+                };
+            }
+        });
+        function openSkillTargetSelectionModal(p, skillCfg, targetType, container) {
+            document.getElementById("skill-target-modal")?.remove();
+            // パターンA: 出目（1〜10）を指定するモーダル（龍大生）
+            if (targetType === "dice") {
+                let diceBtns = "";
+                for (let d = 1; d <= 10; d++) {
+                    diceBtns += `<button type="button" class="btn-skill-dice" data-dice="${d}" style="padding:14px 0; font-size:1.2rem; font-weight:bold; background:#ff8f00; color:#fff; border:none; border-radius:10px; cursor:pointer;">${d}マス</button>`;
+                }
+                const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">進むマス数（1〜10）を選択してください</p>
+              <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;">
+                ${diceBtns}
+              </div>
+            </div>
+          </div>
+        `;
+                container.insertAdjacentHTML("beforeend", html);
+                document.querySelectorAll("#skill-target-modal .btn-skill-dice").forEach((b) => {
+                    b.onclick = (ev) => {
+                        const diceVal = parseInt(ev.currentTarget.getAttribute("data-dice") || "1", 10);
+                        document.getElementById("skill-target-modal")?.remove();
+                        socket.emit("executeSkillEffect", {
+                            roomCode: currentRoomCode,
+                            playerId: p.id,
+                            chosenDice: diceVal,
+                        });
+                    };
+                });
+                return;
+            }
+            // パターンB: プレイヤー2人を指名するモーダル（P）
+            if (targetType === "double") {
+                const candidates = (players || []);
+                const buttonsHtml = candidates
+                    .map((pl) => `<button type="button" class="btn-skill-double-target" data-id="${pl.id}" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:10px; background:#fff; color:#333; cursor:pointer;">${pl.name}</button>`)
+                    .join("");
+                const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">乾杯させるプレイヤーを2人選択してください</p>
+              <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+                ${buttonsHtml}
+              </div>
+              <button type="button" id="btn-skill-double-confirm" disabled style="width:100%; padding:12px; font-size:1rem; font-weight:bold; background:#ccc; color:#fff; border:none; border-radius:10px;">2人選択して決定</button>
+            </div>
+          </div>
+        `;
+                container.insertAdjacentHTML("beforeend", html);
+                const selectedIds = [];
+                const confirmBtn = document.getElementById("btn-skill-double-confirm");
+                document
+                    .querySelectorAll("#skill-target-modal .btn-skill-double-target")
+                    .forEach((b) => {
+                    b.onclick = (ev) => {
+                        const el = ev.currentTarget;
+                        const id = el.getAttribute("data-id") || "";
+                        const idx = selectedIds.indexOf(id);
+                        if (idx >= 0) {
+                            selectedIds.splice(idx, 1);
+                            el.style.borderColor = "#ccc";
+                            el.style.background = "#fff";
+                            el.style.color = "#333";
+                        }
+                        else if (selectedIds.length < 2) {
+                            selectedIds.push(id);
+                            el.style.borderColor = "#d84315";
+                            el.style.background = "#fbe9e7";
+                            el.style.color = "#d84315";
+                        }
+                        if (confirmBtn) {
+                            const ok = selectedIds.length === 2 ||
+                                (candidates.length === 1 && selectedIds.length === 1);
+                            confirmBtn.disabled = !ok;
+                            confirmBtn.style.background = ok ? "#d84315" : "#ccc";
+                        }
+                    };
+                });
+                if (confirmBtn) {
+                    confirmBtn.onclick = () => {
+                        document.getElementById("skill-target-modal")?.remove();
+                        socket.emit("executeSkillEffect", {
+                            roomCode: currentRoomCode,
+                            playerId: p.id,
+                            targetIds: selectedIds,
+                        });
+                    };
+                }
+                return;
+            }
+            // パターンC: 1人を指名するモーダル（single / single_any）
+            const includeSelf = targetType === "single_any";
+            const candidates = (players || []).filter((pl) => pl && (includeSelf || String(pl.id) !== String(p.id)));
+            const listToUse = candidates.length > 0 ? candidates : players || [];
+            const promptText = targetType === "single_any"
+                ? "タイマン勝負で負けたプレイヤーを選択してください"
+                : "対象にするプレイヤーを1人指名してください";
+            const buttonsHtml = listToUse
+                .map((pl) => `<button type="button" class="btn-skill-single-target" data-id="${pl.id}" style="padding:13px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; cursor:pointer;">🎯 ${pl.name} を選択</button>`)
+                .join("");
+            const html = `
+        <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+          <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+            <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
+            <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">${promptText}</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              ${buttonsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+            container.insertAdjacentHTML("beforeend", html);
+            document
+                .querySelectorAll("#skill-target-modal .btn-skill-single-target")
+                .forEach((b) => {
+                b.onclick = (ev) => {
+                    const targetId = ev.currentTarget.getAttribute("data-id") || "";
+                    document.getElementById("skill-target-modal")?.remove();
+                    socket.emit("executeSkillEffect", {
+                        roomCode: currentRoomCode,
+                        playerId: p.id,
+                        targetIds: [targetId],
+                    });
+                };
+            });
+        }
         // 🛠️ 【デバッグ機能】
         document.addEventListener("click", (e) => {
             const btn = e.target.closest("#btn-debug-warp");
