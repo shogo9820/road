@@ -12,8 +12,8 @@ window.SQ_MODULES[54] = {
     config: {
       themeClass: "theme-rankup",
       pcTitle: "🔥 ランクアップチャンス 🔥",
-      pcDesc: "さんの実力が試される時！6以上を出して役職ランクアップを掴み取れ！",
-      mobileDisplay: "🎯 6以上を出して役職ランクアップを狙え！",
+      pcDesc: "さんの実力が試される時！1と4以外（80%）を出して役職ランクアップを掴み取れ！",
+      mobileDisplay: "🎯 1・4以外（80%）を出して役職ランクアップを狙え！",
       mobileBtn: "🔥 運命のランクアップスピンを回す！"
     },
 
@@ -88,10 +88,10 @@ window.SQ_MODULES[54] = {
           <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">👑 ランクアップ判定対応表</div>
           <ul class="event-table-list">`;
         for (let i = 1; i <= 10; i++) {
-          const isRankUp = i >= 6;
+          const isRankUp = i !== 1 && i !== 4;
           const targetTitle =
             (player.jobId === "mob" || currentJobName === "モブ")
-              ? i >= 9
+              ? i % 2 === 0
                 ? "代表"
                 : "副代表"
               : rankUpJobName;
@@ -130,10 +130,10 @@ window.SQ_MODULES[54] = {
 
             const rankupMapping = {};
             for (let i = 1; i <= 10; i++) {
-              if (i >= 6) {
+              if (i !== 1 && i !== 4) {
                 const targetTitle =
                   (player.jobId === "mob" || currentJobName === "モブ")
-                    ? i >= 9
+                    ? i % 2 === 0
                       ? "代表"
                       : "副代表"
                     : rankUpJobName;
@@ -206,10 +206,10 @@ window.SQ_MODULES[54] = {
             socket.off("customRouletteFinished", mod._onFinished);
 
           const resNum = data && data.result !== undefined ? data.result : 1;
-          if (resNum >= 6) {
+          if (resNum !== 1 && resNum !== 4) {
             const targetTitle =
               (player.jobId === "mob" || currentJobName === "モブ")
-                ? resNum >= 9
+                ? resNum % 2 === 0
                   ? "代表"
                   : "副代表"
                 : rankUpJobName;
