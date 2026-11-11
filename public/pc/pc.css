@@ -417,3 +417,74 @@ button:active { transform: scale(0.98); }
   background: rgba(0,0,0,0.4); padding: 10px; border-radius: 50px;
   display: inline-block; padding: 8px 30px; border: 1px solid #00e676;
 }
+
+/* ==========================================================================
+   📢 右下「現在のマスの内容」: 杯数が一目で分かる大型表示
+   ========================================================================== */
+.tile-info { display: flex; flex-direction: column; gap: 10px; }
+.tile-badge {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  padding: 10px 14px; border-radius: 16px; font-weight: 900; text-align: center;
+  line-height: 1.2; box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
+.tile-badge-drink {
+  background: linear-gradient(135deg, #ff6f00 0%, #e53935 100%); color: #fff;
+  animation: tilePulse 1.4s ease-in-out infinite;
+}
+.tile-badge-icon { font-size: 2.4rem; }
+.tile-badge-num { font-size: 4.2rem; line-height: 1; text-shadow: 0 3px 0 rgba(0,0,0,0.25); }
+.tile-badge-unit { font-size: 1.7rem; }
+.tile-badge-cond {
+  background: #fff3cd; color: #b34700; border: 3px solid #ff9800; font-size: 1.25rem;
+}
+.tile-badge-safe {
+  background: #e8f5e9; color: #1b5e20; border: 3px solid #43a047; font-size: 1.4rem;
+}
+.tile-text { font-size: 1.35rem; font-weight: 800; line-height: 1.55; color: #1f2d3d; }
+.tile-cups {
+  display: inline-block; padding: 0 8px; margin: 0 2px; border-radius: 8px;
+  background: #ffe0b2; color: #d84315; font-size: 1.6em; font-weight: 900;
+}
+.tile-cond {
+  display: inline-block; padding: 1px 8px; margin-right: 4px; border-radius: 8px;
+  background: #fff176; color: #bf360c; font-weight: 900;
+}
+.tile-happy {
+  align-self: center; padding: 6px 18px; border-radius: 999px; font-size: 1.2rem; font-weight: 900;
+}
+.tile-happy-up { background: #fff9c4; color: #f57f17; border: 2px solid #fbc02d; }
+.tile-happy-down { background: #fce4ec; color: #c2185b; border: 2px solid #ec407a; }
+@keyframes tilePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+/* ==========================================================================
+   💀 留年ルート（theme-repeat-dark）: 暗い背景でも読めるよう文字を明るく統一
+   ========================================================================== */
+body.theme-repeat-dark .card,
+body.theme-repeat-dark .card *:not(.tile-badge):not(.tile-badge *):not(.tile-cups):not(.tile-cond):not(.tile-happy):not(button) {
+  color: #fff !important;
+}
+body.theme-repeat-dark .card,
+body.theme-repeat-dark .map-card-maximized {
+  background: #2b1838 !important;
+  border-color: #ab47bc !important;
+}
+body.theme-repeat-dark .card .card-title {
+  border-bottom-color: #ab47bc !important;
+  color: #ffd54f !important;
+}
+body.theme-repeat-dark .color-legend-item {
+  background: #3b2350 !important;
+  border-color: #7e57c2 !important;
+}
+body.theme-repeat-dark .color-legend-item[style*="fff8e1"] {
+  background: #5a3a00 !important;
+}
+body.theme-repeat-dark .tile-text { color: #fff !important; }
+body.theme-repeat-dark .tile-cups { background: #ffcc80 !important; color: #b71c1c !important; }
+body.theme-repeat-dark .tile-cond { background: #fff176 !important; color: #bf360c !important; }
+body.theme-repeat-dark .tile-badge-drink { color: #fff !important; }
+body.theme-repeat-dark .tile-badge-drink * { color: #fff !important; }
+body.theme-repeat-dark .tile-badge-cond { background: #4e342e !important; color: #ffe082 !important; border-color: #ffb300 !important; }
+body.theme-repeat-dark .tile-badge-safe { background: #1b3d22 !important; color: #b9f6ca !important; border-color: #69f0ae !important; }
+body.theme-repeat-dark .tile-happy-up { background: #5d4a00 !important; color: #fff59d !important; }
+body.theme-repeat-dark .tile-happy-down { background: #5a1a33 !important; color: #ff80ab !important; }

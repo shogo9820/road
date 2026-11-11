@@ -474,6 +474,37 @@ function executeSyncedRoulette(resultNum: number) {
   }, 3000);
 }
 
+// 📢 右下「現在のマスの内容」を、杯数・条件が一目で分かる表示に整形
+function buildTileHtml(text: string, drink: number, happiness: number): string {
+  const body = String(text)
+    .replace(
+      /(【[^】]*(?:場合|回避)[^】]*】)/g,
+      '<span class="tile-cond">$1</span>',
+    )
+    .replace(/([0-9０-９]+杯)/g, '<span class="tile-cups">$1</span>');
+
+  const hasCondition = /場合|回避/.test(text);
+  const hasCupsInText = /[0-9０-９]+杯/.test(text);
+
+  let badge = "";
+  if (drink > 0) {
+    badge = `<div class="tile-badge tile-badge-drink"><span class="tile-badge-icon">🍺</span><span class="tile-badge-num">${drink}</span><span class="tile-badge-unit">杯 飲む！</span></div>`;
+  } else if (hasCondition || hasCupsInText) {
+    badge = `<div class="tile-badge tile-badge-cond">⚠️ 条件に当てはまる人は飲む！（下の文を確認）</div>`;
+  } else {
+    badge = `<div class="tile-badge tile-badge-safe">✨ セーフ！飲まなくてOK</div>`;
+  }
+
+  let happy = "";
+  if (happiness > 0) {
+    happy = `<div class="tile-happy tile-happy-up">😊 幸福度 +${happiness}pt</div>`;
+  } else if (happiness < 0) {
+    happy = `<div class="tile-happy tile-happy-down">😢 幸福度 ${happiness}pt</div>`;
+  }
+
+  return `<div class="tile-info">${badge}<div class="tile-text">🎲 ${body}</div>${happy}</div>`;
+}
+
 function triggerDelayedDisplay(resultNum: number, targetSquare: any) {
   const p = players[activePlayerIndex];
   if (!p) return;
@@ -503,12 +534,24 @@ function triggerDelayedDisplay(resultNum: number, targetSquare: any) {
     document.getElementById("current-tile-desc");
   const eventCardEl = document.querySelector(".tile-event-card");
 
+  const tileDrink = Number(
+    (targetModule && targetModule.drink !== undefined
+      ? targetModule.drink
+      : targetSquare && targetSquare.drink) || 0,
+  );
+  const tileHappy = Number(
+    (targetModule && targetModule.happiness !== undefined
+      ? targetModule.happiness
+      : targetSquare && targetSquare.happiness) || 0,
+  );
+  const tileHtml = buildTileHtml(detectedText, tileDrink, tileHappy);
+
   if (eventTextEl) {
-    eventTextEl.innerHTML = `<p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p>`;
+    eventTextEl.innerHTML = tileHtml;
   } else if (eventCardEl) {
     eventCardEl.innerHTML = `
       <div class="card-title" style="border-bottom: 2px solid #e0e0e0; padding-bottom: 4px; margin-bottom: 8px;">📢 現在のマスの内容</div>
-      <div id="current-tile-desc"><p class="event-msg" style="color: #2c3e50; font-weight: bold; font-size: 1.15rem; margin: 0;">🎲 ${detectedText}</p></div>
+      <div id="current-tile-desc">${tileHtml}</div>
     `;
   }
 
@@ -865,6 +908,31 @@ const PCModalsZone = memo(
           >
             📱 スマホで対象を選択中...
           </div>
+          <button
+            type="button"
+            id="pc-skill-back-btn"
+            onClick={() => {
+              const m = document.getElementById("pc-skill-modal");
+              if (m) m.style.display = "none";
+              const b = document.getElementById("pc-skill-back-btn");
+              if (b) b.style.display = "none";
+            }}
+            style={{
+              display: "none",
+              margin: "24px auto 0",
+              padding: "16px 48px",
+              fontSize: "1.6rem",
+              fontWeight: 900,
+              color: "#d84315",
+              background: "#fff",
+              border: "4px solid #ffeb3b",
+              borderRadius: "16px",
+              cursor: "pointer",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+            }}
+          >
+            ↩ ターンに戻る
+          </button>
         </div>
       </div>
     </>
@@ -2081,6 +2149,8 @@ function appendSocketListeners() {
             ? "📱 スマホ画面で対象を選択中..."
             : "⚡ 必殺技効果を発動中...！";
       }
+      const prevBack = document.getElementById("pc-skill-back-btn");
+      if (prevBack) prevBack.style.display = "none";
       skillModal.style.display = "flex";
     }
   });
@@ -2135,15 +2205,18 @@ function appendSocketListeners() {
       if (resultBox) {
         resultBox.style.display = "block";
         resultBox.className = "event-result-box success";
-        resultBox.innerHTML = `<div style="font-size:1.35rem; font-weight:900; color:#d84315;">${data.resultMessage}</div>`;
-      }
-      setTimeout(() => {
-        const pcModal = document.getElementById("pc-event-modal");
-        if (pcModal) {
-          pcModal.className = "event-modal-overlay";
-          pcModal.style.display = "none";
+        resultBox.innerHTML = `<div style="font-size:1.35rem; font-weight:900; color:#d84315;">${data.resultMessage}</div><button type="button" id="pc-tornado-back-btn" style="margin-top:12px; padding:12px 36px; font-size:1.3rem; font-weight:900; color:#fff; background:#d84315; border:none; border-radius:12px; cursor:pointer;">↩ ターンに戻る</button>`;
+        const tBack = document.getElementById("pc-tornado-back-btn");
+        if (tBack) {
+          tBack.onclick = () => {
+            const pcModal = document.getElementById("pc-event-modal");
+            if (pcModal) {
+              pcModal.className = "event-modal-overlay";
+              pcModal.style.display = "none";
+            }
+          };
         }
-      }, 3500);
+      }
       return;
     }
 
@@ -2154,10 +2227,8 @@ function appendSocketListeners() {
       if (resEl && data.resultMessage) {
         resEl.textContent = `🎯 ${data.resultMessage}`;
       }
-      setTimeout(() => {
-        const modalNow = document.getElementById("pc-skill-modal");
-        if (modalNow) modalNow.style.display = "none";
-      }, 3200);
+      const backBtn = document.getElementById("pc-skill-back-btn");
+      if (backBtn) backBtn.style.display = "block";
     }
   });
 
