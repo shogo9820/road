@@ -374,86 +374,81 @@ window.boardManager = {
   },
 
   drawSeasonalEmojiStamps(ctx, isRepeatDark) {
+    // 【】に囲まれたイベントマスのすぐ隣に1〜2個だけ添えるスッキリ配置
     const stamps = [
-      // 🌸 1回生 春（入学式・新歓: マス18〜20）
-      { x: 57.5, y: 17.0, emoji: "🌸", size: 24, rotate: -8 },
-      { x: 57.5, y: 21.0, emoji: "🎒", size: 20, rotate: 6 },
-      { x: 57.5, y: 25.0, emoji: "🍡", size: 19, rotate: 10 },
+      // 🌸 1回生 【新歓】(マス19)
+      { x: 55.0, y: 20.5, emoji: "🌸", size: 24, rotate: -6 },
 
-      // 🌻 1回生 夏（夏合宿・バス飲み: マス21〜24）
-      { x: 50.0, y: 4.5, emoji: "🌻", size: 24, rotate: 10 },
-      { x: 46.5, y: 4.5, emoji: "🍉", size: 20, rotate: -6 },
-      { x: 43.0, y: 4.5, emoji: "🚌", size: 21, rotate: -8 },
+      // 🌻 1回生 【夏合宿】(マス21)
+      { x: 50.5, y: 12.2, emoji: "🌻", size: 24, rotate: -6 },
+      { x: 53.0, y: 14.5, emoji: "🍉", size: 22, rotate: 8 },
 
-      // 🍁 1回生 秋（秋キャン・黒潮市場・龍祭: マス25〜27）
-      { x: 31.5, y: 11.5, emoji: "🍁", size: 24, rotate: -12 },
-      { x: 31.5, y: 14.5, emoji: "⛺", size: 20, rotate: 6 },
-      { x: 31.5, y: 17.5, emoji: "🏮", size: 20, rotate: 8 },
+      // 🍁 1回生 【秋キャン】(マス25)
+      { x: 38.5, y: 12.2, emoji: "🍁", size: 24, rotate: -6 },
+      { x: 40.7, y: 16.0, emoji: "⛺", size: 22, rotate: 8 },
 
-      // ❄️ 1〜2回生 冬（忘年会・冬合宿: マス28〜29, 31〜32）
-      { x: 44.5, y: 24.5, emoji: "❄️", size: 24, rotate: 0 },
-      { x: 44.0, y: 28.0, emoji: "⛄", size: 20, rotate: -8 },
-      { x: 43.0, y: 32.5, emoji: "🎿", size: 21, rotate: 15 },
+      // 🏮 1回生 【龍祭】(マス27)
+      { x: 33.9, y: 19.0, emoji: "🏮", size: 22, rotate: -6 },
 
-      // 🌸 2回生 春（新歓キャンプ・お花見ももじ: マス33〜34）
-      { x: 34.0, y: 39.5, emoji: "🌸", size: 24, rotate: 8 },
-      { x: 34.0, y: 43.0, emoji: "🍡", size: 20, rotate: -10 },
+      // ⛄ 1回生 【忘年会】(マス29)
+      { x: 41.0, y: 26.5, emoji: "⛄", size: 22, rotate: -6 },
 
-      // 🌻 2回生 夏（花火・沖縄・夏合宿: マス46〜48）
-      { x: 1.5, y: 48.0, emoji: "🌻", size: 24, rotate: 12 },
-      { x: 1.5, y: 53.0, emoji: "🎆", size: 21, rotate: -5 },
-      { x: 4.0, y: 54.5, emoji: "🍉", size: 19, rotate: 10 },
+      // ❄️ 2回生 【冬合宿】(マス32)
+      { x: 42.0, y: 37.5, emoji: "❄️", size: 24, rotate: -6 },
 
-      // 🍓 3回生 Aルート 春〜初夏（いちご狩り・お菓子: マス53〜55）
-      { x: 1.5, y: 15.0, emoji: "🍓", size: 21, rotate: 12 },
-      { x: 3.5, y: 16.5, emoji: "🌸", size: 21, rotate: -8 },
+      // 🌸 2回生 【新歓】(マス34)
+      { x: 38.0, y: 43.5, emoji: "🌸", size: 24, rotate: -6 },
+      { x: 42.7, y: 45.0, emoji: "🍡", size: 22, rotate: 8 },
 
-      // 🌻 3回生 Bルート 夏（夏合宿・琵琶湖HAMIKIN: マス59〜60）
-      { x: 8.5, y: 46.0, emoji: "🌻", size: 24, rotate: -10 },
-      { x: 12.0, y: 47.0, emoji: "🏊", size: 21, rotate: 5 },
-      { x: 15.0, y: 47.5, emoji: "🌊", size: 19, rotate: -5 },
+      // 🍉 3回生 Aルート 【夏合宿】(マス50)
+      { x: 7.0, y: 37.5, emoji: "🍉", size: 22, rotate: -6 },
 
-      // 🍁 3回生 Bルート 秋（秋キャン・龍祭バケツタピオカ: マス64〜68）
-      { x: 27.5, y: 47.0, emoji: "🍁", size: 24, rotate: 10 },
-      { x: 30.5, y: 47.0, emoji: "⛺", size: 20, rotate: -8 },
-      { x: 27.0, y: 32.5, emoji: "🧋", size: 21, rotate: 8 },
+      // 🌻 3回生 Bルート 【夏合宿】(マス59)
+      { x: 8.5, y: 39.2, emoji: "🌻", size: 24, rotate: -6 },
 
-      // ❄️ 3回生 Bルート 冬（忘年会・成人式・冬合宿: マス70〜74）
-      { x: 35.0, y: 13.5, emoji: "❄️", size: 24, rotate: 0 },
-      { x: 34.0, y: 17.0, emoji: "👘", size: 21, rotate: -10 },
-      { x: 26.5, y: 13.5, emoji: "🏂", size: 21, rotate: 12 },
-      { x: 26.5, y: 16.5, emoji: "⛄", size: 19, rotate: -5 },
+      // 🍁 3回生 Bルート 【秋キャン】(マス64)
+      { x: 23.5, y: 47.0, emoji: "🍁", size: 24, rotate: -6 },
+      { x: 26.1, y: 46.0, emoji: "⛺", size: 22, rotate: 8 },
 
-      // 🌸 4回生直前 春（新歓・川飲み: マス76）
-      { x: 19.5, y: 22.5, emoji: "🌸", size: 22, rotate: 8 },
-      { x: 19.5, y: 25.0, emoji: "🏞️", size: 19, rotate: -6 },
+      // 🧋 3回生 Bルート 【龍祭】(マス67)
+      { x: 33.0, y: 39.5, emoji: "🧋", size: 24, rotate: -6 },
 
-      // 🌻 4回生 夏（引退合宿: マス79〜81）
-      { x: 9.5, y: 35.0, emoji: "🌻", size: 24, rotate: 12 },
-      { x: 9.5, y: 38.0, emoji: "🍉", size: 20, rotate: -8 },
+      // ⛄ 3回生 Bルート 【忘年会】(マス71)
+      { x: 35.0, y: 27.5, emoji: "⛄", size: 22, rotate: -6 },
 
-      // 🍁 4回生 秋（秋キャン・HOT LIMIT・龍祭ガイモン: マス82〜84）
-      { x: 19.5, y: 18.0, emoji: "🍁", size: 24, rotate: -10 },
-      { x: 18.5, y: 20.5, emoji: "⛺", size: 20, rotate: 8 },
+      // 👘 3回生 Bルート 【成人式】(マス72)
+      { x: 31.0, y: 24.5, emoji: "👘", size: 24, rotate: -6 },
 
-      // ❄️ 4回生 冬（忘年会・ゲレンデカレー: マス85〜86）
-      { x: 7.5, y: 31.0, emoji: "❄️", size: 24, rotate: 0 },
-      { x: 7.5, y: 34.0, emoji: "🍛", size: 21, rotate: 10 },
-      { x: 7.0, y: 28.5, emoji: "⛄", size: 19, rotate: -8 },
+      // 🏂 3回生 Bルート 【冬合宿】(マス74)
+      { x: 29.5, y: 18.2, emoji: "🏂", size: 24, rotate: -6 },
 
-      // 🌸 卒業シーズン 春（追いコン・卒業式: マス87, 89, 99）
-      { x: 2.0, y: 9.5, emoji: "🌸", size: 24, rotate: 8 },
-      { x: 2.0, y: 6.5, emoji: "💐", size: 21, rotate: -10 },
-      { x: 2.0, y: 3.5, emoji: "🌸", size: 26, rotate: -15 },
-      { x: 4.5, y: 1.5, emoji: "🎊", size: 21, rotate: 12 },
-      { x: 19.5, y: 7.0, emoji: "🎓", size: 22, rotate: -8 },
+      // 🌸 4回生直前 【新歓】(マス76)
+      { x: 28.0, y: 24.5, emoji: "🌸", size: 24, rotate: -6 },
+
+      // 🌻 4回生 【夏合宿】(マス81)
+      { x: 19.0, y: 27.5, emoji: "🌻", size: 24, rotate: -6 },
+
+      // 🍁 4回生 【秋キャン】(マス82)
+      { x: 18.0, y: 24.5, emoji: "🍁", size: 24, rotate: -6 },
+      { x: 13.0, y: 24.5, emoji: "⛺", size: 22, rotate: 8 },
+
+      // 🏮 4回生 【龍祭】(マス84)
+      { x: 13.5, y: 16.2, emoji: "🏮", size: 22, rotate: -6 },
+
+      // ⛄ 4回生 【忘年会】(マス85)
+      { x: 10.5, y: 15.2, emoji: "⛄", size: 22, rotate: -6 },
+
+      // 🍛 4回生 【冬合宿】(マス86)
+      { x: 5.0, y: 16.5, emoji: "🍛", size: 24, rotate: -6 },
+
+      // 💐 卒業 【追いコン】(マス87)
+      { x: 4.0, y: 13.5, emoji: "💐", size: 24, rotate: -6 },
     ];
 
     if (isRepeatDark) {
       stamps.push(
-        { x: 25.5, y: 7.5, emoji: "🎂", size: 22, rotate: 8 },
-        { x: 25.5, y: 4.0, emoji: "🍂", size: 22, rotate: -12 },
-        { x: 25.5, y: 11.0, emoji: "💀", size: 24, rotate: 5 }
+        { x: 18.0, y: 7.5, emoji: "🎂", size: 24, rotate: 8 }, // マス92 【留年】誕生日
+        { x: 23.0, y: 7.0, emoji: "💀", size: 24, rotate: 5 }  // マス93 【留年】老害
       );
     }
 
@@ -465,12 +460,12 @@ window.boardManager = {
       if (s.rotate) {
         ctx.rotate((s.rotate * Math.PI) / 180);
       }
-      const scaledSize = Math.round((s.size || 20) * (this.cellSize / 15));
+      const scaledSize = Math.round((s.size || 22) * (this.cellSize / 15));
       ctx.font = `${scaledSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#000000";
-      ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.2)";
+      ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.25)";
       ctx.shadowBlur = 4;
       ctx.shadowOffsetX = 1;
       ctx.shadowOffsetY = 1;
