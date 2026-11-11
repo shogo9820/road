@@ -7,6 +7,9 @@ window.boardManager = {
     canvas: null,
     ctx: null,
     cellSize: 15,
+    originX: 0,
+    originY: 0,
+    hasResizeListener: false,
     previewRouteIdx: null,
     // マス種別ごとの基本カラー
     squareColors: {
@@ -197,9 +200,38 @@ window.boardManager = {
         if (!this.canvas)
             return;
         this.ctx = this.canvas.getContext("2d");
-        this.canvas.width = 60 * this.cellSize;
-        this.canvas.height = 56 * this.cellSize;
+        this.updateDimensions();
         this.bindSocketListeners();
+        if (!this.hasResizeListener) {
+            this.hasResizeListener = true;
+            window.addEventListener("resize", () => {
+                this.updateDimensions();
+                if (typeof players !== "undefined" && typeof activePlayerIndex !== "undefined") {
+                    this.draw(players, activePlayerIndex);
+                }
+            });
+        }
+    },
+    updateDimensions() {
+        if (!this.canvas) {
+            this.canvas = document.getElementById("board-canvas");
+            if (!this.canvas)
+                return;
+            this.ctx = this.canvas.getContext("2d");
+        }
+        const rect = this.canvas.getBoundingClientRect();
+        const w = Math.round(rect.width) || (60 * 15);
+        const h = Math.round(rect.height) || (56 * 15);
+        if (this.canvas.width !== w || this.canvas.height !== h) {
+            this.canvas.width = w;
+            this.canvas.height = h;
+        }
+        // マップ枠線（60x56グリッド）を余白を極限まで使い切って最大フィット拡大
+        // 画面上下左右に最小限の安全マージン（8px）だけ残して最大スケールを算出
+        const scale = Math.min((w - 16) / 60, (h - 16) / 56);
+        this.cellSize = Math.max(scale, 10);
+        this.originX = (w - 60 * this.cellSize) / 2;
+        this.originY = (h - 56 * this.cellSize) / 2;
     },
     getCoordinates(index) {
         const data = this.gridMap[index] || { x: 0, y: 0, w: 3, h: 3 };
@@ -305,6 +337,8 @@ window.boardManager = {
                     color: "#e65100",
                 },
             ];
+        ctx.save();
+        ctx.translate(this.originX, this.originY);
         badges.forEach((b) => {
             const bx = b.x * this.cellSize;
             const by = b.y * this.cellSize;
@@ -328,6 +362,7 @@ window.boardManager = {
             ctx.fillText(b.text, bx, by);
             ctx.restore();
         });
+        ctx.restore();
     },
     drawSeasonalEmojiStamps(ctx, isRepeatDark) {
         const stamps = [
@@ -401,7 +436,8 @@ window.boardManager = {
             if (s.rotate) {
                 ctx.rotate((s.rotate * Math.PI) / 180);
             }
-            ctx.font = `${s.size || 20}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+            const scaledSize = Math.round((s.size || 20) * (this.cellSize / 15));
+            ctx.font = `${scaledSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.15)";
@@ -465,13 +501,17 @@ window.boardManager = {
             this.init();
         if (!this.ctx)
             return;
+        this.updateDimensions();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
             return;
         const currentPlayer = playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
         const isRepeatDark = Boolean(currentPlayer && currentPlayer.isRepeat);
-        // 0. ボード背景＆道ラインの描画
+        // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
         this.drawBoardBackground(this.ctx, this.canvas.width, this.canvas.height, isRepeatDark);
+        // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
+        this.ctx.save();
+        this.ctx.translate(this.originX, this.originY);
         this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark);
         // 1. 各道ブロックの描画ループ
         MAP_SQUARES.forEach((sq, idx) => {
@@ -722,6 +762,7 @@ window.boardManager = {
                 this.ctx.restore();
             });
         }
+        this.ctx.restore(); // originX, originY の配置終了
     },
     bindSocketListeners() {
         if (typeof socket === "undefined" || this.hasBound)

@@ -114,8 +114,8 @@ body.pc-screen .app-container {
 /* 🗺️ すごろくマップカード：余白を極限まで削り、大画面を使い切る */
 .map-card-maximized {
   text-align: center;
-  padding: 6px;
-  background: var(--card-bg);
+  padding: 0 !important;
+  background: transparent !important;
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-color);
@@ -144,17 +144,12 @@ body.pc-screen .app-container {
   font-weight: bold;
 }
 
-/* 🎯 盤面Canvasを中央コンテナ幅・高さに合わせて自動特大フィットさせる */
+/* 🎯 盤面Canvasを中央コンテナ幅・高さに合わせて全画面限界までフィットさせる */
 #board-canvas {
   width: 100% !important;
   height: 100% !important;
-  max-width: 100% !important;
-  max-height: calc(100vh - 36px) !important;
-  aspect-ratio: 60 / 56;
-  object-fit: contain;
   display: block;
-  margin: auto;
-  border-radius: 12px;
+  border-radius: 15px;
 }
 
 /* 左カラム：ステータスカード（グラデーション仕様） */

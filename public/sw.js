@@ -1,4 +1,4 @@
-const CACHE_NAME = "salmons-game-v5";
+const CACHE_NAME = "salmons-game-v6";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
