@@ -9,6 +9,7 @@ declare const _exports: {
             desc: string;
             timing: string;
             targetType: string;
+            maxUses?: undefined;
         };
         special?: undefined;
     } | {
@@ -22,6 +23,7 @@ declare const _exports: {
             desc: string;
             timing: string;
             targetType: string;
+            maxUses: number;
         };
     })[];
     MAP_SQUARES: ({

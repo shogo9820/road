@@ -120,6 +120,246 @@ function renderLocationPlayersList() {
 function updateCurrentPlayerDisplay() {
     if (syncReactStateRef)
         syncReactStateRef();
+    const activeP = players && players[activePlayerIndex];
+    syncPCKoreanDOMMode(Boolean(activeP && activeP.koreanModeThisTurn));
+}
+// ==========================================================================
+// 🇰🇷 【イ専用必殺技：한국어로 변환（PC画面韓国語モード）】
+// 右下の「現在のマスの内容（.tile-event-card）」以外をすべて韓国語に変換＆ターン終了時完全復元
+// ==========================================================================
+const PC_KOREAN_DICT = [
+    ["スマホからルーレットを回してください！", "스마트폰에서 룰렛을 돌려주세요!"],
+    ["スマホから運命のスピンを回してね！", "스마트폰에서 운명의 스핀을 돌려주세요!"],
+    ["スマホから最終決着スピンを回してね！", "스마트폰에서 최종 결판 스핀을 돌려주세요!"],
+    ["スマホで対象を選択中...", "스마트폰에서 대상을 선택 중..."],
+    ["スマホ画面で対象を選択中...", "스마트폰 화면에서 대상을 선택 중..."],
+    ["スマホから回してね！", "스마트폰에서 돌려주세요!"],
+    ["タップして回そう！", "탭해서 돌려보자!"],
+    ["現在のプレイヤー", "현재 플레이어"],
+    ["全プレイヤーステータス", "전체 플레이어 상태"],
+    ["ロケーション別滞在状況", "장소별 체류 현황"],
+    ["誰もいません", "아무도 없습니다"],
+    ["が必殺技を発動！", " 필살기 발동!"],
+    ["必殺技効果を発動中...！", "필살기 효과 발동 중...!"],
+    ["いかれバーテンダー", "미친 바텐더"],
+    ["おもしろキャラ", "개그 캐릭터"],
+    ["いじられキャラ", "괴롭힘 캐릭터"],
+    ["サッカーキャラ", "축구 캐릭터"],
+    ["松竹所属芸人", "쇼치쿠 소속 연예인"],
+    ["代表or副代表", "대표or부대표"],
+    ["ミス龍大", "미스 류코쿠"],
+    ["比嘉んちゅ", "히가시 사람"],
+    ["沖縄出身", "오키나와 출신"],
+    ["サイコパス", "사이코패스"],
+    ["イケメン", "꽃미남"],
+    ["ブサイク", "못생김"],
+    ["韓国人", "한국인"],
+    ["平安生", "헤이안생"],
+    ["龍大生", "류코쿠대생"],
+    ["副代表", "부대표"],
+    ["代表", "대표"],
+    ["モブ", "모브"],
+    ["美人", "미인"],
+    ["おもちゃ", "장난감"],
+    ["雑魚", "잔챙이"],
+    ["酒豪", "주호"],
+    ["入学式", "입학식"],
+    ["生命保険", "생명보험"],
+    ["カップル", "커플"],
+    ["ランクUP", "랭크UP"],
+    ["引退勝負", "은퇴승부"],
+    ["卒業判定", "졸업판정"],
+    ["飲んだ杯数", "마신 잔 수"],
+    ["幸福度", "행복도"],
+    ["現在地", "현재 위치"],
+    ["体力", "체력"],
+    ["役職", "직업"],
+    ["恋人", "연인"],
+    ["回転中...", "회전 중..."],
+    ["出目", "나온 눈"],
+    ["結果", "결과"],
+    ["スタート前", "출발 전"],
+    ["卒業式（ゴール）", "졸업식 (골)"],
+    ["宅飲み", "홈파티"],
+    ["とりき", "토리키"],
+    ["ももじ", "모모지"],
+    ["ぱいぱい", "파이파이"],
+    ["家", "집"],
+    ["なし", "없음"],
+    ["あり", "있음"],
+    ["マス", "칸"],
+    ["回", "회"],
+    ["杯", "잔"],
+    ["枚", "장"],
+    ["番", "번"],
+    ["人", "명"],
+];
+const PC_KANA_TO_HANGUL = {
+    きゃ: "캬", きゅ: "큐", きょ: "쿄",
+    しゃ: "샤", しゅ: "슈", しょ: "쇼",
+    ちゃ: "차", ちゅ: "추", ちょ: "초",
+    にゃ: "냐", にゅ: "뉴", にょ: "뇨",
+    ひゃ: "햐", ひゅ: "휴", ひょ: "효",
+    みゃ: "먀", みゅ: "뮤", みょ: "묘",
+    りゃ: "랴", りゅ: "류", りょ: "료",
+    ぎゃ: "갸", ぎゅ: "규", ぎょ: "교",
+    じゃ: "자", じゅ: "주", じょ: "조",
+    びゃ: "뱌", びゅ: "뷰", びょ: "뵤",
+    ぴゃ: "퍄", ぴゅ: "퓨", ぴょ: "표",
+    あ: "아", い: "이", う: "우", え: "에", お: "오",
+    か: "카", き: "키", く: "쿠", け: "케", こ: "코",
+    さ: "사", し: "시", す: "스", せ: "세", そ: "소",
+    た: "타", ち: "치", つ: "츠", て: "테", と: "토",
+    な: "나", に: "니", ぬ: "누", ね: "네", の: "노",
+    は: "하", ひ: "히", ふ: "후", へ: "헤", ほ: "호",
+    ま: "마", み: "미", む: "무", め: "메", も: "모",
+    や: "야", ゆ: "유", よ: "요",
+    ら: "라", り: "리", る: "루", れ: "레", ろ: "로",
+    わ: "와", を: "오", ん: "응",
+    が: "가", ぎ: "기", ぐ: "구", げ: "게", ご: "고",
+    ざ: "자", じ: "지", ず: "즈", ぜ: "제", ぞ: "조",
+    だ: "다", ぢ: "지", づ: "즈", で: "데", ど: "도",
+    ば: "바", び: "비", ぶ: "부", べ: "베", ぼ: "보",
+    ぱ: "파", ぴ: "피", ぷ: "푸", ぺ: "페", ぽ: "포",
+    ぁ: "아", ぃ: "이", ぅ: "우", ぇ: "에", ぉ: "오",
+    ゃ: "야", ゅ: "유", ょ: "요", っ: "ㅅ", ー: "-",
+};
+const PC_DIGIT_TO_HANGUL = {
+    "0": "영",
+    "1": "일",
+    "2": "이",
+    "3": "삼",
+    "4": "사",
+    "5": "오",
+    "6": "육",
+    "7": "칠",
+    "8": "팔",
+    "9": "구",
+};
+function translatePCTextToKorean(raw) {
+    if (!raw || !raw.trim())
+        return raw;
+    let s = raw;
+    for (const [jp, ko] of PC_KOREAN_DICT) {
+        if (s.includes(jp)) {
+            s = s.split(jp).join(ko);
+        }
+    }
+    s = s.replace(/[\u30A1-\u30F6]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+    for (const [k, h] of Object.entries(PC_KANA_TO_HANGUL)) {
+        if (s.includes(k)) {
+            s = s.split(k).join(h);
+        }
+    }
+    s = s.replace(/10/g, "십");
+    s = s.replace(/[0-9]/g, (d) => PC_DIGIT_TO_HANGUL[d] || d);
+    s = s.replace(/START/g, "출발");
+    s = s.replace(/GOAL!/g, "골!");
+    s = s.replace(/HP/g, "체력");
+    s = s.replace(/pt/gi, "점");
+    return s;
+}
+let isPCKoreanActive = false;
+let isApplyingPCKorean = false;
+let pcKoreanObserver = null;
+const pcKoreanBackups = new Map();
+function applyPCKoreanToSubtree(root) {
+    if (!isPCKoreanActive)
+        return;
+    isApplyingPCKorean = true;
+    try {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
+            const parentEl = node.parentElement;
+            const parentTag = parentEl?.tagName;
+            // 🎯 右下のマスの内容カード（.tile-event-card）は翻訳対象から除外して日本語を維持！
+            if (parentTag !== "SCRIPT" &&
+                parentTag !== "STYLE" &&
+                !parentEl?.closest(".tile-event-card")) {
+                const val = node.nodeValue || "";
+                if (val.trim()) {
+                    const existing = pcKoreanBackups.get(node);
+                    if (!existing || val !== existing.ko) {
+                        const ko = translatePCTextToKorean(val);
+                        if (ko !== val) {
+                            pcKoreanBackups.set(node, { jp: val, ko });
+                            node.nodeValue = ko;
+                        }
+                    }
+                }
+            }
+            node = walker.nextNode();
+        }
+    }
+    finally {
+        isApplyingPCKorean = false;
+    }
+}
+function patchBoardCanvasForKorean(enable) {
+    const bm = window.boardManager;
+    if (!bm || !bm.ctx)
+        return;
+    const ctx = bm.ctx;
+    if (!ctx._origFillText) {
+        ctx._origFillText = ctx.fillText.bind(ctx);
+    }
+    if (enable) {
+        ctx.fillText = (text, x, y, maxWidth) => {
+            const translated = translatePCTextToKorean(String(text));
+            if (maxWidth !== undefined) {
+                return ctx._origFillText(translated, x, y, maxWidth);
+            }
+            return ctx._origFillText(translated, x, y);
+        };
+    }
+    else {
+        ctx.fillText = ctx._origFillText;
+    }
+    bm.draw(players, activePlayerIndex);
+}
+function syncPCKoreanDOMMode(active) {
+    if (active) {
+        const changed = !isPCKoreanActive;
+        isPCKoreanActive = true;
+        applyPCKoreanToSubtree(document.body);
+        patchBoardCanvasForKorean(true);
+        if (!pcKoreanObserver) {
+            pcKoreanObserver = new MutationObserver(() => {
+                if (isApplyingPCKorean || !isPCKoreanActive)
+                    return;
+                applyPCKoreanToSubtree(document.body);
+            });
+            pcKoreanObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        }
+        if (changed && window.boardManager) {
+            window.boardManager.draw(players, activePlayerIndex);
+        }
+    }
+    else if (isPCKoreanActive) {
+        isPCKoreanActive = false;
+        if (pcKoreanObserver) {
+            pcKoreanObserver.disconnect();
+            pcKoreanObserver = null;
+        }
+        isApplyingPCKorean = true;
+        try {
+            pcKoreanBackups.forEach((backup, textNode) => {
+                if (textNode.nodeValue === backup.ko) {
+                    textNode.nodeValue = backup.jp;
+                }
+            });
+            pcKoreanBackups.clear();
+        }
+        finally {
+            isApplyingPCKorean = false;
+        }
+        patchBoardCanvasForKorean(false);
+    }
 }
 // 🎯 【基本ルーティン：行程③＆④】物理角度盤面スピン・トコトコ移動・100%無差別着地信号
 function executeSyncedRoulette(resultNum) {
@@ -432,11 +672,13 @@ function PCApp() {
     const rawCurrentHp = p && p.currentHp !== undefined ? p.currentHp : maxHp;
     const currentHp = Math.max(0, rawCurrentHp);
     const jobLabel = p
-        ? (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
-            ? jobMaster.title
-            : jobMaster
-                ? jobMaster.label
-                : p.job || "モブ"
+        ? p.isRankedUp && (p.job === "代表" || p.job === "副代表")
+            ? p.job
+            : (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
+                ? jobMaster.title
+                : jobMaster
+                    ? jobMaster.label
+                    : p.job || "モブ"
         : "モブ";
     const playerColor = p
         ? p.color ||
@@ -1116,6 +1358,49 @@ function appendSocketListeners() {
     socket.on("skillActivated", (data) => {
         if (!data)
             return;
+        // ⚽ 13. ファイアトルネードの場合はルーレット＆均等配置表モーダル（#pc-event-modal）を展開
+        if (data.targetType === "fire_tornado" && data.fireTornadoMapping) {
+            const pcModal = document.getElementById("pc-event-modal");
+            if (pcModal) {
+                isPCEventMode = true;
+                pcModal.className = "event-modal-overlay active theme-rankup";
+                pcModal.style.display = "flex";
+                const titleEl = document.getElementById("modal-event-title");
+                const descEl = document.getElementById("modal-event-desc");
+                const resultBox = document.getElementById("modal-event-result-box");
+                const rDisp = document.getElementById("modal-roulette-result-display");
+                const tableZone = document.getElementById("pc-event-table-dynamic-zone");
+                if (titleEl) {
+                    titleEl.textContent = `⚽🔥 【${data.jobTitle || "上位役職"}】${data.playerName || "プレイヤー"} のファイアトルネード！ 🔥⚽`;
+                }
+                if (descEl) {
+                    descEl.textContent =
+                        data.skillDesc ||
+                            "ルーレットにプレイヤーを均等に配置して当たったプレイヤーが３杯飲む！";
+                }
+                if (resultBox) {
+                    resultBox.style.display = "none";
+                    resultBox.textContent = "";
+                }
+                if (rDisp) {
+                    rDisp.textContent = "🎯 スマホからファイアトルネードを放て！";
+                }
+                if (tableZone) {
+                    let html = `<div class="event-title" style="font-size:1.3rem; color:#d84315; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #ff8f00; padding-bottom:4px;">🌪️ ファイアトルネード対象表（均等配置）</div><ul class="event-table-list">`;
+                    for (let i = 1; i <= 10; i++) {
+                        const slot = data.fireTornadoMapping[i];
+                        const badgeBg = slot ? "#d84315" : "#90a4ae";
+                        const rowText = slot
+                            ? `<span style="color:#d84315; font-weight:bold;">🔥 ${slot.name} （直撃で 3杯 飲む！）</span>`
+                            : `<span style="color:#90a4ae;">（枠外）</span>`;
+                        html += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${rowText}</div></li>`;
+                    }
+                    html += `</ul>`;
+                    tableZone.innerHTML = html;
+                }
+                return;
+            }
+        }
         const skillModal = document.getElementById("pc-skill-modal");
         if (skillModal) {
             const headerEl = document.getElementById("pc-skill-header");
@@ -1140,22 +1425,70 @@ function appendSocketListeners() {
             skillModal.style.display = "flex";
         }
     });
+    socket.off("fireTornadoSpin");
+    socket.on("fireTornadoSpin", (data) => {
+        if (!data)
+            return;
+        const resNum = data.result !== undefined ? data.result : 1;
+        const rDisp = document.getElementById("modal-roulette-result-display");
+        if (rDisp)
+            rDisp.textContent = "🌀 ファイアトルネード回転中...";
+        const pcWheel = document.querySelector("#pc-event-modal .event-roulette-wheel");
+        if (pcWheel) {
+            const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+            pcCurrentRotation +=
+                1800 +
+                    ((targetDegrees[resNum - 1] - (pcCurrentRotation % 360) + 360) % 360);
+            pcWheel.style.transition = "transform 3s cubic-bezier(0.15, 0.9, 0.2, 1)";
+            pcWheel.style.transform = `rotate(${pcCurrentRotation}deg)`;
+        }
+    });
+    socket.off("skillTaimanStarted");
+    socket.on("skillTaimanStarted", (data) => {
+        if (!data)
+            return;
+        const resEl = document.getElementById("pc-skill-result");
+        if (resEl) {
+            resEl.textContent = `🔥 ${data.challengerName} vs ${data.opponentName} 飲み会ゲームでタイマン勝負！（負けた方をスマホで選択）`;
+        }
+    });
     // ⚡ 必殺技効果の確定通知：結果をPCモーダルに表示して一定時間後にクローズ
     socket.off("skillEffectResolved");
     socket.on("skillEffectResolved", (data) => {
         if (!data)
             return;
+        const descCardEl = document.getElementById("event-text") ||
+            document.getElementById("current-tile-desc");
+        if (descCardEl && data.resultMessage) {
+            descCardEl.innerHTML = `<p class="event-msg" style="color: #d84315; font-weight: bold; font-size: 1.15rem; margin: 0;">⚡ 【必殺技】${data.resultMessage}</p>`;
+        }
+        if (data.isFireTornado) {
+            isPCEventMode = false;
+            const rDisp = document.getElementById("modal-roulette-result-display");
+            if (rDisp && data.resultNum !== undefined) {
+                rDisp.textContent = `🎯 出目: ${data.resultNum}`;
+            }
+            const resultBox = document.getElementById("modal-event-result-box");
+            if (resultBox) {
+                resultBox.style.display = "block";
+                resultBox.className = "event-result-box success";
+                resultBox.innerHTML = `<div style="font-size:1.35rem; font-weight:900; color:#d84315;">${data.resultMessage}</div>`;
+            }
+            setTimeout(() => {
+                const pcModal = document.getElementById("pc-event-modal");
+                if (pcModal) {
+                    pcModal.className = "event-modal-overlay";
+                    pcModal.style.display = "none";
+                }
+            }, 3500);
+            return;
+        }
         const skillModal = document.getElementById("pc-skill-modal");
         if (skillModal) {
             skillModal.style.display = "flex";
             const resEl = document.getElementById("pc-skill-result");
             if (resEl && data.resultMessage) {
                 resEl.textContent = `🎯 ${data.resultMessage}`;
-            }
-            const descCardEl = document.getElementById("event-text") ||
-                document.getElementById("current-tile-desc");
-            if (descCardEl && data.resultMessage) {
-                descCardEl.innerHTML = `<p class="event-msg" style="color: #d84315; font-weight: bold; font-size: 1.15rem; margin: 0;">⚡ 【必殺技】${data.resultMessage}</p>`;
             }
             setTimeout(() => {
                 const modalNow = document.getElementById("pc-skill-modal");
@@ -1180,6 +1513,8 @@ function appendSocketListeners() {
         if (data.activePlayerIndex !== undefined)
             activePlayerIndex = data.activePlayerIndex;
         updateCurrentPlayerDisplay();
+        const curP = players && players[activePlayerIndex];
+        syncPCKoreanDOMMode(Boolean(curP && curP.koreanModeThisTurn));
         if (window.boardManager)
             window.boardManager.draw(players, activePlayerIndex);
     });

@@ -75,6 +75,220 @@ function renderPlayerInputs() {
 
 function updatePhoneStatusDisplay() {
   if (syncMobileReactStateRef) syncMobileReactStateRef();
+  const activeP = players && players[activePlayerIndex];
+  syncKoreanDOMMode(Boolean(activeP && activeP.koreanModeThisTurn));
+}
+
+// ==========================================================================
+// 🇰🇷 【イ専用必殺技：한국어로 변환（韓国語モード）】DOM自動変換＆完全復元エンジン
+// ==========================================================================
+const KOREAN_DICT: [string, string][] = [
+  ["スマホからルーレットを回してください！", "스마트폰에서 룰렛을 돌려주세요!"],
+  ["スマホから運命のスピンを回してね！", "스마트폰에서 운명의 스핀을 돌려주세요!"],
+  ["スマホから回してね！", "스마트폰에서 돌려주세요!"],
+  ["完了！次のターンへ進んでください", "완료! 다음 턴으로 진행해주세요"],
+  ["進路を確定してルーレットへ", "진로를 확정하고 룰렛으로"],
+  ["進むルートをタップしてください。", "진행할 루트를 탭해주세요."],
+  ["進路を選択してください", "진로를 선택해주세요"],
+  ["運命の進路選択", "운명의 진로 선택"],
+  ["タップして回そう！", "탭해서 돌려보자!"],
+  ["ルーレット回転要求中...", "룰렛 회전 요청 중..."],
+  ["ルーレット回転中...", "룰렛 회전 중..."],
+  ["ルーレットを回す！", "룰렛 돌리기!"],
+  ["生命保険を利用する", "생명보험 사용하기"],
+  ["必殺技を発動", "필살기 발동"],
+  ["次のプレイヤーへ", "다음 플레이어로"],
+  ["次の人のターンへ", "다음 턴으로 넘기기"],
+  ["いかれバーテンダー", "미친 바텐더"],
+  ["おもしろキャラ", "개그 캐릭터"],
+  ["いじられキャラ", "괴롭힘 캐릭터"],
+  ["サッカーキャラ", "축구 캐릭터"],
+  ["松竹所属芸人", "쇼치쿠 소속 연예인"],
+  ["代表or副代表", "대표or부대표"],
+  ["ミス龍大", "미스 류코쿠"],
+  ["比嘉んちゅ", "히가시 사람"],
+  ["沖縄出身", "오키나와 출신"],
+  ["サイコパス", "사이코패스"],
+  ["イケメン", "꽃미남"],
+  ["ブサイク", "못생김"],
+  ["韓国人", "한국인"],
+  ["平安生", "헤이안생"],
+  ["龍大生", "류코쿠대생"],
+  ["副代表", "부대표"],
+  ["代表", "대표"],
+  ["モブ", "모브"],
+  ["美人", "미인"],
+  ["おもちゃ", "장난감"],
+  ["雑魚", "잔챙이"],
+  ["酒豪", "주호"],
+  ["回転中...", "회전 중..."],
+  ["幸福度", "행복도"],
+  ["現在地", "현재 위치"],
+  ["生命保険", "생명보험"],
+  ["飲んだ杯数", "마신 잔 수"],
+  ["体力", "체력"],
+  ["役職", "직업"],
+  ["恋人", "연인"],
+  ["残り", "남은 횟수 "],
+  ["結果", "결과"],
+  ["出目", "나온 눈"],
+  ["ワープ", "워프"],
+  ["1回休み", "1회 휴식"],
+  ["スタート前", "출발 전"],
+  ["卒業式（ゴール）", "졸업식 (골)"],
+  ["宅飲み", "홈파티"],
+  ["とりき", "토리키"],
+  ["ももじ", "모모지"],
+  ["ぱいぱい", "파이파이"],
+  ["家", "집"],
+  ["なし", "없음"],
+  ["あり", "있음"],
+  ["はい", "예"],
+  ["いいえ", "아니오"],
+  ["マス", "칸"],
+  ["回", "회"],
+  ["杯", "잔"],
+  ["枚", "장"],
+  ["番", "번"],
+  ["人", "명"],
+];
+
+const KANA_TO_HANGUL: Record<string, string> = {
+  きゃ: "캬", きゅ: "큐", きょ: "쿄",
+  しゃ: "샤", しゅ: "슈", しょ: "쇼",
+  ちゃ: "차", ちゅ: "추", ちょ: "초",
+  にゃ: "냐", にゅ: "뉴", にょ: "뇨",
+  ひゃ: "햐", ひゅ: "휴", ひょ: "효",
+  みゃ: "먀", みゅ: "뮤", みょ: "묘",
+  りゃ: "랴", りゅ: "류", りょ: "료",
+  ぎゃ: "갸", ぎゅ: "규", ぎょ: "교",
+  じゃ: "자", じゅ: "주", じょ: "조",
+  びゃ: "뱌", びゅ: "뷰", びょ: "뵤",
+  ぴゃ: "퍄", ぴゅ: "퓨", ぴょ: "표",
+  あ: "아", い: "이", う: "우", え: "에", お: "오",
+  か: "카", き: "키", く: "쿠", け: "케", こ: "코",
+  さ: "사", し: "시", す: "스", せ: "세", そ: "소",
+  た: "타", ち: "치", つ: "츠", て: "테", と: "토",
+  な: "나", に: "니", ぬ: "누", ね: "네", の: "노",
+  は: "하", ひ: "히", ふ: "후", へ: "헤", ほ: "호",
+  ま: "마", み: "미", む: "무", め: "메", も: "모",
+  や: "야", ゆ: "유", よ: "요",
+  ら: "라", り: "리", る: "루", れ: "레", ろ: "로",
+  わ: "와", を: "오", ん: "응",
+  が: "가", ぎ: "기", ぐ: "구", げ: "게", ご: "고",
+  ざ: "자", じ: "지", ず: "즈", ぜ: "제", ぞ: "조",
+  だ: "다", ぢ: "지", づ: "즈", で: "데", ど: "도",
+  ば: "바", び: "비", ぶ: "부", べ: "베", ぼ: "보",
+  ぱ: "파", ぴ: "피", ぷ: "푸", ぺ: "페", ぽ: "포",
+  ぁ: "아", ぃ: "이", ぅ: "우", ぇ: "에", ぉ: "오",
+  ゃ: "야", ゅ: "유", ょ: "요", っ: "ㅅ", ー: "-",
+};
+
+const DIGIT_TO_HANGUL: Record<string, string> = {
+  "0": "영",
+  "1": "일",
+  "2": "이",
+  "3": "삼",
+  "4": "사",
+  "5": "오",
+  "6": "육",
+  "7": "칠",
+  "8": "팔",
+  "9": "구",
+};
+
+function translateTextToKorean(raw: string): string {
+  if (!raw || !raw.trim()) return raw;
+  let s = raw;
+  for (const [jp, ko] of KOREAN_DICT) {
+    if (s.includes(jp)) {
+      s = s.split(jp).join(ko);
+    }
+  }
+  // カタカナをひらがなに寄せてからハングル音写
+  s = s.replace(/[\u30A1-\u30F6]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60),
+  );
+  for (const [k, h] of Object.entries(KANA_TO_HANGUL)) {
+    if (s.includes(k)) {
+      s = s.split(k).join(h);
+    }
+  }
+  // 10 を先に 십 へ変換し、残りの数字 0〜9 をハングル数字へ
+  s = s.replace(/10/g, "십");
+  s = s.replace(/[0-9]/g, (d) => DIGIT_TO_HANGUL[d] || d);
+  s = s.replace(/TURN:/gi, "턴:");
+  s = s.replace(/HP:/gi, "체력:");
+  s = s.replace(/pt/gi, "점");
+  return s;
+}
+
+let isKoreanDOMActive = false;
+let isApplyingKoreanMutation = false;
+let koreanDOMObserver: MutationObserver | null = null;
+const koreanNodeBackups = new Map<Text, { jp: string; ko: string }>();
+
+function applyKoreanToSubtree(root: Node) {
+  if (!isKoreanDOMActive) return;
+  isApplyingKoreanMutation = true;
+  try {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode() as Text | null;
+    while (node) {
+      const parentTag = node.parentElement?.tagName;
+      if (parentTag !== "SCRIPT" && parentTag !== "STYLE") {
+        const val = node.nodeValue || "";
+        if (val.trim()) {
+          const existing = koreanNodeBackups.get(node);
+          if (!existing || val !== existing.ko) {
+            const ko = translateTextToKorean(val);
+            if (ko !== val) {
+              koreanNodeBackups.set(node, { jp: val, ko });
+              node.nodeValue = ko;
+            }
+          }
+        }
+      }
+      node = walker.nextNode() as Text | null;
+    }
+  } finally {
+    isApplyingKoreanMutation = false;
+  }
+}
+
+function syncKoreanDOMMode(active: boolean) {
+  if (active) {
+    isKoreanDOMActive = true;
+    applyKoreanToSubtree(document.body);
+    if (!koreanDOMObserver) {
+      koreanDOMObserver = new MutationObserver(() => {
+        if (isApplyingKoreanMutation || !isKoreanDOMActive) return;
+        applyKoreanToSubtree(document.body);
+      });
+      koreanDOMObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }
+  } else if (isKoreanDOMActive) {
+    isKoreanDOMActive = false;
+    if (koreanDOMObserver) {
+      koreanDOMObserver.disconnect();
+      koreanDOMObserver = null;
+    }
+    isApplyingKoreanMutation = true;
+    try {
+      koreanNodeBackups.forEach((backup, textNode) => {
+        if (textNode.nodeValue === backup.ko) {
+          textNode.nodeValue = backup.jp;
+        }
+      });
+      koreanNodeBackups.clear();
+    } finally {
+      isApplyingKoreanMutation = false;
+    }
+  }
 }
 
 function syncSettingsToServer() {
@@ -701,11 +915,13 @@ function ControllerApp() {
       : maxHp
     : 80;
   const jobLabel = p
-    ? (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
-      ? jobMaster.title
-      : jobMaster
-        ? jobMaster.label
-        : p.job || "モブ"
+    ? p.isRankedUp && (p.job === "代表" || p.job === "副代表")
+      ? p.job
+      : (p.isRankedUp || (jobMaster && p.job === jobMaster.title)) && jobMaster
+        ? jobMaster.title
+        : jobMaster
+          ? jobMaster.label
+          : p.job || "モブ"
     : "モブ";
   const happinessVal = p && p.happiness !== undefined ? p.happiness : 100;
 
@@ -1620,8 +1836,6 @@ function initMobileListeners() {
         skillBtn.style.display = "none";
       } else {
         skillBtn.style.display = "block";
-        const skillUses =
-          p.skillUsesLeft !== undefined ? Number(p.skillUsesLeft) : 1;
         const jobMaster =
           typeof JOBS !== "undefined" && Array.isArray(JOBS)
             ? JOBS.find(
@@ -1630,17 +1844,30 @@ function initMobileListeners() {
               )
             : null;
         const skillCfg = jobMaster && jobMaster.skill ? jobMaster.skill : null;
+        const defaultMaxUses =
+          skillCfg && skillCfg.maxUses ? Number(skillCfg.maxUses) : 1;
+        const skillUses =
+          p.skillUsesLeft !== undefined
+            ? Number(p.skillUsesLeft)
+            : defaultMaxUses;
         const timing = skillCfg ? skillCfg.timing : "any";
         const isWaitSpin = window.serverCurrentPhase === "2.WAIT_SPIN";
         const isWaitNext = window.serverCurrentPhase === "6.WAIT_NEXT";
         const turnStartDrinks =
           p.turnStartDrinkCount !== undefined ? p.turnStartDrinkCount : 0;
+        const drunkThisTurn = Math.max(0, (p.drinkCount || 0) - turnStartDrinks);
         const hasDrunkThisTurn =
-          (p.drinkCount || 0) > turnStartDrinks && Number(p.position) !== 30;
+          drunkThisTurn >= 1 && Number(p.position) !== 30;
+        const hasMultiDrunkThisTurn =
+          drunkThisTurn >= 2 && Number(p.position) !== 30;
 
         let canUseTiming = false;
-        if (timing === "before_spin") {
+        if (p.usedSkillThisTurn) {
+          canUseTiming = false;
+        } else if (timing === "before_spin") {
           canUseTiming = isWaitSpin;
+        } else if (timing === "after_land_multi_drink") {
+          canUseTiming = isWaitNext && hasMultiDrunkThisTurn;
         } else if (timing === "after_land_drink") {
           canUseTiming = isWaitNext && hasDrunkThisTurn;
         } else if (timing === "after_land") {
@@ -1664,6 +1891,9 @@ function initMobileListeners() {
         }
       }
     }
+
+    // 🇰🇷 イの韓国語変換モード同期
+    syncKoreanDOMMode(Boolean(p && p.koreanModeThisTurn));
 
     // ------------------------------------------------------------------------
     // 🧭 行程②：ターン開始時イベント（進路選択チェック＆スピン待機制御）
@@ -1773,6 +2003,15 @@ function initMobileListeners() {
     updatePhoneStatusDisplay();
   });
 
+  socket.off("fireTornadoSpin");
+  socket.on("fireTornadoSpin", (data: any) => {
+    const resNum = data && data.result !== undefined ? data.result : 1;
+    const targetDegrees = [342, 306, 270, 234, 198, 162, 126, 90, 54, 18];
+    currentRotation +=
+      1800 + ((targetDegrees[resNum - 1] - (currentRotation % 360) + 360) % 360);
+    playMobileRouletteAnimation(resNum, currentRotation, () => {});
+  });
+
   // ドキュメントクリックイベント（生命保険確認モーダル ＆ デバッグワープ）
   if (!hasBoundDocumentClicks) {
     hasBoundDocumentClicks = true;
@@ -1857,22 +2096,42 @@ function initMobileListeners() {
               timing: "any",
               targetType: "none",
             };
-      const jobTitle = jobMaster ? jobMaster.title : p.job || "上位役職";
+      const jobTitle =
+        p.job === "代表" || p.job === "副代表"
+          ? p.job
+          : jobMaster
+            ? jobMaster.title
+            : p.job || "上位役職";
+
+      const displaySkillName =
+        p.jobId === "mob" && p.job === "代表"
+          ? "代表権限"
+          : p.jobId === "mob" && p.job === "副代表"
+            ? "副代表権限"
+            : skillCfg.name;
+      const displaySkillDesc =
+        p.jobId === "mob" && p.job === "代表"
+          ? "指名した相手から生命保険を2枚もらう"
+          : p.jobId === "mob" && p.job === "副代表"
+            ? "指名した相手から生命保険を1枚もらう"
+            : skillCfg.desc;
 
       const timingLabel =
         skillCfg.timing === "before_spin"
-          ? "ルーレットを回す前"
-          : skillCfg.timing === "after_land_drink"
-            ? "マス到着・飲酒発生時"
-            : "ルーレット前 / マス到着後";
+          ? "ターン開始時（ルーレットを回す前）"
+          : skillCfg.timing === "after_land_multi_drink"
+            ? "複数杯飲むマスに止まった時"
+            : skillCfg.timing === "after_land_drink"
+              ? "マス到着・飲酒発生時"
+              : "ルーレット前 / マス到着後";
 
       const confirmHtml = `
         <div id="skill-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
           <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box; border:3px solid #ff8f00;">
             <div style="font-size:0.85rem; font-weight:bold; color:#e65100; margin-bottom:4px;">👑 ${jobTitle} 専用必殺技</div>
-            <h3 style="margin:0 0 10px 0; color:#d84315; font-size:1.3rem; font-weight:900;">⚡ ${skillCfg.name}</h3>
+            <h3 style="margin:0 0 10px 0; color:#d84315; font-size:1.3rem; font-weight:900;">⚡ ${displaySkillName}</h3>
             <div style="background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:12px; font-size:0.9rem; color:#333; margin-bottom:12px; line-height:1.5; font-weight:bold;">
-              ${skillCfg.desc}
+              ${displaySkillDesc}
             </div>
             <div style="font-size:0.78rem; color:#666; margin-bottom:14px;">使用タイミング: ${timingLabel}</div>
             <p style="font-size:0.95rem; font-weight:bold; color:#222; margin:0 0 16px 0;">必殺技を発動しますか？（残り${skillUses}回）</p>
@@ -1901,14 +2160,14 @@ function initMobileListeners() {
         btnYes.onclick = () => {
           document.getElementById("skill-confirm-modal")?.remove();
 
-          // ブサイク必殺技でイケメン・美人・恋人がいるか事前判定
+          // ブサイク必殺技「みちづれ」で恋人がいるリア充がいるか事前判定
           let effectiveTargetType = skillCfg.targetType || "none";
           if (effectiveTargetType === "busaiku_special") {
             const hasRiajuu = (players || []).some(
               (op) =>
                 op &&
                 String(op.id) !== String(p.id) &&
-                (op.jobId === "ikemen" || op.jobId === "bijin" || op.isLover),
+                (op.isLover || (Array.isArray(op.lovers) && op.lovers.length > 0)),
             );
             effectiveTargetType = hasRiajuu ? "none" : "single";
           }
@@ -1920,8 +2179,8 @@ function initMobileListeners() {
             playerName: p.name,
             jobId: p.jobId,
             jobTitle: jobTitle,
-            skillName: skillCfg.name,
-            skillDesc: skillCfg.desc,
+            skillName: displaySkillName,
+            skillDesc: displaySkillDesc,
             targetType: effectiveTargetType,
           });
 
@@ -1952,6 +2211,34 @@ function initMobileListeners() {
       container: HTMLElement,
     ) {
       document.getElementById("skill-target-modal")?.remove();
+
+      // パターンA-0: ファイアトルネード専用ルーレット発射モーダル（soccer）
+      if (targetType === "fire_tornado") {
+        const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:24px; border-radius:16px; text-align:center; box-sizing:border-box; border:3px solid #ff3d00;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.3rem; font-weight:900;">⚽🔥 ${skillCfg.name}</h3>
+              <p style="font-size:0.92rem; color:#333; margin:0 0 18px 0; font-weight:bold; line-height:1.5;">PC画面のルーレットにプレイヤーが均等配置されました！<br>当たったプレイヤーが <span style="color:#d84315; font-size:1.1rem;">3杯</span> 飲みます！</p>
+              <button type="button" id="btn-fire-tornado-spin" style="width:100%; padding:16px; font-size:1.1rem; font-weight:900; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; border:none; border-radius:12px; cursor:pointer; box-shadow:0 4px 12px rgba(216,67,21,0.4);">🌪️ ファイアトルネードを放つ！</button>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", html);
+        const fireBtn = document.getElementById(
+          "btn-fire-tornado-spin",
+        ) as HTMLButtonElement;
+        if (fireBtn) {
+          fireBtn.onclick = () => {
+            fireBtn.disabled = true;
+            document.getElementById("skill-target-modal")?.remove();
+            socket.emit("executeSkillEffect", {
+              roomCode: currentRoomCode,
+              playerId: p.id,
+            });
+          };
+        }
+        return;
+      }
 
       // パターンA: 出目（1〜10）を指定するモーダル（龍大生）
       if (targetType === "dice") {
@@ -1988,20 +2275,316 @@ function initMobileListeners() {
         return;
       }
 
-      // パターンB: プレイヤー2人を指名するモーダル（P）
-      if (targetType === "double") {
-        const candidates = (players || []);
-        const buttonsHtml = candidates
+      // パターンA-2: 代表（副代表）権限で相手から生命保険をもらうモーダル（mob）
+      if (targetType === "mob_insurance") {
+        const candidates = (players || []).filter(
+          (pl) => pl && String(pl.id) !== String(p.id),
+        );
+        const listToUse = candidates.length > 0 ? candidates : players || [];
+        let currentMobRole =
+          p.job === "副代表" ? "副代表" : "代表";
+        const showRoleToggle =
+          p.job !== "代表" && p.job !== "副代表";
+
+        const roleToggleHtml = showRoleToggle
+          ? `<div style="display:flex; gap:8px; margin-bottom:12px;">
+               <button type="button" id="btn-mob-role-rep" style="flex:1; padding:8px; font-weight:bold; border:2px solid #d84315; background:#fbe9e7; color:#d84315; border-radius:8px; cursor:pointer;">👑 代表 (2枚)</button>
+               <button type="button" id="btn-mob-role-vice" style="flex:1; padding:8px; font-weight:bold; border:2px solid #ccc; background:#fff; color:#555; border-radius:8px; cursor:pointer;">🛡️ 副代表 (1枚)</button>
+             </div>`
+          : "";
+
+        const buttonsHtml = listToUse
           .map(
             (pl) =>
-              `<button type="button" class="btn-skill-double-target" data-id="${pl.id}" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:10px; background:#fff; color:#333; cursor:pointer;">${pl.name}</button>`,
+              `<button type="button" class="btn-skill-mob-target" data-id="${pl.id}" style="padding:13px; font-size:1rem; font-weight:bold; border:none; border-radius:10px; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; cursor:pointer;">🎯 ${pl.name} からもらう（保有: 🛡️${pl.insurance || 0}枚）</button>`,
+          )
+          .join("");
+
+        const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${p.job === "代表" ? "代表権限" : p.job === "副代表" ? "副代表権限" : skillCfg.name}</h3>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 12px 0; font-weight:bold;">生命保険をもらう相手を1人指名してください</p>
+              ${roleToggleHtml}
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${buttonsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", html);
+
+        const repBtn = document.getElementById("btn-mob-role-rep");
+        const viceBtn = document.getElementById("btn-mob-role-vice");
+        if (repBtn && viceBtn) {
+          repBtn.onclick = () => {
+            currentMobRole = "代表";
+            repBtn.style.borderColor = "#d84315";
+            repBtn.style.background = "#fbe9e7";
+            repBtn.style.color = "#d84315";
+            viceBtn.style.borderColor = "#ccc";
+            viceBtn.style.background = "#fff";
+            viceBtn.style.color = "#555";
+          };
+          viceBtn.onclick = () => {
+            currentMobRole = "副代表";
+            viceBtn.style.borderColor = "#d84315";
+            viceBtn.style.background = "#fbe9e7";
+            viceBtn.style.color = "#d84315";
+            repBtn.style.borderColor = "#ccc";
+            repBtn.style.background = "#fff";
+            repBtn.style.color = "#555";
+          };
+        }
+
+        document
+          .querySelectorAll("#skill-target-modal .btn-skill-mob-target")
+          .forEach((b) => {
+            (b as HTMLButtonElement).onclick = (ev) => {
+              const targetId =
+                (ev.currentTarget as HTMLElement).getAttribute("data-id") || "";
+              document.getElementById("skill-target-modal")?.remove();
+              socket.emit("executeSkillEffect", {
+                roomCode: currentRoomCode,
+                playerId: p.id,
+                targetIds: [targetId],
+                mobRole: currentMobRole,
+              });
+            };
+          });
+        return;
+      }
+
+      // パターンB-1: 一発ギャグで笑った人全員を選択するモーダル（松竹所属芸人：NOスリップ）
+      if (targetType === "multi_laugh") {
+        const candidates = (players || []).filter(
+          (pl) => pl && String(pl.id) !== String(p.id),
+        );
+        const listToUse = candidates.length > 0 ? candidates : players || [];
+        const buttonsHtml = listToUse
+          .map(
+            (pl) =>
+              `<button type="button" class="btn-skill-laugh-target" data-id="${pl.id}" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:10px; background:#fff; color:#333; cursor:pointer;">🤣 ${pl.name}</button>`,
           )
           .join("");
         const html = `
           <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
             <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
               <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
-              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">乾杯させるプレイヤーを2人選択してください</p>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">一発ギャグを披露して笑った人をすべて選択してください</p>
+              <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+                ${buttonsHtml}
+              </div>
+              <button type="button" id="btn-skill-laugh-confirm" style="width:100%; padding:12px; font-size:1rem; font-weight:bold; background:#d84315; color:#fff; border:none; border-radius:10px; cursor:pointer;">決定（誰も笑わなければそのまま決定）</button>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", html);
+        const selectedIds: string[] = [];
+        const confirmBtn = document.getElementById(
+          "btn-skill-laugh-confirm",
+        ) as HTMLButtonElement;
+        document
+          .querySelectorAll("#skill-target-modal .btn-skill-laugh-target")
+          .forEach((b) => {
+            (b as HTMLButtonElement).onclick = (ev) => {
+              const el = ev.currentTarget as HTMLButtonElement;
+              const id = el.getAttribute("data-id") || "";
+              const idx = selectedIds.indexOf(id);
+              if (idx >= 0) {
+                selectedIds.splice(idx, 1);
+                el.style.borderColor = "#ccc";
+                el.style.background = "#fff";
+                el.style.color = "#333";
+              } else {
+                selectedIds.push(id);
+                el.style.borderColor = "#d84315";
+                el.style.background = "#fbe9e7";
+                el.style.color = "#d84315";
+              }
+              if (confirmBtn) {
+                confirmBtn.textContent =
+                  selectedIds.length > 0
+                    ? `笑った ${selectedIds.length}人 に1杯ずつ飲ませる`
+                    : "決定（誰も笑わなかった）";
+              }
+            };
+          });
+        if (confirmBtn) {
+          confirmBtn.onclick = () => {
+            document.getElementById("skill-target-modal")?.remove();
+            socket.emit("executeSkillEffect", {
+              roomCode: currentRoomCode,
+              playerId: p.id,
+              targetIds: selectedIds,
+            });
+          };
+        }
+        return;
+      }
+
+      // パターンB-2: 杯数とプレイヤー1人を指定して同量乾杯するモーダル（おもちゃ：「Who let the dogs out?」）
+      if (targetType === "cups_and_single") {
+        const candidates = (players || []).filter(
+          (pl) => pl && String(pl.id) !== String(p.id),
+        );
+        const listToUse = candidates.length > 0 ? candidates : players || [];
+        let selectedCups = 1;
+
+        const buttonsHtml = listToUse
+          .map(
+            (pl) =>
+              `<button type="button" class="btn-skill-cups-target" data-id="${pl.id}" style="padding:13px; font-size:1rem; font-weight:bold; border:none; border-radius:10px; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; cursor:pointer;">🍻 ${pl.name} と乾杯する</button>`,
+          )
+          .join("");
+
+        const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.15rem;">⚡ ${skillCfg.name}</h3>
+              <p style="font-size:0.88rem; color:#333; margin:0 0 8px 0; font-weight:bold;">① 一緒に飲む杯数を選択してください</p>
+              <div style="display:flex; gap:8px; margin-bottom:14px;">
+                <button type="button" class="btn-cup-choice" data-cups="1" style="flex:1; padding:10px; font-weight:bold; border:2px solid #d84315; background:#fbe9e7; color:#d84315; border-radius:8px; cursor:pointer;">1杯</button>
+                <button type="button" class="btn-cup-choice" data-cups="2" style="flex:1; padding:10px; font-weight:bold; border:2px solid #ccc; background:#fff; color:#555; border-radius:8px; cursor:pointer;">2杯</button>
+                <button type="button" class="btn-cup-choice" data-cups="3" style="flex:1; padding:10px; font-weight:bold; border:2px solid #ccc; background:#fff; color:#555; border-radius:8px; cursor:pointer;">3杯</button>
+              </div>
+              <p style="font-size:0.88rem; color:#333; margin:0 0 10px 0; font-weight:bold;">② 一緒に乾杯する相手を選択してください</p>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${buttonsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", html);
+
+        document
+          .querySelectorAll("#skill-target-modal .btn-cup-choice")
+          .forEach((cb) => {
+            (cb as HTMLButtonElement).onclick = (ev) => {
+              const el = ev.currentTarget as HTMLButtonElement;
+              selectedCups = parseInt(el.getAttribute("data-cups") || "1", 10);
+              document
+                .querySelectorAll("#skill-target-modal .btn-cup-choice")
+                .forEach((other) => {
+                  const oEl = other as HTMLButtonElement;
+                  oEl.style.borderColor = "#ccc";
+                  oEl.style.background = "#fff";
+                  oEl.style.color = "#555";
+                });
+              el.style.borderColor = "#d84315";
+              el.style.background = "#fbe9e7";
+              el.style.color = "#d84315";
+            };
+          });
+
+        document
+          .querySelectorAll("#skill-target-modal .btn-skill-cups-target")
+          .forEach((b) => {
+            (b as HTMLButtonElement).onclick = (ev) => {
+              const targetId =
+                (ev.currentTarget as HTMLElement).getAttribute("data-id") || "";
+              document.getElementById("skill-target-modal")?.remove();
+              socket.emit("executeSkillEffect", {
+                roomCode: currentRoomCode,
+                playerId: p.id,
+                targetIds: [targetId],
+                chosenCups: selectedCups,
+              });
+            };
+          });
+        return;
+      }
+
+      // パターンB-3: 番長とタイマン（1人を指名して飲み会ゲーム ➔ 負けた方を選択して2杯飲む）
+      if (targetType === "taiman") {
+        const candidates = (players || []).filter(
+          (pl) => pl && String(pl.id) !== String(p.id),
+        );
+        const listToUse = candidates.length > 0 ? candidates : players || [];
+        const buttonsHtml = listToUse
+          .map(
+            (pl) =>
+              `<button type="button" class="btn-skill-taiman-opp" data-id="${pl.id}" data-name="${pl.name}" style="padding:13px; font-size:1rem; font-weight:bold; border:none; border-radius:10px; background:linear-gradient(135deg, #d84315 0%, #ff8f00 100%); color:#fff; cursor:pointer;">🔥 ${pl.name} にタイマンを挑む</button>`,
+          )
+          .join("");
+
+        const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div id="skill-taiman-inner" style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">タイマン勝負する相手を1人指名してください</p>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${buttonsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", html);
+
+        document
+          .querySelectorAll("#skill-target-modal .btn-skill-taiman-opp")
+          .forEach((b) => {
+            (b as HTMLButtonElement).onclick = (ev) => {
+              const el = ev.currentTarget as HTMLElement;
+              const oppId = el.getAttribute("data-id") || "";
+              const oppName = el.getAttribute("data-name") || "相手";
+
+              socket.emit("skillTaimanStarted", {
+                roomCode: currentRoomCode,
+                challengerName: p.name,
+                opponentName: oppName,
+              });
+
+              const inner = document.getElementById("skill-taiman-inner");
+              if (inner) {
+                inner.innerHTML = `
+                  <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">🔥 ${p.name} vs ${oppName}</h3>
+                  <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">飲み会ゲームを行い、負けた方を選択してください（負けた方が2杯飲む）</p>
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button type="button" class="btn-taiman-loser" data-id="${p.id}" style="padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#e53935; color:#fff; cursor:pointer;">💀 ${p.name} が負けた（+2杯）</button>
+                    <button type="button" class="btn-taiman-loser" data-id="${oppId}" style="padding:14px; font-size:1.05rem; font-weight:bold; border:none; border-radius:10px; background:#e53935; color:#fff; cursor:pointer;">💀 ${oppName} が負けた（+2杯）</button>
+                  </div>
+                `;
+                inner
+                  .querySelectorAll(".btn-taiman-loser")
+                  .forEach((loserBtn) => {
+                    (loserBtn as HTMLButtonElement).onclick = (lev) => {
+                      const loserId =
+                        (lev.currentTarget as HTMLElement).getAttribute(
+                          "data-id",
+                        ) || "";
+                      document.getElementById("skill-target-modal")?.remove();
+                      socket.emit("executeSkillEffect", {
+                        roomCode: currentRoomCode,
+                        playerId: p.id,
+                        targetIds: [loserId],
+                      });
+                    };
+                  });
+              }
+            };
+          });
+        return;
+      }
+
+      // パターンB: プレイヤー2人を指名するモーダル（パパ：花火乱射）
+      if (targetType === "double") {
+        const otherPlayers = (players || []).filter(
+          (pl) => pl && String(pl.id) !== String(p.id),
+        );
+        const candidates =
+          otherPlayers.length > 0 ? otherPlayers : players || [];
+        const buttonsHtml = candidates
+          .map(
+            (pl) =>
+              `<button type="button" class="btn-skill-double-target" data-id="${pl.id}" style="padding:12px; font-size:1rem; font-weight:bold; border:2px solid #ccc; border-radius:10px; background:#fff; color:#333; cursor:pointer;">🎆 ${pl.name}</button>`,
+          )
+          .join("");
+        const html = `
+          <div id="skill-target-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999999; font-family:sans-serif;">
+            <div style="background:#fff; width:92%; max-width:340px; padding:22px; border-radius:16px; text-align:center; box-sizing:border-box;">
+              <h3 style="margin:0 0 8px 0; color:#d84315; font-size:1.2rem;">⚡ ${skillCfg.name}</h3>
+              <p style="font-size:0.9rem; color:#333; margin:0 0 14px 0; font-weight:bold;">1杯ずつ飲ませるプレイヤーを2人選択してください</p>
               <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
                 ${buttonsHtml}
               </div>

@@ -89,9 +89,15 @@ window.SQ_MODULES[63] = {
           <ul class="event-table-list">`;
         for (let i = 1; i <= 10; i++) {
           const isRankUp = i >= 6;
+          const targetTitle =
+            (player.jobId === "mob" || currentJobName === "モブ")
+              ? i >= 9
+                ? "代表"
+                : "副代表"
+              : rankUpJobName;
           const badgeBg = isRankUp ? "#f5a623" : "#78909c";
           const rowText = isRankUp
-            ? `<span style="color:#d84315; font-weight:bold;">🔥 ランクアップ！【${rankUpJobName}】に昇格！</span>`
+            ? `<span style="color:#d84315; font-weight:bold;">🔥 ランクアップ！【${targetTitle}】に昇格！</span>`
             : `<span style="color:#546e7a; font-weight:bold;">💦 現状維持（${currentJobName} のまま）</span>`;
           tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${rowText}</div></li>`;
         }
@@ -125,11 +131,17 @@ window.SQ_MODULES[63] = {
             const rankupMapping = {};
             for (let i = 1; i <= 10; i++) {
               if (i >= 6) {
+                const targetTitle =
+                  (player.jobId === "mob" || currentJobName === "モブ")
+                    ? i >= 9
+                      ? "代表"
+                      : "副代表"
+                    : rankUpJobName;
                 rankupMapping[i] = {
-                  name: `🎉 ランクアップ成功！【${rankUpJobName}】に昇格！`,
+                  name: `🎉 ランクアップ成功！【${targetTitle}】に昇格！`,
                   drinks: 0,
                   isRankUp: true,
-                  newJobTitle: rankUpJobName
+                  newJobTitle: targetTitle
                 };
               } else {
                 rankupMapping[i] = {
@@ -195,7 +207,13 @@ window.SQ_MODULES[63] = {
 
           const resNum = data && data.result !== undefined ? data.result : 1;
           if (resNum >= 6) {
-            player.job = rankUpJobName;
+            const targetTitle =
+              (player.jobId === "mob" || currentJobName === "モブ")
+                ? resNum >= 9
+                  ? "代表"
+                  : "副代表"
+                : rankUpJobName;
+            player.job = targetTitle;
             player.isRankedUp = true;
             if (typeof updatePhoneStatusDisplay === "function") {
               updatePhoneStatusDisplay();
