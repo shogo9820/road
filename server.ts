@@ -256,15 +256,6 @@ function startTurnRoutine(room, roomCode) {
         pl.usedSkillThisTurn = false;
         pl._lastDrinkBaseline = pl.drinkCount || 0;
         ensureSkillUsesInitialized(pl);
-
-        // ㊗️ 既にゴールしたプレイヤーは毎ターン内部的に幸福度 +5（余生ボーナス）
-        if (pl.hasFinished) {
-          if (pl.happiness === undefined) pl.happiness = 100;
-          pl.happiness += 5;
-          console.log(
-            `✨ [GOAL BONUS] ${pl.name} はゴール後の余生を満喫中 (幸福度 +5 ➔ ${pl.happiness}pt)`,
-          );
-        }
       }
     });
   }
@@ -526,9 +517,14 @@ io.on("connection", (socket) => {
       if (room.gamePlayers && room.gamePlayers.length > 0) {
         let nextIdx = room.activePlayerIndex;
         let found = false;
+        const skippedGoalPlayers: any[] = [];
+
         for (let i = 0; i < room.gamePlayers.length; i++) {
           nextIdx = (nextIdx + 1) % room.gamePlayers.length;
-          if (!room.gamePlayers[nextIdx].hasFinished) {
+          const candidate = room.gamePlayers[nextIdx];
+          if (candidate && candidate.hasFinished) {
+            skippedGoalPlayers.push(candidate);
+          } else if (candidate && !candidate.hasFinished) {
             found = true;
             break;
           }
@@ -543,6 +539,15 @@ io.on("connection", (socket) => {
           });
           return;
         }
+
+        // ㊗️ 自分の手番順をスキップされたゴール済みプレイヤーに1周ボーナス（幸福度 +5）
+        skippedGoalPlayers.forEach((pl) => {
+          if (pl.happiness === undefined) pl.happiness = 100;
+          pl.happiness += 5;
+          console.log(
+            `✨ [GOAL 1周BONUS] ${pl.name} の手番スキップ (本来の手番順到達・1周ボーナス: 幸福度 +5 ➔ ${pl.happiness}pt)`,
+          );
+        });
 
         room.activePlayerIndex = nextIdx;
         const nextPlayer = room.gamePlayers[room.activePlayerIndex];
