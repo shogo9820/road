@@ -1066,6 +1066,11 @@ function ControllerApp() {
             ? Math.max(0, p.currentHp)
             : maxHp
         : 80;
+    const isRankedUp = Boolean(p &&
+        (p.isRankedUp ||
+            (jobMaster &&
+                jobMaster.title !== jobMaster.label &&
+                p.job === jobMaster.title)));
     const jobLabel = p
         ? p.isRankedUp && (p.job === "代表" || p.job === "副代表")
             ? p.job
@@ -1167,9 +1172,13 @@ function ControllerApp() {
                                             gap: "8px",
                                             width: "100%",
                                             alignItems: "center",
-                                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "player-banner-zone", style: {
-                                                    border: `3px solid ${playerColor}`,
-                                                    boxShadow: `0 3px 10px ${playerColor}40`,
+                                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: `player-banner-zone${isRankedUp ? " ranked-up" : ""}`, style: {
+                                                    border: isRankedUp
+                                                        ? "4px solid #ffd700"
+                                                        : `3px solid ${playerColor}`,
+                                                    boxShadow: isRankedUp
+                                                        ? "0 0 14px rgba(255, 215, 0, 0.85), 0 3px 10px rgba(0, 0, 0, 0.2)"
+                                                        : `0 3px 10px ${playerColor}40`,
                                                     padding: 0,
                                                     overflow: "hidden",
                                                     transition: "border-color 0.3s ease, box-shadow 0.3s ease",

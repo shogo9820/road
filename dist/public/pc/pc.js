@@ -762,6 +762,11 @@ function PCApp() {
     const maxHp = p ? baseCap + (p.bonusCap || 0) : 100;
     const rawCurrentHp = p && p.currentHp !== undefined ? p.currentHp : maxHp;
     const currentHp = Math.max(0, rawCurrentHp);
+    const isRankedUp = Boolean(p &&
+        (p.isRankedUp ||
+            (jobMaster &&
+                jobMaster.title !== jobMaster.label &&
+                p.job === jobMaster.title)));
     const jobLabel = p
         ? p.isRankedUp && (p.job === "代表" || p.job === "副代表")
             ? p.job
@@ -811,8 +816,12 @@ function PCApp() {
                                                 fontWeight: "bold",
                                                 marginTop: "15px",
                                                 animation: "pulse 1s infinite",
-                                            }, children: "\u203B \u30B2\u30FC\u30E0\u30B9\u30BF\u30FC\u30C8\u306F\u30B9\u30DE\u30DB\uFF08\u30B3\u30F3\u30C8\u30ED\u30FC\u30E9\u30FC\uFF09\u304B\u3089\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044" })] })] })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "screen-game", className: activeScreen === "screen-game" ? "active" : "", style: { display: activeScreen === "screen-game" ? "" : "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "game-layout", children: [(0, jsx_runtime_1.jsxs)("div", { className: "layout-left", children: [(0, jsx_runtime_1.jsxs)("div", { className: "card current-player-card", style: {
+                                            }, children: "\u203B \u30B2\u30FC\u30E0\u30B9\u30BF\u30FC\u30C8\u306F\u30B9\u30DE\u30DB\uFF08\u30B3\u30F3\u30C8\u30ED\u30FC\u30E9\u30FC\uFF09\u304B\u3089\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044" })] })] })] }) }), (0, jsx_runtime_1.jsx)("div", { id: "screen-game", className: activeScreen === "screen-game" ? "active" : "", style: { display: activeScreen === "screen-game" ? "" : "none" }, children: (0, jsx_runtime_1.jsxs)("div", { className: "game-layout", children: [(0, jsx_runtime_1.jsxs)("div", { className: "layout-left", children: [(0, jsx_runtime_1.jsxs)("div", { className: `card current-player-card${isRankedUp ? " ranked-up" : ""}`, style: {
                                         background: `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`,
+                                        border: isRankedUp ? "4px solid #ffd700" : undefined,
+                                        boxShadow: isRankedUp
+                                            ? "0 0 18px rgba(255, 215, 0, 0.8), inset 0 0 8px rgba(255, 215, 0, 0.35)"
+                                            : undefined,
                                     }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "player-header", children: [(0, jsx_runtime_1.jsx)("div", { className: "player-avatar", id: "current-player-avatar", children: "\uD83D\uDC64" }), (0, jsx_runtime_1.jsxs)("div", { className: "player-meta", children: [(0, jsx_runtime_1.jsx)("h2", { id: "current-player-name", children: p ? p.name : "プレイヤー名" }), (0, jsx_runtime_1.jsx)("span", { className: "job-badge", id: "current-player-job", children: jobLabel }), (0, jsx_runtime_1.jsx)("div", { id: "current-player-lover-icon", style: {
                                                                 display: p && p.isLover ? "inline-block" : "none",
                                                             }, children: p && p.isLover && p.lovers && p.lovers.length > 0 ? ((0, jsx_runtime_1.jsx)("span", { style: {

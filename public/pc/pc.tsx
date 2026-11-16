@@ -1081,6 +1081,13 @@ function PCApp() {
   const rawCurrentHp =
     p && p.currentHp !== undefined ? p.currentHp : maxHp;
   const currentHp = Math.max(0, rawCurrentHp);
+  const isRankedUp = Boolean(
+    p &&
+      (p.isRankedUp ||
+        (jobMaster &&
+          jobMaster.title !== jobMaster.label &&
+          p.job === jobMaster.title)),
+  );
   const jobLabel = p
     ? p.isRankedUp && (p.job === "代表" || p.job === "副代表")
       ? p.job
@@ -1227,9 +1234,13 @@ function PCApp() {
           <div className="layout-left">
             {/* 1. 現在プレイヤーのステータスカード */}
             <div
-              className="card current-player-card"
+              className={`card current-player-card${isRankedUp ? " ranked-up" : ""}`}
               style={{
                 background: `linear-gradient(135deg, ${playerColor} 0%, #2575fc 100%)`,
+                border: isRankedUp ? "4px solid #ffd700" : undefined,
+                boxShadow: isRankedUp
+                  ? "0 0 18px rgba(255, 215, 0, 0.8), inset 0 0 8px rgba(255, 215, 0, 0.35)"
+                  : undefined,
               }}
             >
               <div className="player-header">
