@@ -75,6 +75,17 @@ let players = [];
 let isSpinning = false;
 let currentRotation = 0;
 let currentGameMode = "normal";
+// 🎯 プレイヤー駒カラーパレット定義（PC側と完全同期）
+const PLAYER_COLOR_PALETTE = [
+    "#f44336",
+    "#2196f3",
+    "#4caf50",
+    "#ff9800",
+    "#9c27b0",
+    "#00bcd4",
+    "#e91e63",
+    "#795548",
+];
 let syncMobileReactStateRef = null;
 let setMobileScreenRef = null;
 let setRoomInputRef = null;
@@ -1065,6 +1076,10 @@ function ControllerApp() {
                     : p.job || "モブ"
         : "モブ";
     const happinessVal = p && p.happiness !== undefined ? p.happiness : 100;
+    const playerColor = p
+        ? p.color ||
+            PLAYER_COLOR_PALETTE[activeIdxState % PLAYER_COLOR_PALETTE.length]
+        : PLAYER_COLOR_PALETTE[0];
     return ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: "phone-screen", children: [(0, jsx_runtime_1.jsxs)("div", { id: "phone-screen-join", className: `card phone-card ${activeScreen === "phone-screen-join" ? "active" : ""}`, style: {
                             display: activeScreen === "phone-screen-join" ? "block" : "none",
                         }, children: [(0, jsx_runtime_1.jsx)("h1", { style: { textAlign: "center", fontSize: "1.6rem", marginTop: 0 }, children: "\uD83D\uDCF1 \u30B3\u30F3\u30C8\u30ED\u30FC\u30E9\u30FC" }), (0, jsx_runtime_1.jsx)("p", { style: {
@@ -1152,15 +1167,30 @@ function ControllerApp() {
                                             gap: "8px",
                                             width: "100%",
                                             alignItems: "center",
-                                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "player-banner-zone", children: [(0, jsx_runtime_1.jsxs)("div", { id: "current-player-banner", style: { fontSize: "1.15rem", fontWeight: 900 }, children: ["TURN: ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-name", children: p ? p.name : "----" }), (0, jsx_runtime_1.jsxs)("span", { id: "phone-current-job", style: {
+                                        }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "player-banner-zone", style: {
+                                                    border: `3px solid ${playerColor}`,
+                                                    boxShadow: `0 3px 10px ${playerColor}40`,
+                                                    padding: 0,
+                                                    overflow: "hidden",
+                                                    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                                                }, children: [(0, jsx_runtime_1.jsxs)("div", { id: "current-player-banner", style: {
+                                                            fontSize: "1.15rem",
+                                                            fontWeight: 900,
+                                                            background: playerColor,
+                                                            color: "#ffffff",
+                                                            padding: "5px 12px",
+                                                            textShadow: "0 1px 2px rgba(0, 0, 0, 0.28)",
+                                                            transition: "background-color 0.3s ease",
+                                                        }, children: ["TURN: ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-name", children: p ? p.name : "----" }), (0, jsx_runtime_1.jsxs)("span", { id: "phone-current-job", style: {
                                                                     fontSize: "0.85rem",
-                                                                    color: "#666",
+                                                                    color: "rgba(255, 255, 255, 0.92)",
                                                                     marginLeft: "6px",
                                                                 }, children: ["(", jobLabel, ")"] })] }), (0, jsx_runtime_1.jsxs)("div", { style: {
                                                             display: "flex",
                                                             justifyContent: "center",
                                                             gap: "14px",
-                                                            marginTop: "3px",
+                                                            padding: "4px 12px 5px 12px",
+                                                            background: `linear-gradient(180deg, ${playerColor}1a 0%, #ffffff 100%)`,
                                                             fontSize: "0.85rem",
                                                             fontWeight: "bold",
                                                         }, children: [(0, jsx_runtime_1.jsxs)("span", { style: { color: "#e74c3c" }, children: ["\u2764 HP:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-hp", children: p ? `${currentHp} / ${maxHp}` : "-- / --" })] }), (0, jsx_runtime_1.jsxs)("span", { style: { color: "#f39c12" }, children: ["\uD83D\uDE0A \u5E78\u798F\u5EA6:", " ", (0, jsx_runtime_1.jsx)("span", { id: "phone-current-happiness", children: `${happinessVal} pt` })] })] })] }), (0, jsx_runtime_1.jsx)(MobileRouletteZone, {}), (0, jsx_runtime_1.jsxs)("div", { id: "phone-current-tile-box", className: "phone-current-tile-box", children: [(0, jsx_runtime_1.jsx)("div", { style: {

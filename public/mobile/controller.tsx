@@ -35,6 +35,18 @@ let isSpinning = false;
 let currentRotation = 0;
 let currentGameMode = "normal";
 
+// 🎯 プレイヤー駒カラーパレット定義（PC側と完全同期）
+const PLAYER_COLOR_PALETTE = [
+  "#f44336",
+  "#2196f3",
+  "#4caf50",
+  "#ff9800",
+  "#9c27b0",
+  "#00bcd4",
+  "#e91e63",
+  "#795548",
+];
+
 let syncMobileReactStateRef: (() => void) | null = null;
 let setMobileScreenRef: ((screenId: string) => void) | null = null;
 let setRoomInputRef: ((code: string) => void) | null = null;
@@ -1302,6 +1314,10 @@ function ControllerApp() {
           : p.job || "モブ"
     : "モブ";
   const happinessVal = p && p.happiness !== undefined ? p.happiness : 100;
+  const playerColor = p
+    ? p.color ||
+      PLAYER_COLOR_PALETTE[activeIdxState % PLAYER_COLOR_PALETTE.length]
+    : PLAYER_COLOR_PALETTE[0];
 
   return (
     <>
@@ -1573,17 +1589,34 @@ function ControllerApp() {
               }}
             >
               {/* 1. TURN: プレイヤー名 */}
-              <div className="player-banner-zone">
+              <div
+                className="player-banner-zone"
+                style={{
+                  border: `3px solid ${playerColor}`,
+                  boxShadow: `0 3px 10px ${playerColor}40`,
+                  padding: 0,
+                  overflow: "hidden",
+                  transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                }}
+              >
                 <div
                   id="current-player-banner"
-                  style={{ fontSize: "1.15rem", fontWeight: 900 }}
+                  style={{
+                    fontSize: "1.15rem",
+                    fontWeight: 900,
+                    background: playerColor,
+                    color: "#ffffff",
+                    padding: "5px 12px",
+                    textShadow: "0 1px 2px rgba(0, 0, 0, 0.28)",
+                    transition: "background-color 0.3s ease",
+                  }}
                 >
                   TURN: <span id="phone-current-name">{p ? p.name : "----"}</span>
                   <span
                     id="phone-current-job"
                     style={{
                       fontSize: "0.85rem",
-                      color: "#666",
+                      color: "rgba(255, 255, 255, 0.92)",
                       marginLeft: "6px",
                     }}
                   >
@@ -1595,7 +1628,8 @@ function ControllerApp() {
                     display: "flex",
                     justifyContent: "center",
                     gap: "14px",
-                    marginTop: "3px",
+                    padding: "4px 12px 5px 12px",
+                    background: `linear-gradient(180deg, ${playerColor}1a 0%, #ffffff 100%)`,
                     fontSize: "0.85rem",
                     fontWeight: "bold",
                   }}
