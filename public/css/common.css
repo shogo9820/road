@@ -188,33 +188,33 @@
   z-index: 4;
 }
 
-/* 最上部（矢印の位置）で止まった数字が、逆さにならずプレイヤーから常に一番読みやすくなる配置 */
-.num-1  { transform: rotate(18deg)  translate(0, -65px) rotate(-18deg); }
-.num-2  { transform: rotate(54deg)  translate(0, -65px) rotate(-54deg); }
-.num-3  { transform: rotate(90deg)  translate(0, -65px) rotate(-90deg); }
-.num-4  { transform: rotate(126deg) translate(0, -65px) rotate(-126deg); }
-.num-5  { transform: rotate(162deg) translate(0, -65px) rotate(-162deg); }
-.num-6  { transform: rotate(198deg) translate(0, -65px) rotate(-198deg); }
-.num-7  { transform: rotate(234deg) translate(0, -65px) rotate(-234deg); }
-.num-8  { transform: rotate(270deg) translate(0, -65px) rotate(-270deg); }
-.num-9  { transform: rotate(306deg) translate(0, -65px) rotate(-306deg); }
-.num-10 { transform: rotate(342deg) translate(0, -65px) rotate(-342deg); }
+/* 放射状（扇形の向き）に配置することで、矢印の真下に止まった出目の数字が必ず正立（0度）で見やすくなる */
+.num-1  { transform: rotate(18deg)  translate(0, -65px); }
+.num-2  { transform: rotate(54deg)  translate(0, -65px); }
+.num-3  { transform: rotate(90deg)  translate(0, -65px); }
+.num-4  { transform: rotate(126deg) translate(0, -65px); }
+.num-5  { transform: rotate(162deg) translate(0, -65px); }
+.num-6  { transform: rotate(198deg) translate(0, -65px); }
+.num-7  { transform: rotate(234deg) translate(0, -65px); }
+.num-8  { transform: rotate(270deg) translate(0, -65px); }
+.num-9  { transform: rotate(306deg) translate(0, -65px); }
+.num-10 { transform: rotate(342deg) translate(0, -65px); }
 
-/* モーダル内の巨大ルーレット（直径300pxサイズ）用の位置拡大補正 */
+/* モーダル内の巨大ルーレット用の位置拡大補正 */
 .event-roulette-wheel .roulette-num {
   font-size: 1.3rem;
   text-shadow: 1px 1px 3px rgba(0,0,0,0.8), -1px -1px 3px rgba(0,0,0,0.8);
 }
-.event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -110px) rotate(-18deg); }
-.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -110px) rotate(-110deg); }
-.event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -110px) rotate(-90deg); }
-.event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -110px) rotate(-126deg); }
-.event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -110px) rotate(-162deg); }
-.event-roulette-wheel .num-6   { transform: rotate(198deg) translate(0, -110px) rotate(-198deg); }
-.event-roulette-wheel .num-7   { transform: rotate(234deg) translate(0, -110px) rotate(-234deg); }
-.event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -110px) rotate(-270deg); }
-.event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -110px) rotate(-306deg); }
-.event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -110px) rotate(-342deg); }
+.event-roulette-wheel .num-1   { transform: rotate(18deg)  translate(0, -95px); }
+.event-roulette-wheel .num-2   { transform: rotate(54deg)  translate(0, -95px); }
+.event-roulette-wheel .num-3   { transform: rotate(90deg)  translate(0, -95px); }
+.event-roulette-wheel .num-4   { transform: rotate(126deg) translate(0, -95px); }
+.event-roulette-wheel .num-5   { transform: rotate(162deg) translate(0, -95px); }
+.event-roulette-wheel .num-6   { transform: rotate(198deg) translate(0, -95px); }
+.event-roulette-wheel .num-7   { transform: rotate(234deg) translate(0, -95px); }
+.event-roulette-wheel .num-8   { transform: rotate(270deg) translate(0, -95px); }
+.event-roulette-wheel .num-9   { transform: rotate(306deg) translate(0, -95px); }
+.event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -95px); }
 
 /* ==========================================================================
    💀 留年確定時：地獄のダークモード演出スタイル
