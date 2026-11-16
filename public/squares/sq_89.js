@@ -118,10 +118,6 @@ window.SQ_MODULES[89] = {
                 <div style="font-size:1.4rem; font-weight:bold;">${data.isPass ? "卒業！" : "留年..."}</div>
               `;
             }
-
-            // PC手動クローズボタンを表示
-            const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
-            if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
           }, 3000);
         };
         socket.on("spinGraduateRoulette", mod._onPcSpin);

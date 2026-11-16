@@ -694,8 +694,6 @@ function closeAllPCModals() {
     pcModal.style.display = "none";
     pcModal.classList.remove("active");
   }
-  const closeBtn = document.getElementById("pc-event-modal-close-btn");
-  if (closeBtn) closeBtn.style.display = "none";
 
   const kanpaiModal = document.getElementById("pc-kanpai-modal");
   if (kanpaiModal) {
@@ -714,8 +712,6 @@ function closeAllPCModals() {
   const skillModal = document.getElementById("pc-skill-modal");
   if (skillModal) {
     skillModal.style.display = "none";
-    const skillBackBtn = document.getElementById("pc-skill-back-btn");
-    if (skillBackBtn) skillBackBtn.style.display = "none";
   }
 }
 
@@ -852,27 +848,6 @@ const PCModalsZone = memo(
               id="pc-event-table-dynamic-zone"
             ></div>
           </div>
-
-          {/* PC画面直接操作用 閉じるボタン */}
-          <div style={{ textAlign: "center", marginTop: "16px" }}>
-            <button
-              id="pc-event-modal-close-btn"
-              style={{
-                display: "none",
-                background: "linear-gradient(135deg, #455a64 0%, #263238 100%)",
-                color: "#ffffff",
-                border: "2px solid #90a4ae",
-                fontSize: "1.15rem",
-                fontWeight: "bold",
-                padding: "10px 36px",
-                borderRadius: "30px",
-                cursor: "pointer",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-              }}
-            >
-              ✖ モーダルを閉じる
-            </button>
-          </div>
         </div>
       </div>
 
@@ -894,23 +869,6 @@ const PCModalsZone = memo(
             <div className="kanpai-shout">🍻 乾杯！！！ 🍻</div>
             <div className="kanpai-footer-nav">
               ※スマホの「➡ 次のプレイヤーへ」ボタンを押して進めてください
-            </div>
-            <div style={{ textAlign: "center", marginTop: "16px" }}>
-              <button
-                id="pc-kanpai-close-btn"
-                style={{
-                  background: "rgba(0, 0, 0, 0.4)",
-                  color: "#ffffff",
-                  border: "2px solid rgba(255, 255, 255, 0.7)",
-                  fontSize: "1.15rem",
-                  fontWeight: "bold",
-                  padding: "10px 32px",
-                  borderRadius: "30px",
-                  cursor: "pointer",
-                }}
-              >
-                ✖ モーダルを閉じる
-              </button>
             </div>
           </div>
 
@@ -987,23 +945,6 @@ const PCModalsZone = memo(
           >
             ※実際にゲームをして、負けた人をスマホ画面で選択してください
           </div>
-          <div style={{ textAlign: "center", marginTop: "16px" }}>
-            <button
-              id="pc-takunomi-close-btn"
-              style={{
-                background: "rgba(0, 0, 0, 0.4)",
-                color: "#ffffff",
-                border: "2px solid rgba(255, 255, 255, 0.7)",
-                fontSize: "1.15rem",
-                fontWeight: "bold",
-                padding: "10px 32px",
-                borderRadius: "30px",
-                cursor: "pointer",
-              }}
-            >
-              ✖ モーダルを閉じる
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1062,31 +1003,6 @@ const PCModalsZone = memo(
           >
             📱 スマホで対象を選択中...
           </div>
-          <button
-            type="button"
-            id="pc-skill-back-btn"
-            onClick={() => {
-              const m = document.getElementById("pc-skill-modal");
-              if (m) m.style.display = "none";
-              const b = document.getElementById("pc-skill-back-btn");
-              if (b) b.style.display = "none";
-            }}
-            style={{
-              display: "none",
-              margin: "24px auto 0",
-              padding: "16px 48px",
-              fontSize: "1.6rem",
-              fontWeight: 900,
-              color: "#d84315",
-              background: "#fff",
-              border: "4px solid #ffeb3b",
-              borderRadius: "16px",
-              cursor: "pointer",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
-            }}
-          >
-            ↩ ターンに戻る
-          </button>
         </div>
       </div>
     </>
@@ -1678,8 +1594,6 @@ function appendSocketListeners() {
     const skillModal = document.getElementById("pc-skill-modal");
     if (skillModal) {
       skillModal.style.display = "none";
-      const skillBackBtn = document.getElementById("pc-skill-back-btn");
-      if (skillBackBtn) skillBackBtn.style.display = "none";
     }
     if (data) {
       if (data.activePlayerIndex !== undefined)
@@ -1972,8 +1886,6 @@ function appendSocketListeners() {
             <div style="font-size:1.4rem; font-weight:bold; color:#e91e63;">💔 奇数：タイミングが悪い...</div>
           `;
         }
-        const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
-        if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
       } else {
         console.log(
           "💻 [PC GUARD] カップルイベント進行中のため、専用の通知を待ちます。",
@@ -2080,9 +1992,6 @@ function appendSocketListeners() {
       `;
     }
 
-    // 手動で閉じるボタンを表示（自動タイマークローズを撤廃）
-    const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
-    if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
     const btnNext = document.getElementById(
       "btn-next-turn",
     ) as HTMLButtonElement;
@@ -2328,8 +2237,6 @@ function appendSocketListeners() {
             ? "📱 スマホ画面で対象を選択中..."
             : "⚡ 必殺技効果を発動中...！";
       }
-      const prevBack = document.getElementById("pc-skill-back-btn");
-      if (prevBack) prevBack.style.display = "none";
       skillModal.style.display = "flex";
     }
   });
@@ -2384,17 +2291,7 @@ function appendSocketListeners() {
       if (resultBox) {
         resultBox.style.display = "block";
         resultBox.className = "event-result-box success";
-        resultBox.innerHTML = `<div style="font-size:1.35rem; font-weight:900; color:#d84315;">${data.resultMessage}</div><button type="button" id="pc-tornado-back-btn" style="margin-top:12px; padding:12px 36px; font-size:1.3rem; font-weight:900; color:#fff; background:#d84315; border:none; border-radius:12px; cursor:pointer;">↩ ターンに戻る</button>`;
-        const tBack = document.getElementById("pc-tornado-back-btn");
-        if (tBack) {
-          tBack.onclick = () => {
-            const pcModal = document.getElementById("pc-event-modal");
-            if (pcModal) {
-              pcModal.className = "event-modal-overlay";
-              pcModal.style.display = "none";
-            }
-          };
-        }
+        resultBox.innerHTML = `<div style="font-size:1.35rem; font-weight:900; color:#d84315;">${data.resultMessage}</div>`;
       }
       return;
     }
@@ -2406,8 +2303,6 @@ function appendSocketListeners() {
       if (resEl && data.resultMessage) {
         resEl.textContent = `🎯 ${data.resultMessage}`;
       }
-      const backBtn = document.getElementById("pc-skill-back-btn");
-      if (backBtn) backBtn.style.display = "block";
     }
   });
 
@@ -2417,36 +2312,6 @@ function appendSocketListeners() {
     console.log("💻 [PC SOCKET] closePcModal 受信 ➔ モーダルを全クローズ");
     closeAllPCModals();
   });
-
-  // PC画面上の閉じるボタンのクリックハンドラ登録
-  const btnEventClose = document.getElementById("pc-event-modal-close-btn");
-  if (btnEventClose) {
-    btnEventClose.onclick = () => {
-      socket.emit("closePcModal", { roomCode });
-      closeAllPCModals();
-    };
-  }
-  const btnKanpaiClose = document.getElementById("pc-kanpai-close-btn");
-  if (btnKanpaiClose) {
-    btnKanpaiClose.onclick = () => {
-      socket.emit("closePcModal", { roomCode });
-      closeAllPCModals();
-    };
-  }
-  const btnTakunomiClose = document.getElementById("pc-takunomi-close-btn");
-  if (btnTakunomiClose) {
-    btnTakunomiClose.onclick = () => {
-      socket.emit("closePcModal", { roomCode });
-      closeAllPCModals();
-    };
-  }
-  const btnSkillClose = document.getElementById("pc-skill-back-btn");
-  if (btnSkillClose) {
-    btnSkillClose.onclick = () => {
-      socket.emit("closePcModal", { roomCode });
-      closeAllPCModals();
-    };
-  }
 
   socket.off("enableNextTurnButton");
   socket.on("enableNextTurnButton", () => {

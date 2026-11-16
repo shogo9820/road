@@ -258,10 +258,6 @@ window.SQ_MODULES[41] = {
               `;
             }
 
-            // PC手動クローズボタンを表示
-            const pcCloseBtn = document.getElementById("pc-event-modal-close-btn");
-            if (pcCloseBtn) pcCloseBtn.style.display = "inline-block";
-
             const btnNext = document.getElementById("btn-next-turn");
             if (btnNext) { btnNext.disabled = false; btnNext.style.display = "block"; }
 
