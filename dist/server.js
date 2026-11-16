@@ -304,6 +304,8 @@ io.on("connection", (socket) => {
         catch (err) {
             console.error("QRコード生成エラー:", err);
         }
+        rooms[roomCode].qrCodeDataUrl = qrCodeDataUrl;
+        rooms[roomCode].hostName = hostName;
         console.log(`ルーム作成完了 [${roomCode}]`);
         socket.emit("roomCreated", {
             roomCode,
@@ -331,17 +333,42 @@ io.on("connection", (socket) => {
             io.to(code).emit("closePcModal");
         }
     });
-    // 【ルーム参加（ゲーム進行中の途中復帰・リロード自動再接続にも対応）】
-    socket.on("joinRoom", (data) => {
-        const roomCode = data && data.roomCode ? data.roomCode : null;
+    // 【ルーム参加（PC・スマホ双方のゲーム進行中の途中復帰・リロード再接続にも対応）】
+    socket.on("joinRoom", async (data) => {
+        const roomCode = data && data.roomCode ? String(data.roomCode).trim() : null;
         if (roomCode && rooms[roomCode]) {
             const room = rooms[roomCode];
             socket.join(roomCode);
             socket.roomCode = roomCode;
-            console.log(`ルーム参加 [${roomCode}]:`, socket.id);
+            console.log(`ルーム参加/再接続 [${roomCode}] (${data && data.isPC ? "PC" : "Mobile"}):`, socket.id);
             const isGameInProgress = Boolean(room.gamePlayers && room.gamePlayers.length > 0);
-            socket.emit("joinedSuccess", { roomCode, isGameInProgress });
+            if (!room.qrCodeDataUrl) {
+                try {
+                    const host = socket.handshake.headers.host;
+                    const protocol = socket.handshake.headers["x-forwarded-proto"] || "http";
+                    const joinUrl = `${protocol}://${host}/mobile/index.html?room=${roomCode}`;
+                    room.qrCodeDataUrl = await qrcode_1.default.toDataURL(joinUrl, {
+                        width: 150,
+                        margin: 1,
+                    });
+                }
+                catch (_e) { }
+            }
+            socket.emit("joinedSuccess", {
+                roomCode,
+                isGameInProgress,
+                qrCodeDataUrl: room.qrCodeDataUrl || "",
+                players: isGameInProgress ? room.gamePlayers : room.players,
+                mode: room.mode,
+            });
             if (isGameInProgress) {
+                // PCが移動アニメーション中に切断・再接続した場合はスピン待機へ安全に戻す
+                if (data &&
+                    data.isPC &&
+                    (room.currentPhase === PHASES.PIECE_MOVING ||
+                        room.currentPhase === "3.PIECE_MOVING")) {
+                    room.currentPhase = PHASES.WAIT_SPIN;
+                }
                 const activeP = room.gamePlayers[room.activePlayerIndex];
                 socket.emit("gameStarted", {
                     roomCode,
@@ -349,13 +376,14 @@ io.on("connection", (socket) => {
                     mode: room.mode,
                     activePlayerIndex: room.activePlayerIndex,
                     currentPhase: room.currentPhase || PHASES.TURN_START,
+                    isReconnect: true,
                 });
                 socket.emit("applyPlayerAction", {
                     action: activeP && activeP.skipTurn ? "turnSkipped" : "turnUpdated",
                     activePlayerIndex: room.activePlayerIndex,
                     activePlayerName: activeP ? activeP.name : "",
                 });
-                socket.emit("syncGameState", {
+                io.to(roomCode).emit("syncGameState", {
                     players: room.gamePlayers,
                     activePlayerIndex: room.activePlayerIndex,
                     currentPhase: room.currentPhase || PHASES.TURN_START,
@@ -375,6 +403,16 @@ io.on("connection", (socket) => {
                         playerName: activeP.name,
                         activePlayerIndex: room.activePlayerIndex,
                         rankupFails: room.currentRankupFails,
+                    });
+                }
+                else if ((room.currentPhase === PHASES.TURN_START ||
+                    room.currentPhase === "1.TURN_START") &&
+                    activeP &&
+                    Number(activeP.position) === 89 &&
+                    !activeP.isRepeat) {
+                    socket.emit("showGraduateEvent", {
+                        roomCode,
+                        playerName: activeP.name,
                     });
                 }
             }

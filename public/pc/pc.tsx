@@ -70,6 +70,36 @@ const GAME_EVENTS: Record<
 let syncReactStateRef: (() => void) | null = null;
 let setScreenRef: ((screenId: string) => void) | null = null;
 let setQrCodeRef: ((url: string) => void) | null = null;
+let setPendingPCRoomRef: ((code: string | null) => void) | null = null;
+let hasPCConnectedOnce = false;
+
+const PC_ROOM_STORAGE_KEY = "salmons_pc_room_code";
+
+function savePCRoomCode(code: string) {
+  if (!code) return;
+  try {
+    sessionStorage.setItem(PC_ROOM_STORAGE_KEY, String(code));
+    localStorage.setItem(PC_ROOM_STORAGE_KEY, String(code));
+  } catch (_e) {}
+}
+
+function getSavedPCRoomCode(): string | null {
+  try {
+    return (
+      sessionStorage.getItem(PC_ROOM_STORAGE_KEY) ||
+      localStorage.getItem(PC_ROOM_STORAGE_KEY)
+    );
+  } catch (_e) {
+    return null;
+  }
+}
+
+function clearSavedPCRoomCode() {
+  try {
+    sessionStorage.removeItem(PC_ROOM_STORAGE_KEY);
+    localStorage.removeItem(PC_ROOM_STORAGE_KEY);
+  } catch (_e) {}
+}
 
 Object.defineProperties(window, {
   socket: { get: () => socket, configurable: true },
@@ -288,7 +318,7 @@ let pcKoreanObserver: MutationObserver | null = null;
 const pcKoreanBackups = new Map<Text, { jp: string; ko: string }>();
 
 const EXCLUDE_KOREAN_SELECTOR =
-  ".tile-event-card, #current-tile-desc, #pc-event-modal, #pc-kanpai-modal, #pc-takunomi-modal, #pc-skill-modal, .event-modal-overlay, .kanpai-overlay";
+  ".tile-event-card, #current-tile-desc, #pc-event-modal, #pc-kanpai-modal, #pc-takunomi-modal, #pc-skill-modal, #pc-reconnect-confirm-modal, .event-modal-overlay, .kanpai-overlay";
 
 function applyPCKoreanToSubtree(root: Node) {
   if (!isPCKoreanActive) return;
@@ -1018,6 +1048,10 @@ function PCApp() {
   const [playersState, setPlayersState] = useState<any[]>([]);
   const [activeIdxState, setActiveIdxState] = useState<number>(0);
   const [gameModeState, setGameModeState] = useState<string>("normal");
+  const [reconnectRoomInput, setReconnectRoomInput] = useState<string>("");
+  const [pendingReconnectRoom, setPendingReconnectRoom] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setScreenRef = (screenId: string) => {
@@ -1025,6 +1059,9 @@ function PCApp() {
     };
     setQrCodeRef = (url: string) => {
       setQrCodeUrl(url);
+    };
+    setPendingPCRoomRef = (code: string | null) => {
+      setPendingReconnectRoom(code);
     };
     syncReactStateRef = () => {
       setRoomCodeState(roomCode);
@@ -1037,12 +1074,22 @@ function PCApp() {
     console.log("💻 [PC DOM_LOAD] 大画面初期化を開始します...");
     initSocketListeners();
     appendSocketListeners();
+
+    const savedRoom = getSavedPCRoomCode();
+    if (savedRoom) {
+      const trimmed = String(savedRoom).trim();
+      if (trimmed) {
+        setReconnectRoomInput(trimmed);
+        setPendingReconnectRoom(trimmed);
+      }
+    }
     console.log("=========================================");
 
     return () => {
       syncReactStateRef = null;
       setScreenRef = null;
       setQrCodeRef = null;
+      setPendingPCRoomRef = null;
     };
   }, []);
 
@@ -1066,6 +1113,35 @@ function PCApp() {
       `💻 [PC ACTION] ルーム作成要求を発射。ホスト名: ${targetHostName}`,
     );
     socket.emit("createRoom", { hostName: targetHostName });
+  };
+
+  const handleOpenReconnectPrompt = (e: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const code = reconnectRoomInput.trim();
+    if (!code) {
+      alert("再接続するルームコードを入力してください");
+      return;
+    }
+    setPendingReconnectRoom(code);
+  };
+
+  const handleConfirmReconnect = () => {
+    if (!pendingReconnectRoom) return;
+    const targetCode = pendingReconnectRoom.trim();
+    setPendingReconnectRoom(null);
+    if (!targetCode) return;
+    roomCode = targetCode;
+    console.log(`💻 [PC RECONNECT] ルーム ${targetCode} への再接続を要求します`);
+    const doJoin = () => {
+      socket.emit("joinRoom", { roomCode: targetCode, isPC: true });
+    };
+    if (socket.connected) doJoin();
+    else socket.once("connect", doJoin);
+  };
+
+  const handleCancelReconnect = () => {
+    clearSavedPCRoomCode();
+    setPendingReconnectRoom(null);
   };
 
   // 現在手番プレイヤーのステータス計算
@@ -1158,8 +1234,154 @@ function PCApp() {
           >
             🚀 ルームを作成する
           </button>
+
+          <div
+            style={{
+              marginTop: "28px",
+              paddingTop: "20px",
+              borderTop: "2px dashed #e0e0e0",
+            }}
+          >
+            <p
+              style={{
+                fontWeight: "bold",
+                color: "#555",
+                margin: "0 0 10px 0",
+                fontSize: "0.95rem",
+              }}
+            >
+              🔄 切断されたルームに再接続する
+            </p>
+            <form
+              onSubmit={handleOpenReconnectPrompt}
+              style={{
+                display: "flex",
+                gap: "10px",
+                justifyContent: "center",
+                alignItems: "center",
+                maxWidth: "360px",
+                margin: "0 auto",
+              }}
+            >
+              <input
+                type="number"
+                id="pc-reconnect-room-input"
+                placeholder="ルーム番号 (4桁)"
+                value={reconnectRoomInput}
+                onChange={(e) => setReconnectRoomInput(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  fontSize: "1.1rem",
+                  borderRadius: "8px",
+                  border: "2px solid #ccc",
+                  textAlign: "center",
+                  fontWeight: "bold",
+                }}
+              />
+              <button
+                type="submit"
+                id="btn-pc-reconnect-room"
+                className="btn-blue"
+                style={{ width: "auto", padding: "10px 18px", whiteSpace: "nowrap" }}
+              >
+                🔄 再接続
+              </button>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* 🔄 PC側 ルーム再接続確認モーダル */}
+      {pendingReconnectRoom && (
+        <div
+          id="pc-reconnect-confirm-modal"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.78)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000000,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              background: "#fff",
+              width: "90%",
+              maxWidth: "440px",
+              padding: "28px 24px",
+              borderRadius: "20px",
+              textAlign: "center",
+              boxShadow: "0 12px 32px rgba(0, 0, 0, 0.35)",
+              border: "3px solid #2196f3",
+            }}
+          >
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "12px",
+                color: "#1565c0",
+                fontSize: "1.5rem",
+                fontWeight: 900,
+              }}
+            >
+              🔄 ルーム再接続の確認
+            </h2>
+            <p
+              style={{
+                fontSize: "1.15rem",
+                fontWeight: "bold",
+                color: "#333",
+                margin: "0 0 22px 0",
+                lineHeight: 1.6,
+              }}
+            >
+              ルーム{" "}
+              <span
+                style={{
+                  fontSize: "1.5rem",
+                  color: "#e65100",
+                  background: "#fff3e0",
+                  padding: "2px 12px",
+                  borderRadius: "8px",
+                  border: "2px solid #ffb74d",
+                }}
+              >
+                {pendingReconnectRoom}
+              </span>{" "}
+              に再接続しますか？
+            </p>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                id="btn-pc-reconnect-yes"
+                className="btn-blue"
+                onClick={handleConfirmReconnect}
+                style={{ flex: 1, padding: "14px", fontSize: "1.15rem" }}
+              >
+                🔄 再接続する
+              </button>
+              <button
+                type="button"
+                id="btn-pc-reconnect-no"
+                onClick={handleCancelReconnect}
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  fontSize: "1.05rem",
+                  background: "#eeeeee",
+                  color: "#333333",
+                }}
+              >
+                ✖ いいえ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 【2】参加待機室画面 */}
       <div
@@ -1506,11 +1728,18 @@ function initSocketListeners() {
       "💻 [PC SOCKET] Socket.io サーバーに正常接続完了。ID:",
       socket.id,
     );
+    if (hasPCConnectedOnce && roomCode) {
+      if (setPendingPCRoomRef) {
+        setPendingPCRoomRef(String(roomCode));
+      }
+    }
+    hasPCConnectedOnce = true;
   });
 
   socket.off("roomCreated");
   socket.on("roomCreated", (data: any) => {
     roomCode = data.roomCode;
+    savePCRoomCode(roomCode);
     if (data.players) players = data.players;
     console.log(
       `💻 [PC RECEIVE] roomCreated 受信。作成された部屋コード: ${roomCode}`,
@@ -1527,6 +1756,47 @@ function initSocketListeners() {
       window.boardManager.init(100);
       window.boardManager.draw(players, activePlayerIndex);
     }
+  });
+
+  socket.off("joinedSuccess");
+  socket.on("joinedSuccess", (data: any) => {
+    if (!data || !data.roomCode) return;
+    roomCode = String(data.roomCode);
+    savePCRoomCode(roomCode);
+    console.log(
+      `💻 [PC RECEIVE] joinedSuccess 受信。ルーム ${roomCode} に復帰しました (進行中: ${Boolean(data.isGameInProgress)})`,
+    );
+
+    if (!data.isGameInProgress) {
+      if (data.players && Array.isArray(data.players)) {
+        players = data.players;
+      }
+      if (data.mode) {
+        currentGameMode = data.mode;
+      }
+      if (setQrCodeRef && data.qrCodeDataUrl) {
+        setQrCodeRef(data.qrCodeDataUrl);
+      }
+      switchScreen("screen-waiting");
+      renderPlayerWaitingList();
+      updateCurrentPlayerDisplay();
+      renderLocationPlayersList();
+      if (window.boardManager) {
+        window.boardManager.init(100);
+        window.boardManager.draw(players, activePlayerIndex);
+      }
+    }
+  });
+
+  socket.off("errorMsg");
+  socket.on("errorMsg", (data: any) => {
+    clearSavedPCRoomCode();
+    roomCode = "";
+    switchScreen("screen-setup");
+    alert(
+      "エラー: " +
+        (data && data.message ? data.message : "ルームが見つかりません"),
+    );
   });
 
   socket.off("applySettings");
@@ -1555,6 +1825,10 @@ function initSocketListeners() {
   // ==========================================================================
   socket.off("gameStarted");
   socket.on("gameStarted", (data: any) => {
+    if (data && data.roomCode) {
+      roomCode = String(data.roomCode);
+      savePCRoomCode(roomCode);
+    }
     if (data && data.players) players = data.players;
     if (data && data.activePlayerIndex !== undefined)
       activePlayerIndex = data.activePlayerIndex;
@@ -1576,6 +1850,29 @@ function initSocketListeners() {
 
     const p = players[activePlayerIndex];
     if (p && typeof loadAndApplySquareComponent === "function") {
+      if (data && data.isReconnect) {
+        console.log(
+          `💻 [PC RECONNECT] ゲーム画面へ復帰。現在手番プレイヤー位置: ${p.position}番マス`,
+        );
+        loadAndApplySquareComponent(p.position, () => {
+          const modObj = window.SQ_MODULES && window.SQ_MODULES[p.position];
+          const targetModule = modObj
+            ? modObj[currentGameMode] || modObj.normal
+            : null;
+          const targetSquare =
+            typeof MAP_SQUARES !== "undefined" && MAP_SQUARES[p.position]
+              ? MAP_SQUARES[p.position]
+              : null;
+          const mockSquare = targetModule ||
+            targetSquare || { text: "通常マス", location: p.location || "家" };
+          triggerDelayedDisplay(1, mockSquare);
+          if (window.boardManager) {
+            window.boardManager.draw(players, activePlayerIndex);
+          }
+        });
+        return;
+      }
+
       console.log(
         `💻 [2.1 PC受信] ➔ 開始時イベント確認。手番プレイヤーが ${p.position} 番マスにいるため、コンポーネントをロードします。`,
       );
@@ -2135,6 +2432,7 @@ function appendSocketListeners() {
       if (btnBack) {
         btnBack.onclick = () => {
           console.log("💻 [PC ACTION] タイトル画面に戻るボタンがクリックされました");
+          clearSavedPCRoomCode();
           socket.emit("returnToTitle", { roomCode });
           window.location.reload();
         };
@@ -2152,6 +2450,7 @@ function appendSocketListeners() {
   socket.off("returnToTitle");
   socket.on("returnToTitle", () => {
     console.log("💻 [PC SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
+    clearSavedPCRoomCode();
     window.location.reload();
   });
 

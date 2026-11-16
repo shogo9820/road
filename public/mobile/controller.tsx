@@ -50,6 +50,37 @@ const PLAYER_COLOR_PALETTE = [
 let syncMobileReactStateRef: (() => void) | null = null;
 let setMobileScreenRef: ((screenId: string) => void) | null = null;
 let setRoomInputRef: ((code: string) => void) | null = null;
+let setPendingMobileRoomRef: ((code: string | null) => void) | null = null;
+let hasMobileConnectedOnce = false;
+
+const MOBILE_ROOM_STORAGE_KEY = "salmons_room_code";
+
+function saveMobileRoomCode(code: string) {
+  if (!code) return;
+  try {
+    sessionStorage.setItem(MOBILE_ROOM_STORAGE_KEY, String(code));
+    localStorage.setItem(MOBILE_ROOM_STORAGE_KEY, String(code));
+  } catch (_e) {}
+}
+
+function getSavedMobileRoomCode(): string | null {
+  try {
+    return (
+      sessionStorage.getItem(MOBILE_ROOM_STORAGE_KEY) ||
+      localStorage.getItem(MOBILE_ROOM_STORAGE_KEY)
+    );
+  } catch (_e) {
+    return null;
+  }
+}
+
+function clearSavedMobileRoomCode() {
+  try {
+    sessionStorage.removeItem(MOBILE_ROOM_STORAGE_KEY);
+    localStorage.removeItem(MOBILE_ROOM_STORAGE_KEY);
+    sessionStorage.removeItem("salmons_player_name");
+  } catch (_e) {}
+}
 
 Object.defineProperties(window, {
   socket: { get: () => socket, configurable: true },
@@ -321,7 +352,7 @@ let koreanDOMObserver: MutationObserver | null = null;
 const koreanNodeBackups = new Map<Text, { jp: string; ko: string }>();
 
 const EXCLUDE_MOBILE_KOREAN_SELECTOR =
-  "#phone-current-tile-box, #phone-current-tile-desc, #job-modal-overlay, #mobile-couple-event-modal, #route-select-modal, #insurance-inline-zone, #insurance-confirm-modal, #takunomi-loser-zone, #skill-confirm-modal, #skill-target-modal, .event-modal-overlay, .developer-debug-zone-panel";
+  "#phone-current-tile-box, #phone-current-tile-desc, #job-modal-overlay, #mobile-couple-event-modal, #route-select-modal, #insurance-inline-zone, #insurance-confirm-modal, #takunomi-loser-zone, #skill-confirm-modal, #skill-target-modal, #mobile-reconnect-confirm-modal, .event-modal-overlay, .developer-debug-zone-panel";
 
 function applyKoreanToSubtree(root: Node) {
   if (!isKoreanDOMActive) return;
@@ -783,10 +814,7 @@ const MobileActionButtonsZone = memo(
         returnBtn.addEventListener("click", () => {
           console.log("📱 [PHONE ACTION] タイトル画面に戻るボタンが押されました");
           socket.emit("returnToTitle", { roomCode: currentRoomCode });
-          try {
-            sessionStorage.removeItem("salmons_room_code");
-            sessionStorage.removeItem("salmons_player_name");
-          } catch (_e) {}
+          clearSavedMobileRoomCode();
           window.location.reload();
         });
       }
@@ -1200,6 +1228,9 @@ function ControllerApp() {
   const [activeIdxState, setActiveIdxState] = useState<number>(0);
   const [modeState, setModeState] = useState<string>("normal");
   const [debugSquareInput, setDebugSquareInput] = useState<string>("");
+  const [pendingReconnectRoom, setPendingReconnectRoom] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setMobileScreenRef = (screenId: string) => {
@@ -1207,6 +1238,9 @@ function ControllerApp() {
     };
     setRoomInputRef = (code: string) => {
       setRoomInput(code);
+    };
+    setPendingMobileRoomRef = (code: string | null) => {
+      setPendingReconnectRoom(code);
     };
     setInstallAvailableRef = (v: boolean) => setInstallAvailable(v);
     syncMobileReactStateRef = () => {
@@ -1220,10 +1254,30 @@ function ControllerApp() {
     return () => {
       setMobileScreenRef = null;
       setRoomInputRef = null;
+      setPendingMobileRoomRef = null;
       setInstallAvailableRef = null;
       syncMobileReactStateRef = null;
     };
   }, []);
+
+  const handleConfirmMobileReconnect = () => {
+    if (!pendingReconnectRoom) return;
+    const targetCode = pendingReconnectRoom.trim();
+    setPendingReconnectRoom(null);
+    if (!targetCode) return;
+    setRoomInput(targetCode);
+    currentRoomCode = String(targetCode);
+    const doJoin = () => {
+      socket.emit("joinRoom", { roomCode: currentRoomCode });
+    };
+    if (socket.connected) doJoin();
+    else socket.once("connect", doJoin);
+  };
+
+  const handleCancelMobileReconnect = () => {
+    clearSavedMobileRoomCode();
+    setPendingReconnectRoom(null);
+  };
 
   const handleQRDetected = (code: string) => {
     setIsScanning(false);
@@ -1765,6 +1819,100 @@ function ControllerApp() {
         </div>
       </div>
 
+      {/* 🔄 スマホ側 ルーム再接続確認モーダル */}
+      {pendingReconnectRoom && (
+        <div
+          id="mobile-reconnect-confirm-modal"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000001,
+            padding: "16px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              background: "#ffffff",
+              width: "100%",
+              maxWidth: "340px",
+              padding: "24px 20px",
+              borderRadius: "18px",
+              textAlign: "center",
+              boxShadow: "0 8px 28px rgba(0, 0, 0, 0.35)",
+              border: "3px solid #2196f3",
+              boxSizing: "border-box",
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                marginBottom: "12px",
+                color: "#1565c0",
+                fontSize: "1.25rem",
+                fontWeight: 900,
+              }}
+            >
+              🔄 ルーム再接続の確認
+            </h3>
+            <p
+              style={{
+                fontSize: "1rem",
+                fontWeight: "bold",
+                color: "#333",
+                margin: "0 0 20px 0",
+                lineHeight: 1.6,
+              }}
+            >
+              ルーム{" "}
+              <span
+                style={{
+                  fontSize: "1.35rem",
+                  color: "#e65100",
+                  background: "#fff3e0",
+                  padding: "2px 10px",
+                  borderRadius: "8px",
+                  border: "2px solid #ffb74d",
+                }}
+              >
+                {pendingReconnectRoom}
+              </span>{" "}
+              に再接続しますか？
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                type="button"
+                id="btn-mobile-reconnect-yes"
+                className="btn-blue"
+                onClick={handleConfirmMobileReconnect}
+                style={{ flex: 1, padding: "12px", fontSize: "1.05rem" }}
+              >
+                🔄 再接続する
+              </button>
+              <button
+                type="button"
+                id="btn-mobile-reconnect-no"
+                onClick={handleCancelMobileReconnect}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  fontSize: "1rem",
+                  background: "#eeeeee",
+                  color: "#333333",
+                }}
+              >
+                ✖ いいえ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 役職モーダル ＆ カップル・イベントモーダル */}
       <MobileModalsZone />
     </>
@@ -1774,29 +1922,43 @@ function ControllerApp() {
 let hasBoundDocumentClicks = false;
 
 function initMobileListeners() {
-  const urlParams = new URLSearchParams(window.location.search);
-  let savedRoom: string | null = null;
-  try {
-    savedRoom = sessionStorage.getItem("salmons_room_code");
-  } catch (_e) {}
-  const roomParam = urlParams.get("room") || savedRoom;
+  socket.off("connect");
+  socket.on("connect", () => {
+    if (hasMobileConnectedOnce && currentRoomCode) {
+      if (setPendingMobileRoomRef) {
+        setPendingMobileRoomRef(String(currentRoomCode));
+      }
+    }
+    hasMobileConnectedOnce = true;
+  });
 
-  if (roomParam) {
-    if (setRoomInputRef) setRoomInputRef(roomParam);
-    currentRoomCode = String(roomParam).trim();
-    const doJoin = () => {
-      socket.emit("joinRoom", { roomCode: currentRoomCode });
-    };
-    if (socket.connected) doJoin();
-    else socket.once("connect", doJoin);
+  const urlParams = new URLSearchParams(window.location.search);
+  const savedRoom = getSavedMobileRoomCode();
+  const urlRoom = urlParams.get("room");
+
+  if (savedRoom) {
+    const trimmedSaved = String(savedRoom).trim();
+    if (trimmedSaved) {
+      if (setRoomInputRef) setRoomInputRef(trimmedSaved);
+      if (setPendingMobileRoomRef) setPendingMobileRoomRef(trimmedSaved);
+    }
+  } else if (urlRoom) {
+    const trimmedUrlRoom = String(urlRoom).trim();
+    if (trimmedUrlRoom) {
+      if (setRoomInputRef) setRoomInputRef(trimmedUrlRoom);
+      currentRoomCode = trimmedUrlRoom;
+      const doJoin = () => {
+        socket.emit("joinRoom", { roomCode: currentRoomCode });
+      };
+      if (socket.connected) doJoin();
+      else socket.once("connect", doJoin);
+    }
   }
 
   socket.off("joinedSuccess");
   socket.on("joinedSuccess", (data: any) => {
     currentRoomCode = data.roomCode;
-    try {
-      sessionStorage.setItem("salmons_room_code", String(data.roomCode));
-    } catch (_e) {}
+    saveMobileRoomCode(String(data.roomCode));
 
     if (data && data.isGameInProgress) {
       return;
@@ -1816,9 +1978,7 @@ function initMobileListeners() {
 
   socket.off("errorMsg");
   socket.on("errorMsg", (data: any) => {
-    try {
-      sessionStorage.removeItem("salmons_room_code");
-    } catch (_e) {}
+    clearSavedMobileRoomCode();
     showScreen("phone-screen-join");
     alert("エラー: " + data.message);
   });
@@ -2572,10 +2732,7 @@ function initMobileListeners() {
   socket.off("returnToTitle");
   socket.on("returnToTitle", () => {
     console.log("📱 [PHONE SOCKET] returnToTitle 受信 ➔ タイトル画面へ戻ります");
-    try {
-      sessionStorage.removeItem("salmons_room_code");
-      sessionStorage.removeItem("salmons_player_name");
-    } catch (_e) {}
+    clearSavedMobileRoomCode();
     window.location.reload();
   });
 
