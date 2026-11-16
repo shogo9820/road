@@ -254,7 +254,51 @@ window.boardManager = {
         ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.closePath();
     },
-    drawBoardBackground(ctx, width, height, isRepeatDark) {
+    getBranchSelectionInfo(currentPlayer) {
+        if (!currentPlayer)
+            return null;
+        const pos = Number(currentPlayer.position);
+        if (pos !== 0 && pos !== 49)
+            return null;
+        const rawRoute = this.previewRouteIdx !== null
+            ? this.previewRouteIdx
+            : currentPlayer.chosenRouteIdx;
+        if (rawRoute === null || rawRoute === undefined)
+            return null;
+        const routeIdx = Number(rawRoute);
+        if (routeIdx !== 0 && routeIdx !== 1)
+            return null;
+        if (pos === 0) {
+            const groupA = [1, 2, 3, 4, 5, 6, 7];
+            const groupB = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+            return {
+                branchPos: 0,
+                routeIdx,
+                activeSquares: routeIdx === 0 ? groupA : groupB,
+                inactiveSquares: routeIdx === 0 ? groupB : groupA,
+                firstStepSq: routeIdx === 0 ? 1 : 8,
+                glowColor: "rgba(255, 214, 0, 0.9)",
+                borderColor: "#ffea00",
+                lineColor: "#ffc400",
+            };
+        }
+        const groupA = [50, 51, 52, 53, 54, 55, 56, 57, 58];
+        const groupB = [
+            59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+            77, 78, 79,
+        ];
+        return {
+            branchPos: 49,
+            routeIdx,
+            activeSquares: routeIdx === 0 ? groupA : groupB,
+            inactiveSquares: routeIdx === 0 ? groupB : groupA,
+            firstStepSq: routeIdx === 0 ? 50 : 59,
+            glowColor: routeIdx === 0 ? "rgba(0, 230, 118, 0.9)" : "rgba(255, 145, 0, 0.95)",
+            borderColor: routeIdx === 0 ? "#00e676" : "#ffd600",
+            lineColor: routeIdx === 0 ? "#00c853" : "#ff6d00",
+        };
+    },
+    drawBoardBackground(ctx, width, height, isRepeatDark, branchInfo) {
         // 1. ベース背景グラデーション（人生ゲーム風ポップなマップ背景 / 留年時はダーク背景）
         const grad = ctx.createLinearGradient(0, 0, width, height);
         if (isRepeatDark) {
@@ -342,82 +386,106 @@ window.boardManager = {
         badges.forEach((b) => {
             const bx = b.x * this.cellSize;
             const by = b.y * this.cellSize;
+            const isRouteA = b.text.includes("A: 激シャバ");
+            const isRouteB = b.text.includes("B: 激おもろ");
+            const isBranch49 = branchInfo && branchInfo.branchPos === 49;
+            const isSelectedBadge = isBranch49 &&
+                ((isRouteA && branchInfo.routeIdx === 0) ||
+                    (isRouteB && branchInfo.routeIdx === 1));
+            const isUnselectedBadge = isBranch49 &&
+                ((isRouteA && branchInfo.routeIdx !== 0) ||
+                    (isRouteB && branchInfo.routeIdx !== 1));
             ctx.save();
+            ctx.translate(bx, by);
+            if (isSelectedBadge) {
+                ctx.scale(1.22, 1.22);
+            }
+            else if (isUnselectedBadge) {
+                ctx.globalAlpha = 0.45;
+            }
             ctx.font = "bold 12px 'M PLUS Rounded 1c', sans-serif";
             const textWidth = ctx.measureText(b.text).width;
             const padX = 10;
             const boxW = textWidth + padX * 2;
             const boxH = 24;
-            this.drawRoundedRect(ctx, bx - boxW / 2, by - boxH / 2, boxW, boxH, 12);
-            ctx.fillStyle = b.bg;
-            ctx.fill();
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = isRepeatDark
-                ? "rgba(234, 128, 252, 0.4)"
-                : "rgba(0, 0, 0, 0.08)";
-            ctx.stroke();
-            ctx.fillStyle = b.color;
+            this.drawRoundedRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 12);
+            if (isSelectedBadge) {
+                ctx.shadowColor = branchInfo.glowColor;
+                ctx.shadowBlur = 14;
+                ctx.fillStyle = isRouteA ? "#00bfa5" : "#ff6d00";
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#ffea00";
+                ctx.stroke();
+                ctx.fillStyle = "#ffffff";
+            }
+            else {
+                ctx.fillStyle = b.bg;
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = isRepeatDark
+                    ? "rgba(234, 128, 252, 0.4)"
+                    : "rgba(0, 0, 0, 0.08)";
+                ctx.stroke();
+                ctx.fillStyle = b.color;
+            }
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(b.text, bx, by);
+            ctx.fillText(b.text, 0, 0);
             ctx.restore();
         });
         ctx.restore();
     },
     drawSeasonalEmojiStamps(ctx, isRepeatDark) {
-        // 【】に囲まれたイベントマスのすぐ隣に1〜2個だけ添えるスッキリ配置
+        // 【】に囲まれたイベントマスにつき1つだけ、大きく見やすく添える配置
         const stamps = [
             // 🌸 1回生 【新歓】(マス19)
-            { x: 55.0, y: 20.5, emoji: "🌸", size: 24, rotate: -6 },
+            { x: 56.0, y: 20.3, emoji: "🌸", size: 38, rotate: -6 },
             // 🌻 1回生 【夏合宿】(マス21)
-            { x: 50.5, y: 12.2, emoji: "🌻", size: 24, rotate: -6 },
-            { x: 53.0, y: 14.5, emoji: "🍉", size: 22, rotate: 8 },
+            { x: 50.8, y: 11.0, emoji: "🌻", size: 38, rotate: 8 },
             // 🍁 1回生 【秋キャン】(マス25)
-            { x: 38.5, y: 12.2, emoji: "🍁", size: 24, rotate: -6 },
-            { x: 40.7, y: 16.0, emoji: "⛺", size: 22, rotate: 8 },
+            { x: 35.0, y: 14.3, emoji: "🍁", size: 38, rotate: -8 },
             // 🏮 1回生 【龍祭】(マス27)
-            { x: 33.9, y: 19.0, emoji: "🏮", size: 22, rotate: -6 },
+            { x: 33.3, y: 18.0, emoji: "🏮", size: 38, rotate: 6 },
             // ⛄ 1回生 【忘年会】(マス29)
-            { x: 41.0, y: 26.5, emoji: "⛄", size: 22, rotate: -6 },
+            { x: 42.0, y: 26.3, emoji: "⛄", size: 38, rotate: -6 },
             // ❄️ 2回生 【冬合宿】(マス32)
-            { x: 42.0, y: 37.5, emoji: "❄️", size: 24, rotate: -6 },
+            { x: 36.0, y: 37.8, emoji: "❄️", size: 38, rotate: 0 },
             // 🌸 2回生 【新歓】(マス34)
-            { x: 38.0, y: 43.5, emoji: "🌸", size: 24, rotate: -6 },
-            { x: 42.7, y: 45.0, emoji: "🍡", size: 22, rotate: 8 },
+            { x: 37.0, y: 43.3, emoji: "🌸", size: 38, rotate: 8 },
             // 🍉 3回生 Aルート 【夏合宿】(マス50)
-            { x: 7.0, y: 37.5, emoji: "🍉", size: 22, rotate: -6 },
+            { x: 8.0, y: 37.3, emoji: "🍉", size: 38, rotate: -6 },
             // 🌻 3回生 Bルート 【夏合宿】(マス59)
-            { x: 8.5, y: 39.2, emoji: "🌻", size: 24, rotate: -6 },
+            { x: 8.5, y: 45.3, emoji: "🌻", size: 38, rotate: 8 },
             // 🍁 3回生 Bルート 【秋キャン】(マス64)
-            { x: 23.5, y: 47.0, emoji: "🍁", size: 24, rotate: -6 },
-            { x: 26.1, y: 46.0, emoji: "⛺", size: 22, rotate: 8 },
+            { x: 26.8, y: 47.0, emoji: "🍁", size: 38, rotate: -8 },
             // 🧋 3回生 Bルート 【龍祭】(マス67)
-            { x: 33.0, y: 39.5, emoji: "🧋", size: 24, rotate: -6 },
+            { x: 34.0, y: 40.3, emoji: "🧋", size: 38, rotate: 6 },
             // ⛄ 3回生 Bルート 【忘年会】(マス71)
-            { x: 35.0, y: 27.5, emoji: "⛄", size: 22, rotate: -6 },
+            { x: 29.0, y: 27.3, emoji: "⛄", size: 38, rotate: -6 },
             // 👘 3回生 Bルート 【成人式】(マス72)
-            { x: 31.0, y: 24.5, emoji: "👘", size: 24, rotate: -6 },
+            { x: 29.5, y: 24.3, emoji: "👘", size: 38, rotate: 6 },
             // 🏂 3回生 Bルート 【冬合宿】(マス74)
-            { x: 29.5, y: 18.2, emoji: "🏂", size: 24, rotate: -6 },
+            { x: 29.5, y: 17.0, emoji: "🏂", size: 38, rotate: -8 },
             // 🌸 4回生直前 【新歓】(マス76)
-            { x: 28.0, y: 24.5, emoji: "🌸", size: 24, rotate: -6 },
+            { x: 22.0, y: 24.3, emoji: "🌸", size: 38, rotate: 6 },
             // 🌻 4回生 【夏合宿】(マス81)
-            { x: 19.0, y: 27.5, emoji: "🌻", size: 24, rotate: -6 },
+            { x: 20.0, y: 27.3, emoji: "🌻", size: 38, rotate: 8 },
             // 🍁 4回生 【秋キャン】(マス82)
-            { x: 18.0, y: 24.5, emoji: "🍁", size: 24, rotate: -6 },
-            { x: 13.0, y: 24.5, emoji: "⛺", size: 22, rotate: 8 },
+            { x: 19.0, y: 24.3, emoji: "🍁", size: 38, rotate: -8 },
             // 🏮 4回生 【龍祭】(マス84)
-            { x: 13.5, y: 16.2, emoji: "🏮", size: 22, rotate: -6 },
+            { x: 17.0, y: 18.3, emoji: "🏮", size: 38, rotate: 6 },
             // ⛄ 4回生 【忘年会】(マス85)
-            { x: 10.5, y: 15.2, emoji: "⛄", size: 22, rotate: -6 },
+            { x: 13.3, y: 14.8, emoji: "⛄", size: 38, rotate: -6 },
             // 🍛 4回生 【冬合宿】(マス86)
-            { x: 5.0, y: 16.5, emoji: "🍛", size: 24, rotate: -6 },
+            { x: 4.0, y: 16.8, emoji: "🍛", size: 38, rotate: 6 },
             // 💐 卒業 【追いコン】(マス87)
-            { x: 4.0, y: 13.5, emoji: "💐", size: 24, rotate: -6 },
+            { x: 3.0, y: 13.5, emoji: "💐", size: 38, rotate: -8 },
         ];
         if (isRepeatDark) {
-            stamps.push({ x: 18.0, y: 7.5, emoji: "🎂", size: 24, rotate: 8 }, // マス92 【留年】誕生日
-            { x: 23.0, y: 7.0, emoji: "💀", size: 24, rotate: 5 } // マス93 【留年】老害
+            stamps.push({ x: 18.0, y: 7.5, emoji: "🎂", size: 38, rotate: 8 }, // マス92 【留年】誕生日
+            { x: 23.5, y: 7.0, emoji: "💀", size: 38, rotate: 5 } // マス93 【留年】老害
             );
         }
         stamps.forEach((s) => {
@@ -428,20 +496,20 @@ window.boardManager = {
             if (s.rotate) {
                 ctx.rotate((s.rotate * Math.PI) / 180);
             }
-            const scaledSize = Math.round((s.size || 22) * (this.cellSize / 15));
+            const scaledSize = Math.round((s.size || 38) * (this.cellSize / 15));
             ctx.font = `${scaledSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#000000";
-            ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.25)";
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 1;
-            ctx.shadowOffsetY = 1;
+            ctx.shadowColor = isRepeatDark ? "rgba(0, 0, 0, 0.75)" : "rgba(0, 0, 0, 0.28)";
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 1.5;
+            ctx.shadowOffsetY = 1.5;
             ctx.fillText(s.emoji, 0, 0);
             ctx.restore();
         });
     },
-    drawRoutePaths(ctx, currentPlayer, isRepeatDark) {
+    drawRoutePaths(ctx, currentPlayer, isRepeatDark, branchInfo) {
         if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
             return;
         ctx.save();
@@ -464,27 +532,61 @@ window.boardManager = {
                 if (idx === 89 && nextIdx === 99)
                     return;
                 const toCoord = this.getCoordinates(nextIdx);
-                // 外枠の白い縁取りライン
-                ctx.beginPath();
-                ctx.moveTo(fromCoord.x, fromCoord.y);
-                ctx.lineTo(toCoord.x, toCoord.y);
-                ctx.lineWidth = 8;
-                ctx.strokeStyle = isRepeatDark
-                    ? "rgba(123, 31, 162, 0.5)"
-                    : "rgba(255, 255, 255, 0.85)";
-                ctx.stroke();
-                // 内側の道ライン
-                ctx.beginPath();
-                ctx.moveTo(fromCoord.x, fromCoord.y);
-                ctx.lineTo(toCoord.x, toCoord.y);
-                ctx.lineWidth = 4;
-                ctx.strokeStyle =
-                    idx >= 89 && nextIdx >= 90
-                        ? "#ab47bc"
-                        : isRepeatDark
-                            ? "#7e57c2"
-                            : "#ffb74d";
-                ctx.stroke();
+                const isActiveSeg = Boolean(branchInfo &&
+                    branchInfo.activeSquares.includes(nextIdx) &&
+                    (idx === branchInfo.branchPos ||
+                        branchInfo.activeSquares.includes(idx)));
+                const isInactiveSeg = Boolean(branchInfo &&
+                    !isActiveSeg &&
+                    (branchInfo.inactiveSquares.includes(nextIdx) ||
+                        branchInfo.inactiveSquares.includes(idx)));
+                ctx.save();
+                if (isInactiveSeg) {
+                    ctx.globalAlpha = 0.35;
+                }
+                if (isActiveSeg) {
+                    // ✨ 選択ルートの外側グローライン
+                    ctx.beginPath();
+                    ctx.moveTo(fromCoord.x, fromCoord.y);
+                    ctx.lineTo(toCoord.x, toCoord.y);
+                    ctx.lineWidth = 12;
+                    ctx.strokeStyle = branchInfo.glowColor;
+                    ctx.shadowColor = branchInfo.borderColor;
+                    ctx.shadowBlur = 10;
+                    ctx.stroke();
+                    // ✨ 選択ルートの明るい内側道ライン
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.moveTo(fromCoord.x, fromCoord.y);
+                    ctx.lineTo(toCoord.x, toCoord.y);
+                    ctx.lineWidth = 5.5;
+                    ctx.strokeStyle = branchInfo.lineColor;
+                    ctx.stroke();
+                }
+                else {
+                    // 外枠の白い縁取りライン
+                    ctx.beginPath();
+                    ctx.moveTo(fromCoord.x, fromCoord.y);
+                    ctx.lineTo(toCoord.x, toCoord.y);
+                    ctx.lineWidth = 8;
+                    ctx.strokeStyle = isRepeatDark
+                        ? "rgba(123, 31, 162, 0.5)"
+                        : "rgba(255, 255, 255, 0.85)";
+                    ctx.stroke();
+                    // 内側の道ライン
+                    ctx.beginPath();
+                    ctx.moveTo(fromCoord.x, fromCoord.y);
+                    ctx.lineTo(toCoord.x, toCoord.y);
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle =
+                        idx >= 89 && nextIdx >= 90
+                            ? "#ab47bc"
+                            : isRepeatDark
+                                ? "#7e57c2"
+                                : "#ffb74d";
+                    ctx.stroke();
+                }
+                ctx.restore();
             });
         });
         ctx.restore();
@@ -500,12 +602,13 @@ window.boardManager = {
             return;
         const currentPlayer = playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
         const isRepeatDark = Boolean(currentPlayer && currentPlayer.isRepeat);
+        const branchInfo = this.getBranchSelectionInfo(currentPlayer);
         // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
-        this.drawBoardBackground(this.ctx, this.canvas.width, this.canvas.height, isRepeatDark);
+        this.drawBoardBackground(this.ctx, this.canvas.width, this.canvas.height, isRepeatDark, branchInfo);
         // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
         this.ctx.save();
         this.ctx.translate(this.originX, this.originY);
-        this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark);
+        this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark, branchInfo);
         // 1. 各道ブロックの描画ループ
         MAP_SQUARES.forEach((sq, idx) => {
             if (idx >= 90 && idx <= 98) {
@@ -634,75 +737,73 @@ window.boardManager = {
         });
         // 2. 周辺マスのエピソード・季節感にちなんだスタンプ風絵文字の描画（マスより前面の装飾レイヤー）
         this.drawSeasonalEmojiStamps(this.ctx, isRepeatDark);
-        // 3. 独立影マスクのレイヤー重ね描き（位置限定）
-        const p = playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
-        const currentRoute = this.previewRouteIdx !== null
-            ? this.previewRouteIdx
-            : p
-                ? p.chosenRouteIdx
-                : null;
-        if (p && currentRoute !== null && currentRoute !== undefined) {
-            let currentMode = "normal";
-            if (typeof rooms !== "undefined" &&
-                typeof roomCode !== "undefined" &&
-                rooms[roomCode]) {
-                currentMode = rooms[roomCode].mode || "normal";
-            }
-            let hasDrawnNewShadow = false;
-            if (window.SQ_MODULES &&
-                window.SQ_MODULES[p.position] &&
-                window.SQ_MODULES[p.position][currentMode]) {
-                const compData = window.SQ_MODULES[p.position][currentMode];
-                if (compData.type === "branch" && compData.shadowTargets) {
-                    let targets = [];
-                    if (currentRoute === 0 && compData.shadowTargets.routeA) {
-                        targets = compData.shadowTargets.routeA;
-                    }
-                    else if (currentRoute === 1 && compData.shadowTargets.routeB) {
-                        targets = compData.shadowTargets.routeB;
-                    }
-                    MAP_SQUARES.forEach((sq, idx) => {
-                        if (targets.includes(idx)) {
-                            const data = this.gridMap[idx];
-                            if (!data)
-                                return;
-                            this.ctx.save();
-                            this.drawRoundedRect(this.ctx, data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize, 6);
-                            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-                            this.ctx.fill();
-                            this.ctx.restore();
-                            hasDrawnNewShadow = true;
-                        }
-                    });
-                }
-            }
-            if (!hasDrawnNewShadow) {
-                MAP_SQUARES.forEach((sq, idx) => {
-                    const data = this.gridMap[idx];
-                    if (!data)
-                        return;
-                    if (p.position === 0) {
-                        if (currentRoute === 0 && idx >= 8 && idx <= 17) {
-                            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-                            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
-                        }
-                        if (currentRoute === 1 && idx >= 1 && idx <= 7) {
-                            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-                            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
-                        }
-                    }
-                    if (p.position === 49) {
-                        if (currentRoute === 0 && idx >= 59 && idx <= 79) {
-                            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-                            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
-                        }
-                        if (currentRoute === 1 && idx >= 50 && idx <= 58) {
-                            this.ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-                            this.ctx.fillRect(data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize);
-                        }
-                    }
-                });
-            }
+        // 3. 分岐選択時のルート強調演出（行く方をネオン発光＋矢印ガイド、行かない方をほんのり薄く）
+        if (branchInfo) {
+            // 3-1. 行かない側のマスをほんのり半透明ヴェールで控えめに
+            branchInfo.inactiveSquares.forEach((idx) => {
+                const data = this.gridMap[idx];
+                if (!data)
+                    return;
+                const radius = this.specialSquareThemes[idx] ? 10 : 6;
+                this.ctx.save();
+                this.drawRoundedRect(this.ctx, data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize, radius);
+                this.ctx.fillStyle = isRepeatDark
+                    ? "rgba(0, 0, 0, 0.45)"
+                    : "rgba(255, 255, 255, 0.52)";
+                this.ctx.fill();
+                this.ctx.restore();
+            });
+            // 3-2. 行く側のマス枠をネオン/ゴールド発光ハイライト
+            branchInfo.activeSquares.forEach((idx) => {
+                const data = this.gridMap[idx];
+                if (!data)
+                    return;
+                const px = data.x * this.cellSize;
+                const py = data.y * this.cellSize;
+                const pw = data.w * this.cellSize;
+                const ph = data.h * this.cellSize;
+                const radius = this.specialSquareThemes[idx] ? 10 : 6;
+                this.ctx.save();
+                this.drawRoundedRect(this.ctx, px - 3, py - 3, pw + 6, ph + 6, radius + 2);
+                this.ctx.lineWidth = 3.5;
+                this.ctx.strokeStyle = branchInfo.borderColor;
+                this.ctx.shadowColor = branchInfo.glowColor;
+                this.ctx.shadowBlur = 10;
+                this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
+                this.drawRoundedRect(this.ctx, px - 1, py - 1, pw + 2, ph + 2, radius);
+                this.ctx.lineWidth = 1.5;
+                this.ctx.strokeStyle = "#ffffff";
+                this.ctx.stroke();
+                this.ctx.restore();
+            });
+            // 3-3. 分岐マスから1歩目のマスへ向かう光る進行方向矢印を描画
+            const fromC = this.getCoordinates(branchInfo.branchPos);
+            const toC = this.getCoordinates(branchInfo.firstStepSq);
+            const dx = toC.x - fromC.x;
+            const dy = toC.y - fromC.y;
+            const angle = Math.atan2(dy, dx);
+            const ax = fromC.x + dx * 0.58;
+            const ay = fromC.y + dy * 0.58;
+            const arrowSize = Math.max(8, this.cellSize * 0.65);
+            this.ctx.save();
+            this.ctx.translate(ax, ay);
+            this.ctx.rotate(angle);
+            this.ctx.beginPath();
+            this.ctx.moveTo(arrowSize, 0);
+            this.ctx.lineTo(-arrowSize * 0.65, -arrowSize * 0.72);
+            this.ctx.lineTo(-arrowSize * 0.3, 0);
+            this.ctx.lineTo(-arrowSize * 0.65, arrowSize * 0.72);
+            this.ctx.closePath();
+            this.ctx.shadowColor = branchInfo.glowColor;
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillStyle = branchInfo.borderColor;
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeStyle = "#ffffff";
+            this.ctx.stroke();
+            this.ctx.restore();
         }
         // 3. ピンの描画（プレイヤー番号入りで視認性アップ）
         if (playersList && Array.isArray(playersList)) {

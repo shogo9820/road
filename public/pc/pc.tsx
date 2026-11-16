@@ -274,6 +274,9 @@ let isApplyingPCKorean = false;
 let pcKoreanObserver: MutationObserver | null = null;
 const pcKoreanBackups = new Map<Text, { jp: string; ko: string }>();
 
+const EXCLUDE_KOREAN_SELECTOR =
+  ".tile-event-card, #current-tile-desc, #pc-event-modal, #pc-kanpai-modal, #pc-takunomi-modal, #pc-skill-modal, .event-modal-overlay, .kanpai-overlay";
+
 function applyPCKoreanToSubtree(root: Node) {
   if (!isPCKoreanActive) return;
   isApplyingPCKorean = true;
@@ -283,11 +286,11 @@ function applyPCKoreanToSubtree(root: Node) {
     while (node) {
       const parentEl = node.parentElement;
       const parentTag = parentEl?.tagName;
-      // 🎯 右下のマスの内容カード（.tile-event-card）は翻訳対象から除外して日本語を維持！
+      // 🎯 右下のマスの内容・イベントモーダル等は翻訳対象から除外して日本語を維持！
       if (
         parentTag !== "SCRIPT" &&
         parentTag !== "STYLE" &&
-        !parentEl?.closest(".tile-event-card")
+        !parentEl?.closest(EXCLUDE_KOREAN_SELECTOR)
       ) {
         const val = node.nodeValue || "";
         if (val.trim()) {
@@ -2123,6 +2126,10 @@ function appendSocketListeners() {
   socket.off("gameAllFinished");
   socket.on("gameAllFinished", (data: any) => {
     if (data && data.players) players = data.players;
+    players.forEach((pl) => {
+      if (pl) pl.koreanModeThisTurn = false;
+    });
+    syncPCKoreanDOMMode(false);
     isPCEventMode = false;
     document.body.classList.remove("theme-repeat-dark");
 
@@ -2444,6 +2451,10 @@ function appendSocketListeners() {
   socket.off("applyPlayerAction");
   socket.on("applyPlayerAction", (data: any) => {
     if (data && data.action === "turnUpdated") {
+      players.forEach((pl) => {
+        if (pl) pl.koreanModeThisTurn = false;
+      });
+      syncPCKoreanDOMMode(false);
       console.log(
         "💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。",
       );
@@ -2488,6 +2499,10 @@ function appendSocketListeners() {
       if (pcResEl) pcResEl.textContent = "出目: -";
       updateCurrentPlayerDisplay();
     } else if (data && data.action === "turnSkipped") {
+      players.forEach((pl) => {
+        if (pl) pl.koreanModeThisTurn = false;
+      });
+      syncPCKoreanDOMMode(false);
       isPCEventMode = false;
       const pcResEl = document.getElementById("roulette-result-display");
       if (pcResEl) pcResEl.textContent = "出目: -";

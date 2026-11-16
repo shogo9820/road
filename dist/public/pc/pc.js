@@ -263,6 +263,7 @@ let isPCKoreanActive = false;
 let isApplyingPCKorean = false;
 let pcKoreanObserver = null;
 const pcKoreanBackups = new Map();
+const EXCLUDE_KOREAN_SELECTOR = ".tile-event-card, #current-tile-desc, #pc-event-modal, #pc-kanpai-modal, #pc-takunomi-modal, #pc-skill-modal, .event-modal-overlay, .kanpai-overlay";
 function applyPCKoreanToSubtree(root) {
     if (!isPCKoreanActive)
         return;
@@ -273,10 +274,10 @@ function applyPCKoreanToSubtree(root) {
         while (node) {
             const parentEl = node.parentElement;
             const parentTag = parentEl?.tagName;
-            // 🎯 右下のマスの内容カード（.tile-event-card）は翻訳対象から除外して日本語を維持！
+            // 🎯 右下のマスの内容・イベントモーダル等は翻訳対象から除外して日本語を維持！
             if (parentTag !== "SCRIPT" &&
                 parentTag !== "STYLE" &&
-                !parentEl?.closest(".tile-event-card")) {
+                !parentEl?.closest(EXCLUDE_KOREAN_SELECTOR)) {
                 const val = node.nodeValue || "";
                 if (val.trim()) {
                     const existing = pcKoreanBackups.get(node);
@@ -1420,6 +1421,11 @@ function appendSocketListeners() {
     socket.on("gameAllFinished", (data) => {
         if (data && data.players)
             players = data.players;
+        players.forEach((pl) => {
+            if (pl)
+                pl.koreanModeThisTurn = false;
+        });
+        syncPCKoreanDOMMode(false);
         isPCEventMode = false;
         document.body.classList.remove("theme-repeat-dark");
         const pcEventModal = document.getElementById("pc-event-modal");
@@ -1712,6 +1718,11 @@ function appendSocketListeners() {
     socket.off("applyPlayerAction");
     socket.on("applyPlayerAction", (data) => {
         if (data && data.action === "turnUpdated") {
+            players.forEach((pl) => {
+                if (pl)
+                    pl.koreanModeThisTurn = false;
+            });
+            syncPCKoreanDOMMode(false);
             console.log("💻 [PC 新ターン開始] 全アクティブモーダルを一括クローズします。");
             isPCEventMode = false;
             if (data.activePlayerIndex !== undefined) {
@@ -1751,6 +1762,11 @@ function appendSocketListeners() {
             updateCurrentPlayerDisplay();
         }
         else if (data && data.action === "turnSkipped") {
+            players.forEach((pl) => {
+                if (pl)
+                    pl.koreanModeThisTurn = false;
+            });
+            syncPCKoreanDOMMode(false);
             isPCEventMode = false;
             const pcResEl = document.getElementById("roulette-result-display");
             if (pcResEl)

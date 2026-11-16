@@ -308,6 +308,9 @@ let isApplyingKoreanMutation = false;
 let koreanDOMObserver: MutationObserver | null = null;
 const koreanNodeBackups = new Map<Text, { jp: string; ko: string }>();
 
+const EXCLUDE_MOBILE_KOREAN_SELECTOR =
+  "#phone-current-tile-box, #phone-current-tile-desc, #job-modal-overlay, #mobile-couple-event-modal, #route-select-modal, #insurance-inline-zone, #insurance-confirm-modal, #takunomi-loser-zone, #skill-confirm-modal, #skill-target-modal, .event-modal-overlay, .developer-debug-zone-panel";
+
 function applyKoreanToSubtree(root: Node) {
   if (!isKoreanDOMActive) return;
   isApplyingKoreanMutation = true;
@@ -315,8 +318,13 @@ function applyKoreanToSubtree(root: Node) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let node = walker.nextNode() as Text | null;
     while (node) {
-      const parentTag = node.parentElement?.tagName;
-      if (parentTag !== "SCRIPT" && parentTag !== "STYLE") {
+      const parentEl = node.parentElement;
+      const parentTag = parentEl?.tagName;
+      if (
+        parentTag !== "SCRIPT" &&
+        parentTag !== "STYLE" &&
+        !parentEl?.closest(EXCLUDE_MOBILE_KOREAN_SELECTOR)
+      ) {
         const val = node.nodeValue || "";
         if (val.trim()) {
           const existing = koreanNodeBackups.get(node);
@@ -2050,6 +2058,10 @@ function initMobileListeners() {
   socket.off("applyPlayerAction");
   socket.on("applyPlayerAction", (data: any) => {
     if (data.action === "turnUpdated") {
+      players.forEach((pl) => {
+        if (pl) pl.koreanModeThisTurn = false;
+      });
+      syncKoreanDOMMode(false);
       hidePhoneClosePcModalBtn();
       document.body.classList.remove(
         "theme-couple",
@@ -2134,6 +2146,10 @@ function initMobileListeners() {
       isSpinning = false;
       updatePhoneStatusDisplay();
     } else if (data.action === "turnSkipped") {
+      players.forEach((pl) => {
+        if (pl) pl.koreanModeThisTurn = false;
+      });
+      syncKoreanDOMMode(false);
       hidePhoneClosePcModalBtn();
       if (data.activePlayerIndex !== undefined) {
         activePlayerIndex = data.activePlayerIndex;
@@ -2441,6 +2457,10 @@ function initMobileListeners() {
   socket.off("gameAllFinished");
   socket.on("gameAllFinished", (data: any) => {
     if (data && data.players) players = data.players;
+    players.forEach((pl) => {
+      if (pl) pl.koreanModeThisTurn = false;
+    });
+    syncKoreanDOMMode(false);
     const spinBtn = document.getElementById(
       "btn-phone-spin",
     ) as HTMLButtonElement;

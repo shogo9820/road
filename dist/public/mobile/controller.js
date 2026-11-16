@@ -333,6 +333,7 @@ let isKoreanDOMActive = false;
 let isApplyingKoreanMutation = false;
 let koreanDOMObserver = null;
 const koreanNodeBackups = new Map();
+const EXCLUDE_MOBILE_KOREAN_SELECTOR = "#phone-current-tile-box, #phone-current-tile-desc, #job-modal-overlay, #mobile-couple-event-modal, #route-select-modal, #insurance-inline-zone, #insurance-confirm-modal, #takunomi-loser-zone, #skill-confirm-modal, #skill-target-modal, .event-modal-overlay, .developer-debug-zone-panel";
 function applyKoreanToSubtree(root) {
     if (!isKoreanDOMActive)
         return;
@@ -341,8 +342,11 @@ function applyKoreanToSubtree(root) {
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         let node = walker.nextNode();
         while (node) {
-            const parentTag = node.parentElement?.tagName;
-            if (parentTag !== "SCRIPT" && parentTag !== "STYLE") {
+            const parentEl = node.parentElement;
+            const parentTag = parentEl?.tagName;
+            if (parentTag !== "SCRIPT" &&
+                parentTag !== "STYLE" &&
+                !parentEl?.closest(EXCLUDE_MOBILE_KOREAN_SELECTOR)) {
                 const val = node.nodeValue || "";
                 if (val.trim()) {
                     const existing = koreanNodeBackups.get(node);
@@ -1483,6 +1487,11 @@ function initMobileListeners() {
     socket.off("applyPlayerAction");
     socket.on("applyPlayerAction", (data) => {
         if (data.action === "turnUpdated") {
+            players.forEach((pl) => {
+                if (pl)
+                    pl.koreanModeThisTurn = false;
+            });
+            syncKoreanDOMMode(false);
             hidePhoneClosePcModalBtn();
             document.body.classList.remove("theme-couple", "theme-entrance", "theme-insurance", "theme-rankup");
             activePlayerIndex =
@@ -1551,6 +1560,11 @@ function initMobileListeners() {
             updatePhoneStatusDisplay();
         }
         else if (data.action === "turnSkipped") {
+            players.forEach((pl) => {
+                if (pl)
+                    pl.koreanModeThisTurn = false;
+            });
+            syncKoreanDOMMode(false);
             hidePhoneClosePcModalBtn();
             if (data.activePlayerIndex !== undefined) {
                 activePlayerIndex = data.activePlayerIndex;
@@ -1811,6 +1825,11 @@ function initMobileListeners() {
     socket.on("gameAllFinished", (data) => {
         if (data && data.players)
             players = data.players;
+        players.forEach((pl) => {
+            if (pl)
+                pl.koreanModeThisTurn = false;
+        });
+        syncKoreanDOMMode(false);
         const spinBtn = document.getElementById("btn-phone-spin");
         if (spinBtn)
             spinBtn.style.display = "none";

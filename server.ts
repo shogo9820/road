@@ -540,6 +540,10 @@ io.on("connection", (socket) => {
         }
 
         if (!found) {
+          room.koreanModeActive = false;
+          room.gamePlayers.forEach((pl: any) => {
+            if (pl) pl.koreanModeThisTurn = false;
+          });
           console.log(
             "\n🎉 [SERVER] 全プレイヤーがゴールしました！ゲーム終了！",
           );
