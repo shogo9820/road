@@ -2126,10 +2126,11 @@ function initMobileListeners() {
       console.log(
         `\n📱 [1.0 新ターン開始] 手番交代を受信。手番: ${data.activePlayerName}`,
       );
+      (window as any)._restoreNextBtnAfterSkill = false;
 
-      if (document.getElementById("current-player-banner")) {
-        document.getElementById("current-player-banner").textContent =
-          `TURN: ${data.activePlayerName || "プレイヤー"}`;
+      const nameSpan = document.getElementById("phone-current-name");
+      if (nameSpan) {
+        nameSpan.textContent = data.activePlayerName || "プレイヤー";
       }
 
       if (document.getElementById("btn-phone-next"))
@@ -2160,9 +2161,10 @@ function initMobileListeners() {
       } else {
         document.body.classList.remove("theme-repeat-dark");
       }
-      if (document.getElementById("current-player-banner")) {
-        document.getElementById("current-player-banner").textContent =
-          `TURN: ${data.activePlayerName || "プレイヤー"} (1回休み)`;
+      (window as any)._restoreNextBtnAfterSkill = false;
+      const nameSpanSkip = document.getElementById("phone-current-name");
+      if (nameSpanSkip) {
+        nameSpanSkip.textContent = `${data.activePlayerName || "プレイヤー"} (1回休み)`;
       }
       if (document.getElementById("btn-phone-spin"))
         (
@@ -2249,6 +2251,16 @@ function initMobileListeners() {
     ) {
       document.getElementById("roulette-result-display").textContent =
         `⚡ ${data.resultMessage}`;
+    }
+    if (
+      (window as any)._restoreNextBtnAfterSkill ||
+      window.serverCurrentPhase === "6.WAIT_NEXT"
+    ) {
+      const nextBtn = document.getElementById(
+        "btn-phone-next",
+      ) as HTMLButtonElement | null;
+      if (nextBtn) nextBtn.disabled = false;
+      (window as any)._restoreNextBtnAfterSkill = false;
     }
     showPhoneClosePcModalBtn();
   });
@@ -2481,9 +2493,13 @@ function initMobileListeners() {
     const returnBtn = document.getElementById("btn-phone-return-title");
     if (returnBtn) returnBtn.style.display = "block";
 
-    if (document.getElementById("current-player-banner")) {
-      document.getElementById("current-player-banner").textContent =
-        "🎊 全員卒業！ゲーム終了！ 🎊";
+    const nameSpanFinish = document.getElementById("phone-current-name");
+    if (nameSpanFinish) {
+      nameSpanFinish.textContent = "🎊 全員卒業！ゲーム終了！ 🎊";
+    }
+    const jobSpanFinish = document.getElementById("phone-current-job");
+    if (jobSpanFinish) {
+      jobSpanFinish.textContent = "";
     }
     if (document.getElementById("roulette-result-display")) {
       // 最多飲酒プレイヤー（酒豪王）
@@ -2737,6 +2753,14 @@ function initMobileListeners() {
       if (btnYes) {
         btnYes.onclick = () => {
           document.getElementById("skill-confirm-modal")?.remove();
+
+          const nextBtn = document.getElementById(
+            "btn-phone-next",
+          ) as HTMLButtonElement | null;
+          if (nextBtn && !nextBtn.disabled) {
+            nextBtn.disabled = true;
+            (window as any)._restoreNextBtnAfterSkill = true;
+          }
 
           // ブサイク必殺技「みちづれ」で恋人がいるリア充がいるか事前判定
           let effectiveTargetType = skillCfg.targetType || "none";

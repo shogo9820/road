@@ -9,6 +9,19 @@ let activePlayerIndex = 0;
 let pcCurrentRotation = 0;
 let isPCEventMode = false;
 let currentGameMode = "normal";
+let currentSpinTimeout: ReturnType<typeof setTimeout> | null = null;
+let currentMoveTimer: ReturnType<typeof setInterval> | null = null;
+
+function clearActiveMovementTimers() {
+  if (currentSpinTimeout !== null) {
+    clearTimeout(currentSpinTimeout);
+    currentSpinTimeout = null;
+  }
+  if (currentMoveTimer !== null) {
+    clearInterval(currentMoveTimer);
+    currentMoveTimer = null;
+  }
+}
 
 // 🎯 カラーパレット定義（インデックス順）
 const PLAYER_COLOR_PALETTE = [
@@ -407,12 +420,14 @@ function executeSyncedRoulette(resultNum: number) {
     return;
   }
 
-  setTimeout(() => {
+  clearActiveMovementTimers();
+  currentSpinTimeout = setTimeout(() => {
+    currentSpinTimeout = null;
     if (resEl) resEl.textContent = `出目: ${resultNum}`;
     let stepsMoved = 0;
     console.log(`💻 [PC MOVEMENT] ピン movements を開始。歩数: ${resultNum}歩`);
 
-    const moveTimer = setInterval(() => {
+    currentMoveTimer = setInterval(() => {
       const currentSquare = MAP_SQUARES[p.position];
       if (
         stepsMoved > 0 &&
@@ -424,7 +439,7 @@ function executeSyncedRoulette(resultNum: number) {
         console.log(
           `💻 [PC MOVEMENT] 強制ストップマス(ID: ${p.position})を発見！着地へ。`,
         );
-        clearInterval(moveTimer);
+        clearActiveMovementTimers();
         finalizeMovement();
         return;
       }
@@ -437,7 +452,7 @@ function executeSyncedRoulette(resultNum: number) {
         console.log(
           `💻 [PC MOVEMENT] 指定歩数完了。目的地(ID: ${p.position})へ着地。`,
         );
-        clearInterval(moveTimer);
+        clearActiveMovementTimers();
         finalizeMovement();
         return;
       }
@@ -1660,6 +1675,12 @@ function appendSocketListeners() {
   // ==========================================================================
   socket.off("spinRoulette");
   socket.on("spinRoulette", (data: any) => {
+    const skillModal = document.getElementById("pc-skill-modal");
+    if (skillModal) {
+      skillModal.style.display = "none";
+      const skillBackBtn = document.getElementById("pc-skill-back-btn");
+      if (skillBackBtn) skillBackBtn.style.display = "none";
+    }
     if (data) {
       if (data.activePlayerIndex !== undefined)
         activePlayerIndex = data.activePlayerIndex;
@@ -1766,6 +1787,7 @@ function appendSocketListeners() {
   socket.off("startSquareEvent");
   socket.on("startSquareEvent", (data: any) => {
     if (!data || data.position === undefined) return;
+    clearActiveMovementTimers();
 
     if (data.activePlayerIndex !== undefined) {
       activePlayerIndex = data.activePlayerIndex;
@@ -2451,6 +2473,7 @@ function appendSocketListeners() {
   socket.off("applyPlayerAction");
   socket.on("applyPlayerAction", (data: any) => {
     if (data && data.action === "turnUpdated") {
+      clearActiveMovementTimers();
       players.forEach((pl) => {
         if (pl) pl.koreanModeThisTurn = false;
       });
@@ -2499,6 +2522,7 @@ function appendSocketListeners() {
       if (pcResEl) pcResEl.textContent = "出目: -";
       updateCurrentPlayerDisplay();
     } else if (data && data.action === "turnSkipped") {
+      clearActiveMovementTimers();
       players.forEach((pl) => {
         if (pl) pl.koreanModeThisTurn = false;
       });

@@ -246,6 +246,8 @@ function startTurnRoutine(room, roomCode) {
 
   // 1. ターン開始前確認フェーズに設定（このターン開始時点の杯数を記録）
   room.currentPhase = PHASES.TURN_START;
+  room.hasResolvedCurrentLanding = false;
+  room.currentRankupFails = undefined;
   room.pendingKanpaiLocation = null;
   room.koreanModeActive = false;
   if (Array.isArray(room.gamePlayers)) {
@@ -431,6 +433,20 @@ io.on("connection", (socket) => {
           room.currentPhase === "6.WAIT_NEXT"
         ) {
           socket.emit("enableNextTurnButton");
+        } else if (
+          (room.currentPhase === PHASES.SQUARE_LANDED ||
+            room.currentPhase === "4.SQUARE_LANDED") &&
+          !room.hasResolvedCurrentLanding &&
+          activeP
+        ) {
+          socket.emit("startSquareEvent", {
+            position: activeP.position,
+            location: activeP.location,
+            playerId: activeP.id,
+            playerName: activeP.name,
+            activePlayerIndex: room.activePlayerIndex,
+            rankupFails: room.currentRankupFails,
+          });
         }
       } else {
         socket.emit("applySettings", {
@@ -572,6 +588,13 @@ io.on("connection", (socket) => {
     }
     // 【着地イベント数値処理完了】
     else if (data.action === "squareEventFinished") {
+      if (room.hasResolvedCurrentLanding) {
+        console.log(
+          "⚠️ [SERVER] 重複した squareEventFinished 通知をブロックしました。",
+        );
+        return;
+      }
+      room.hasResolvedCurrentLanding = true;
       room.currentPhase = PHASES.ACTION_RESOLVE;
 
       if (data.updatedPlayer) {
@@ -1136,6 +1159,16 @@ io.on("connection", (socket) => {
     const room = rooms[roomCode];
     if (!room) return;
 
+    if (
+      room.currentPhase !== PHASES.PIECE_MOVING &&
+      room.currentPhase !== "3.PIECE_MOVING"
+    ) {
+      console.log(
+        `⚠️ [SERVER] 移動中以外(フェーズ: ${room.currentPhase})の重複 squareLanded 通知をブロックしました。`,
+      );
+      return;
+    }
+
     const p = room.gamePlayers[room.activePlayerIndex];
     if (!p) return;
 
@@ -1152,6 +1185,7 @@ io.on("connection", (socket) => {
 
     // フェーズを着地イベント発生(SQUARE_LANDED)へ遷移
     room.currentPhase = PHASES.SQUARE_LANDED;
+    room.hasResolvedCurrentLanding = false;
     // 移動が完了したので、前回の進路選択を破棄（次の分岐マスでの誤表示防止）
     delete p.chosenRouteIdx;
 
@@ -1172,6 +1206,7 @@ io.on("connection", (socket) => {
         `👑 [SERVER ランクアップ設定] マス${p.position}: 外れ出目は ${rankupFails.join(" と ")} に決定！`,
       );
     }
+    room.currentRankupFails = rankupFails;
 
     // 🎯 1. PC・スマホ双方へ「マスイベント開始」を同時に号令
     io.to(roomCode).emit("startSquareEvent", {
@@ -1648,6 +1683,7 @@ io.on("connection", (socket) => {
 
         // 🎯 サーバーの着地ハブと同じ合図を即時発行
         room.currentPhase = PHASES.SQUARE_LANDED;
+        room.hasResolvedCurrentLanding = false;
 
         let rankupFails: number[] | undefined;
         if (targetId === 49 || targetId === 54 || targetId === 63) {
@@ -1658,6 +1694,7 @@ io.on("connection", (socket) => {
           }
           rankupFails = [candidates[0], candidates[1]].sort((a, b) => a - b);
         }
+        room.currentRankupFails = rankupFails;
 
         io.to(roomCode).emit("startSquareEvent", {
           position: targetId,
