@@ -9,6 +9,8 @@ window.boardManager = {
   originY: 0,
   hasResizeListener: false,
   previewRouteIdx: null,
+  _isTransitioningRepeatDark: false,
+  _repeatFadeRaf: 0,
 
   // マス種別ごとの基本カラー
   squareColors: {
@@ -643,37 +645,142 @@ window.boardManager = {
     if (!this.ctx || !this.canvas) this.init();
     if (!this.ctx) return;
     this.updateDimensions();
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
       return;
 
     const currentPlayer =
       playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
-    const isRepeatDark = Boolean(currentPlayer && currentPlayer.isRepeat);
-    const branchInfo = this.getBranchSelectionInfo(currentPlayer);
-
-    // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
-    this.drawBoardBackground(
-      this.ctx,
-      this.canvas.width,
-      this.canvas.height,
-      isRepeatDark,
-      branchInfo,
-    );
-
-    // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
-    this.ctx.save();
-    this.ctx.translate(this.originX, this.originY);
-
-    this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark, branchInfo);
-
-    // 1. 各道ブロックの描画ループ
-    MAP_SQUARES.forEach((sq, idx) => {
-      if (idx >= 90 && idx <= 98) {
-        if (!currentPlayer || currentPlayer.isRepeat !== true) {
-          return;
-        }
+    if (this._isTransitioningRepeatDark) {
+      if (currentPlayer && !currentPlayer.isRepeat) {
+        if (this._repeatFadeRaf) cancelAnimationFrame(this._repeatFadeRaf);
+        this._repeatFadeRaf = 0;
+        this._isTransitioningRepeatDark = false;
+      } else {
+        return;
       }
+    }
+
+    this._renderBoard(this.ctx, playersList, activeIdx, null);
+  },
+
+  transitionToRepeatDark(playersList, activeIdx, durationMs = 3500) {
+    if (!this.ctx || !this.canvas) this.init();
+    if (!this.ctx || !this.canvas) return;
+    this.updateDimensions();
+    if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
+      return;
+
+    if (this._repeatFadeRaf) {
+      cancelAnimationFrame(this._repeatFadeRaf);
+      this._repeatFadeRaf = 0;
+    }
+
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    const lightCanvas = document.createElement("canvas");
+    lightCanvas.width = w;
+    lightCanvas.height = h;
+    const lightCtx = lightCanvas.getContext("2d");
+
+    const darkCanvas = document.createElement("canvas");
+    darkCanvas.width = w;
+    darkCanvas.height = h;
+    const darkCtx = darkCanvas.getContext("2d");
+
+    if (!lightCtx || !darkCtx) {
+      this._isTransitioningRepeatDark = false;
+      this.draw(playersList, activeIdx);
+      return;
+    }
+
+    this._renderBoard(lightCtx, playersList, activeIdx, false);
+    this._renderBoard(darkCtx, playersList, activeIdx, true);
+
+    this._isTransitioningRepeatDark = true;
+    const startTime = performance.now();
+
+    const step = (now) => {
+      if (!this._isTransitioningRepeatDark || !this.ctx || !this.canvas) return;
+      const rawT = Math.min(1, Math.max(0, (now - startTime) / durationMs));
+      const easedT =
+        rawT < 0.5
+          ? 2 * rawT * rawT
+          : 1 - Math.pow(-2 * rawT + 2, 2) / 2;
+
+      this.ctx.save();
+      this.ctx.clearRect(0, 0, w, h);
+      this.ctx.globalAlpha = 1;
+      this.ctx.drawImage(lightCanvas, 0, 0);
+      this.ctx.globalAlpha = easedT;
+      this.ctx.drawImage(darkCanvas, 0, 0);
+
+      // 周囲から暗闇がじわじわ滲み込むビネット演出
+      const vignetteAlpha = 0.32 * Math.sin(Math.PI * rawT);
+      if (vignetteAlpha > 0.01) {
+        this.ctx.globalAlpha = 1;
+        const grad = this.ctx.createRadialGradient(
+          w / 2,
+          h / 2,
+          Math.min(w, h) * 0.15,
+          w / 2,
+          h / 2,
+          Math.max(w, h) * 0.72,
+        );
+        grad.addColorStop(0, "rgba(18, 11, 24, 0)");
+        grad.addColorStop(1, `rgba(18, 11, 24, ${vignetteAlpha.toFixed(3)})`);
+        this.ctx.fillStyle = grad;
+        this.ctx.fillRect(0, 0, w, h);
+      }
+      this.ctx.restore();
+
+      if (rawT < 1) {
+        this._repeatFadeRaf = requestAnimationFrame(step);
+      } else {
+        this._isTransitioningRepeatDark = false;
+        this._repeatFadeRaf = 0;
+        this._renderBoard(this.ctx, playersList, activeIdx, true);
+      }
+    };
+
+    this._repeatFadeRaf = requestAnimationFrame(step);
+  },
+
+  _renderBoard(targetCtx, playersList, activeIdx, forceRepeatOverride) {
+    const prevCtx = this.ctx;
+    this.ctx = targetCtx;
+    try {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      const currentPlayer =
+        playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
+      const isRepeatDark =
+        forceRepeatOverride !== null && forceRepeatOverride !== undefined
+          ? Boolean(forceRepeatOverride)
+          : Boolean(currentPlayer && currentPlayer.isRepeat);
+      const branchInfo = this.getBranchSelectionInfo(currentPlayer);
+
+      // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
+      this.drawBoardBackground(
+        this.ctx,
+        this.canvas.width,
+        this.canvas.height,
+        isRepeatDark,
+        branchInfo,
+      );
+
+      // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
+      this.ctx.save();
+      this.ctx.translate(this.originX, this.originY);
+
+      this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark, branchInfo);
+
+      // 1. 各道ブロックの描画ループ
+      MAP_SQUARES.forEach((sq, idx) => {
+        if (idx >= 90 && idx <= 98) {
+          if (!isRepeatDark) {
+            return;
+          }
+        }
 
       const data = this.gridMap[idx];
       if (!data) return;
@@ -957,6 +1064,9 @@ window.boardManager = {
     }
 
     this.ctx.restore(); // originX, originY の配置終了
+    } finally {
+      this.ctx = prevCtx;
+    }
   },
 
   bindSocketListeners() {

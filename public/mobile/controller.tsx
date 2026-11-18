@@ -2094,7 +2094,7 @@ function initMobileListeners() {
         );
         targetModule.event(p, targetModule);
       }
-      // 🚀 パターンB-2：宅飲みマスの場合（スマホに全員の敗者選択ボタンを展開）
+      // 🚀 パターンB-2：宅飲みマスの場合（スマホに全員の敗者選択ボタンを展開：複数選択対応）
       else if (p.location === "宅飲み") {
         console.log(
           `📱 [4.2 宅飲みミニゲーム] マスID: ${currentPos}。敗者選択画面を展開します。`,
@@ -2124,7 +2124,7 @@ function initMobileListeners() {
             } else if (currentPos === 96) {
               penaltyDrinks = 2;
             }
-            return `<button type="button" class="btn-takunomi-select btn-orange" data-player-id="${pl.id}" data-player-name="${pl.name}" data-drinks="${penaltyDrinks}" style="width:100%; max-width:300px; padding:12px; font-weight:bold; font-size:1.05rem; border-radius:10px; cursor:pointer;">🚨 ${pl.name} アウト！（🍺 ＋${penaltyDrinks}杯）</button>`;
+            return `<button type="button" class="btn-takunomi-select" data-player-id="${pl.id}" data-player-name="${pl.name}" data-drinks="${penaltyDrinks}" style="width:100%; max-width:300px; padding:11px 14px; font-weight:bold; font-size:1rem; border-radius:10px; border:2px solid #ccc; background:#ffffff; color:#333333; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${pl.name} アウト！</button>`;
           })
           .join("");
 
@@ -2132,9 +2132,10 @@ function initMobileListeners() {
           <div id="takunomi-loser-zone" style="width:100%; display:flex; flex-direction:column; gap:8px; margin:10px auto; align-items:center;">
             <div style="font-weight:bold; font-size:1.05rem; color:#e65100; margin-bottom:4px; text-align:center;">
               🎲 ${targetModule.text || "宅飲みゲーム！"}<br>
-              <span style="font-size:0.9rem; color:#333;">👉 <strong>${p.name}</strong> から始まる！負けた人をタップ👇</span>
+              <span style="font-size:0.9rem; color:#333;">👉 <strong>${p.name}</strong> から始まる！負けた人をタップ（複数可）👇</span>
             </div>
             ${buttonsHtml}
+            <button type="button" id="btn-takunomi-confirm" disabled style="width:100%; max-width:300px; padding:12px 14px; font-weight:bold; font-size:1.05rem; border:none; border-radius:10px; background:#cccccc; color:#ffffff; cursor:not-allowed; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">負けた人を選択してください</button>
           </div>
         `;
 
@@ -2144,13 +2145,38 @@ function initMobileListeners() {
           playScreen.insertAdjacentHTML("beforeend", inlineZoneHtml);
         }
 
+        const selectedMap = new Map<
+          string,
+          { loserId: string; loserName: string; drinkAmount: number }
+        >();
+        const confirmBtn = document.getElementById(
+          "btn-takunomi-confirm",
+        ) as HTMLButtonElement | null;
+
+        const updateConfirmButton = () => {
+          if (!confirmBtn) return;
+          const count = selectedMap.size;
+          if (count > 0) {
+            confirmBtn.disabled = false;
+            confirmBtn.style.background =
+              "linear-gradient(135deg, #d84315 0%, #ff6f00 100%)";
+            confirmBtn.style.cursor = "pointer";
+            confirmBtn.textContent = `🚨 ${count}人アウトで確定する`;
+          } else {
+            confirmBtn.disabled = true;
+            confirmBtn.style.background = "#cccccc";
+            confirmBtn.style.cursor = "not-allowed";
+            confirmBtn.textContent = "負けた人を選択してください";
+          }
+        };
+
         const selectBtns = document.querySelectorAll(
           "#takunomi-loser-zone .btn-takunomi-select",
         );
         selectBtns.forEach((btn) => {
           (btn as HTMLButtonElement).onclick = (e) => {
             e.preventDefault();
-            const targetEl = e.currentTarget as HTMLElement;
+            const targetEl = e.currentTarget as HTMLButtonElement;
             const loserId = targetEl.getAttribute("data-player-id") || "";
             const loserName =
               targetEl.getAttribute("data-player-name") || "プレイヤー";
@@ -2158,6 +2184,34 @@ function initMobileListeners() {
               targetEl.getAttribute("data-drinks") || "1",
               10,
             );
+
+            if (selectedMap.has(loserId)) {
+              selectedMap.delete(loserId);
+              targetEl.style.borderColor = "#ccc";
+              targetEl.style.background = "#ffffff";
+              targetEl.style.color = "#333333";
+            } else {
+              selectedMap.set(loserId, {
+                loserId,
+                loserName,
+                drinkAmount: drinkAmt,
+              });
+              targetEl.style.borderColor = "#d84315";
+              targetEl.style.background =
+                "linear-gradient(135deg, #ff6f00 0%, #e53935 100%)";
+              targetEl.style.color = "#ffffff";
+            }
+            updateConfirmButton();
+          };
+        });
+
+        if (confirmBtn) {
+          confirmBtn.onclick = (e) => {
+            e.preventDefault();
+            if (selectedMap.size === 0) return;
+
+            const losersList = Array.from(selectedMap.values());
+            const selectedNames = losersList.map((l) => l.loserName);
             const sqHappiness =
               targetModule.happiness !== undefined
                 ? Number(targetModule.happiness)
@@ -2169,20 +2223,21 @@ function initMobileListeners() {
               (spinBtn as HTMLButtonElement).disabled = true;
             }
             if (resDisplay) {
-              resDisplay.textContent = `🚨 ${loserName} アウト！（🍺 ＋${drinkAmt}杯）`;
+              resDisplay.textContent = `🚨 ${selectedNames.join("・")} アウト！`;
             }
 
             socket.emit("takunomiLoserSelected", {
               roomCode: currentRoomCode,
               squareId: currentPos,
-              loserId,
-              loserName,
-              drinkAmount: drinkAmt,
+              losers: losersList,
+              loserId: losersList[0].loserId,
+              loserName: selectedNames.join("・"),
+              drinkAmount: losersList[0].drinkAmount,
               squareHappiness: sqHappiness,
               activePlayerId: p.id,
             });
           };
-        });
+        }
       }
       // 🚀 パターンC：通常・回復・留年・分岐マスの扱い（効果計算後に完了通知を返して次へ）
       else {

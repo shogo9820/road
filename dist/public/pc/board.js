@@ -11,6 +11,8 @@ window.boardManager = {
     originY: 0,
     hasResizeListener: false,
     previewRouteIdx: null,
+    _isTransitioningRepeatDark: false,
+    _repeatFadeRaf: 0,
     // マス種別ごとの基本カラー
     squareColors: {
         start: "#43a047",
@@ -597,164 +599,111 @@ window.boardManager = {
         if (!this.ctx)
             return;
         this.updateDimensions();
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
             return;
         const currentPlayer = playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
-        const isRepeatDark = Boolean(currentPlayer && currentPlayer.isRepeat);
-        const branchInfo = this.getBranchSelectionInfo(currentPlayer);
-        // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
-        this.drawBoardBackground(this.ctx, this.canvas.width, this.canvas.height, isRepeatDark, branchInfo);
-        // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
-        this.ctx.save();
-        this.ctx.translate(this.originX, this.originY);
-        this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark, branchInfo);
-        // 1. 各道ブロックの描画ループ
-        MAP_SQUARES.forEach((sq, idx) => {
-            if (idx >= 90 && idx <= 98) {
-                if (!currentPlayer || currentPlayer.isRepeat !== true) {
-                    return;
-                }
-            }
-            const data = this.gridMap[idx];
-            if (!data)
-                return;
-            const px = data.x * this.cellSize;
-            const py = data.y * this.cellSize;
-            const pw = data.w * this.cellSize;
-            const ph = data.h * this.cellSize;
-            const cx = px + pw / 2;
-            const cy = py + ph / 2;
-            const specialTheme = this.specialSquareThemes[idx];
-            const isBigSquare = data.w >= 5 || Boolean(specialTheme);
-            this.ctx.save();
-            if (specialTheme) {
-                // 🌟 特別マス（0:START, 18:入学式, 30:保険, 41:カップル, 49:ランクUP, 80:引退, 89:卒業判定, 99:GOAL）
-                // 立体ドロップシャドウ
-                this.drawRoundedRect(this.ctx, px + 2, py + 3, pw, ph, 10);
-                this.ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
-                this.ctx.fill();
-                // グラデーション背景
-                const sqGrad = this.ctx.createLinearGradient(px, py, px, py + ph);
-                sqGrad.addColorStop(0, specialTheme.accent);
-                sqGrad.addColorStop(1, specialTheme.bg);
-                this.drawRoundedRect(this.ctx, px, py, pw, ph, 10);
-                this.ctx.fillStyle = sqGrad;
-                this.ctx.fill();
-                // 枠線（2重枠で特別感を演出）
-                this.ctx.lineWidth = 2.5;
-                this.ctx.strokeStyle = specialTheme.border;
-                this.ctx.stroke();
-                // アイコン＋番号＋ラベル描画
-                this.ctx.fillStyle = "#ffffff";
-                this.ctx.textAlign = "center";
-                this.ctx.textBaseline = "middle";
-                if (idx === 0 || idx === 99) {
-                    this.ctx.font = "bold 18px sans-serif";
-                    this.ctx.fillText(specialTheme.icon, cx, cy - 14);
-                    this.ctx.font = "900 14px 'M PLUS Rounded 1c', sans-serif";
-                    this.ctx.fillText(specialTheme.label, cx, cy + 8);
-                }
-                else {
-                    this.ctx.font = "bold 14px sans-serif";
-                    this.ctx.fillText(`${specialTheme.icon}${idx}`, cx, cy - 9);
-                    this.ctx.font = "bold 10px 'M PLUS Rounded 1c', sans-serif";
-                    this.ctx.fillText(specialTheme.label, cx, cy + 10);
-                }
+        if (this._isTransitioningRepeatDark) {
+            if (currentPlayer && !currentPlayer.isRepeat) {
+                if (this._repeatFadeRaf)
+                    cancelAnimationFrame(this._repeatFadeRaf);
+                this._repeatFadeRaf = 0;
+                this._isTransitioningRepeatDark = false;
             }
             else {
-                // 🎲 通常マス・役職マス・回復マス・留年マス
-                let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
-                let strokeColor = "#e0c38c";
-                let textColor = "#333333";
-                if (sq.type === "jobChallenge" ||
-                    (sq.text && sq.text.includes("【役職マス】"))) {
-                    fillColor = this.squareColors.jobChallenge;
-                    strokeColor = "#ffffff";
-                    textColor = "#ffffff";
-                }
-                else if (sq.type === "heal") {
-                    fillColor = this.squareColors.heal;
-                    strokeColor = "#ffffff";
-                    textColor = "#ffffff";
-                }
-                else if (sq.type === "rankup_chance") {
-                    fillColor = "#ff9800";
-                    strokeColor = "#ffffff";
-                    textColor = "#ffffff";
-                }
-                else if (sq.type === "repeat") {
-                    fillColor = this.squareColors.repeat;
-                    strokeColor = "#ba68c8";
-                    textColor = "#ffffff";
-                }
-                else if (sq.text && sq.text.trim() !== "") {
-                    // イベントテキストが入っている通常マスは温かみのあるクリーム色＋オレンジ枠
-                    fillColor = "#fff9e6";
-                    strokeColor = "#ffb74d";
-                    textColor = "#4e342e";
-                }
-                else {
-                    fillColor = "#ffffff";
-                    strokeColor = "#cfd8dc";
-                    textColor = "#78909c";
-                }
-                // 立体シャドウ
-                this.drawRoundedRect(this.ctx, px + 1, py + 2, pw, ph, 6);
-                this.ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
-                this.ctx.fill();
-                // 本体
-                this.drawRoundedRect(this.ctx, px, py, pw, ph, 6);
-                this.ctx.fillStyle = fillColor;
-                this.ctx.fill();
-                this.ctx.lineWidth = 1.5;
-                this.ctx.strokeStyle = strokeColor;
-                this.ctx.stroke();
-                // マス番号
-                this.ctx.fillStyle = textColor;
-                this.ctx.font = isBigSquare
-                    ? "bold 12px sans-serif"
-                    : "bold 11px sans-serif";
-                this.ctx.textAlign = "center";
-                this.ctx.textBaseline = "middle";
-                this.ctx.fillText(sq.id.toString(), cx, cy);
+                return;
             }
-            // ✨ 現在手番プレイヤーが立っているマスの強調ハイライト枠
-            if (currentPlayer && Number(currentPlayer.position) === idx) {
-                const radius = specialTheme ? 12 : 8;
-                // 外側の発光リング
-                this.drawRoundedRect(this.ctx, px - 4, py - 4, pw + 8, ph + 8, radius + 2);
-                this.ctx.lineWidth = 5;
-                this.ctx.strokeStyle = "rgba(255, 235, 59, 0.75)";
-                this.ctx.stroke();
-                // 内側のシャープなゴールド枠
-                this.drawRoundedRect(this.ctx, px - 2, py - 2, pw + 4, ph + 4, radius);
-                this.ctx.lineWidth = 2.5;
-                this.ctx.strokeStyle = "#ff6f00";
-                this.ctx.stroke();
+        }
+        this._renderBoard(this.ctx, playersList, activeIdx, null);
+    },
+    transitionToRepeatDark(playersList, activeIdx, durationMs = 3500) {
+        if (!this.ctx || !this.canvas)
+            this.init();
+        if (!this.ctx || !this.canvas)
+            return;
+        this.updateDimensions();
+        if (typeof MAP_SQUARES === "undefined" || !Array.isArray(MAP_SQUARES))
+            return;
+        if (this._repeatFadeRaf) {
+            cancelAnimationFrame(this._repeatFadeRaf);
+            this._repeatFadeRaf = 0;
+        }
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const lightCanvas = document.createElement("canvas");
+        lightCanvas.width = w;
+        lightCanvas.height = h;
+        const lightCtx = lightCanvas.getContext("2d");
+        const darkCanvas = document.createElement("canvas");
+        darkCanvas.width = w;
+        darkCanvas.height = h;
+        const darkCtx = darkCanvas.getContext("2d");
+        if (!lightCtx || !darkCtx) {
+            this._isTransitioningRepeatDark = false;
+            this.draw(playersList, activeIdx);
+            return;
+        }
+        this._renderBoard(lightCtx, playersList, activeIdx, false);
+        this._renderBoard(darkCtx, playersList, activeIdx, true);
+        this._isTransitioningRepeatDark = true;
+        const startTime = performance.now();
+        const step = (now) => {
+            if (!this._isTransitioningRepeatDark || !this.ctx || !this.canvas)
+                return;
+            const rawT = Math.min(1, Math.max(0, (now - startTime) / durationMs));
+            const easedT = rawT < 0.5
+                ? 2 * rawT * rawT
+                : 1 - Math.pow(-2 * rawT + 2, 2) / 2;
+            this.ctx.save();
+            this.ctx.clearRect(0, 0, w, h);
+            this.ctx.globalAlpha = 1;
+            this.ctx.drawImage(lightCanvas, 0, 0);
+            this.ctx.globalAlpha = easedT;
+            this.ctx.drawImage(darkCanvas, 0, 0);
+            // 周囲から暗闇がじわじわ滲み込むビネット演出
+            const vignetteAlpha = 0.32 * Math.sin(Math.PI * rawT);
+            if (vignetteAlpha > 0.01) {
+                this.ctx.globalAlpha = 1;
+                const grad = this.ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.15, w / 2, h / 2, Math.max(w, h) * 0.72);
+                grad.addColorStop(0, "rgba(18, 11, 24, 0)");
+                grad.addColorStop(1, `rgba(18, 11, 24, ${vignetteAlpha.toFixed(3)})`);
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(0, 0, w, h);
             }
             this.ctx.restore();
-        });
-        // 2. 周辺マスのエピソード・季節感にちなんだスタンプ風絵文字の描画（マスより前面の装飾レイヤー）
-        this.drawSeasonalEmojiStamps(this.ctx, isRepeatDark);
-        // 3. 分岐選択時のルート強調演出（行く方をネオン発光＋矢印ガイド、行かない方をほんのり薄く）
-        if (branchInfo) {
-            // 3-1. 行かない側のマスをほんのり半透明ヴェールで控えめに
-            branchInfo.inactiveSquares.forEach((idx) => {
-                const data = this.gridMap[idx];
-                if (!data)
-                    return;
-                const radius = this.specialSquareThemes[idx] ? 10 : 6;
-                this.ctx.save();
-                this.drawRoundedRect(this.ctx, data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize, radius);
-                this.ctx.fillStyle = isRepeatDark
-                    ? "rgba(0, 0, 0, 0.45)"
-                    : "rgba(255, 255, 255, 0.52)";
-                this.ctx.fill();
-                this.ctx.restore();
-            });
-            // 3-2. 行く側のマス枠をネオン/ゴールド発光ハイライト
-            branchInfo.activeSquares.forEach((idx) => {
+            if (rawT < 1) {
+                this._repeatFadeRaf = requestAnimationFrame(step);
+            }
+            else {
+                this._isTransitioningRepeatDark = false;
+                this._repeatFadeRaf = 0;
+                this._renderBoard(this.ctx, playersList, activeIdx, true);
+            }
+        };
+        this._repeatFadeRaf = requestAnimationFrame(step);
+    },
+    _renderBoard(targetCtx, playersList, activeIdx, forceRepeatOverride) {
+        const prevCtx = this.ctx;
+        this.ctx = targetCtx;
+        try {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            const currentPlayer = playersList && playersList[activeIdx] ? playersList[activeIdx] : null;
+            const isRepeatDark = forceRepeatOverride !== null && forceRepeatOverride !== undefined
+                ? Boolean(forceRepeatOverride)
+                : Boolean(currentPlayer && currentPlayer.isRepeat);
+            const branchInfo = this.getBranchSelectionInfo(currentPlayer);
+            // 0. ボード背景（中央エリアの端から端まで全画面グラデーション）
+            this.drawBoardBackground(this.ctx, this.canvas.width, this.canvas.height, isRepeatDark, branchInfo);
+            // 盤面本体（道ライン、マス、スタンプ、ピン）を中央に最大化配置
+            this.ctx.save();
+            this.ctx.translate(this.originX, this.originY);
+            this.drawRoutePaths(this.ctx, currentPlayer, isRepeatDark, branchInfo);
+            // 1. 各道ブロックの描画ループ
+            MAP_SQUARES.forEach((sq, idx) => {
+                if (idx >= 90 && idx <= 98) {
+                    if (!isRepeatDark) {
+                        return;
+                    }
+                }
                 const data = this.gridMap[idx];
                 if (!data)
                     return;
@@ -762,101 +711,244 @@ window.boardManager = {
                 const py = data.y * this.cellSize;
                 const pw = data.w * this.cellSize;
                 const ph = data.h * this.cellSize;
-                const radius = this.specialSquareThemes[idx] ? 10 : 6;
+                const cx = px + pw / 2;
+                const cy = py + ph / 2;
+                const specialTheme = this.specialSquareThemes[idx];
+                const isBigSquare = data.w >= 5 || Boolean(specialTheme);
                 this.ctx.save();
-                this.drawRoundedRect(this.ctx, px - 3, py - 3, pw + 6, ph + 6, radius + 2);
-                this.ctx.lineWidth = 3.5;
-                this.ctx.strokeStyle = branchInfo.borderColor;
+                if (specialTheme) {
+                    // 🌟 特別マス（0:START, 18:入学式, 30:保険, 41:カップル, 49:ランクUP, 80:引退, 89:卒業判定, 99:GOAL）
+                    // 立体ドロップシャドウ
+                    this.drawRoundedRect(this.ctx, px + 2, py + 3, pw, ph, 10);
+                    this.ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+                    this.ctx.fill();
+                    // グラデーション背景
+                    const sqGrad = this.ctx.createLinearGradient(px, py, px, py + ph);
+                    sqGrad.addColorStop(0, specialTheme.accent);
+                    sqGrad.addColorStop(1, specialTheme.bg);
+                    this.drawRoundedRect(this.ctx, px, py, pw, ph, 10);
+                    this.ctx.fillStyle = sqGrad;
+                    this.ctx.fill();
+                    // 枠線（2重枠で特別感を演出）
+                    this.ctx.lineWidth = 2.5;
+                    this.ctx.strokeStyle = specialTheme.border;
+                    this.ctx.stroke();
+                    // アイコン＋番号＋ラベル描画
+                    this.ctx.fillStyle = "#ffffff";
+                    this.ctx.textAlign = "center";
+                    this.ctx.textBaseline = "middle";
+                    if (idx === 0 || idx === 99) {
+                        this.ctx.font = "bold 18px sans-serif";
+                        this.ctx.fillText(specialTheme.icon, cx, cy - 14);
+                        this.ctx.font = "900 14px 'M PLUS Rounded 1c', sans-serif";
+                        this.ctx.fillText(specialTheme.label, cx, cy + 8);
+                    }
+                    else {
+                        this.ctx.font = "bold 14px sans-serif";
+                        this.ctx.fillText(`${specialTheme.icon}${idx}`, cx, cy - 9);
+                        this.ctx.font = "bold 10px 'M PLUS Rounded 1c', sans-serif";
+                        this.ctx.fillText(specialTheme.label, cx, cy + 10);
+                    }
+                }
+                else {
+                    // 🎲 通常マス・役職マス・回復マス・留年マス
+                    let fillColor = this.squareColors[sq.type] || this.squareColors.normal;
+                    let strokeColor = "#e0c38c";
+                    let textColor = "#333333";
+                    if (sq.type === "jobChallenge" ||
+                        (sq.text && sq.text.includes("【役職マス】"))) {
+                        fillColor = this.squareColors.jobChallenge;
+                        strokeColor = "#ffffff";
+                        textColor = "#ffffff";
+                    }
+                    else if (sq.type === "heal") {
+                        fillColor = this.squareColors.heal;
+                        strokeColor = "#ffffff";
+                        textColor = "#ffffff";
+                    }
+                    else if (sq.type === "rankup_chance") {
+                        fillColor = "#ff9800";
+                        strokeColor = "#ffffff";
+                        textColor = "#ffffff";
+                    }
+                    else if (sq.type === "repeat") {
+                        fillColor = this.squareColors.repeat;
+                        strokeColor = "#ba68c8";
+                        textColor = "#ffffff";
+                    }
+                    else if (sq.text && sq.text.trim() !== "") {
+                        // イベントテキストが入っている通常マスは温かみのあるクリーム色＋オレンジ枠
+                        fillColor = "#fff9e6";
+                        strokeColor = "#ffb74d";
+                        textColor = "#4e342e";
+                    }
+                    else {
+                        fillColor = "#ffffff";
+                        strokeColor = "#cfd8dc";
+                        textColor = "#78909c";
+                    }
+                    // 立体シャドウ
+                    this.drawRoundedRect(this.ctx, px + 1, py + 2, pw, ph, 6);
+                    this.ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+                    this.ctx.fill();
+                    // 本体
+                    this.drawRoundedRect(this.ctx, px, py, pw, ph, 6);
+                    this.ctx.fillStyle = fillColor;
+                    this.ctx.fill();
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.strokeStyle = strokeColor;
+                    this.ctx.stroke();
+                    // マス番号
+                    this.ctx.fillStyle = textColor;
+                    this.ctx.font = isBigSquare
+                        ? "bold 12px sans-serif"
+                        : "bold 11px sans-serif";
+                    this.ctx.textAlign = "center";
+                    this.ctx.textBaseline = "middle";
+                    this.ctx.fillText(sq.id.toString(), cx, cy);
+                }
+                // ✨ 現在手番プレイヤーが立っているマスの強調ハイライト枠
+                if (currentPlayer && Number(currentPlayer.position) === idx) {
+                    const radius = specialTheme ? 12 : 8;
+                    // 外側の発光リング
+                    this.drawRoundedRect(this.ctx, px - 4, py - 4, pw + 8, ph + 8, radius + 2);
+                    this.ctx.lineWidth = 5;
+                    this.ctx.strokeStyle = "rgba(255, 235, 59, 0.75)";
+                    this.ctx.stroke();
+                    // 内側のシャープなゴールド枠
+                    this.drawRoundedRect(this.ctx, px - 2, py - 2, pw + 4, ph + 4, radius);
+                    this.ctx.lineWidth = 2.5;
+                    this.ctx.strokeStyle = "#ff6f00";
+                    this.ctx.stroke();
+                }
+                this.ctx.restore();
+            });
+            // 2. 周辺マスのエピソード・季節感にちなんだスタンプ風絵文字の描画（マスより前面の装飾レイヤー）
+            this.drawSeasonalEmojiStamps(this.ctx, isRepeatDark);
+            // 3. 分岐選択時のルート強調演出（行く方をネオン発光＋矢印ガイド、行かない方をほんのり薄く）
+            if (branchInfo) {
+                // 3-1. 行かない側のマスをほんのり半透明ヴェールで控えめに
+                branchInfo.inactiveSquares.forEach((idx) => {
+                    const data = this.gridMap[idx];
+                    if (!data)
+                        return;
+                    const radius = this.specialSquareThemes[idx] ? 10 : 6;
+                    this.ctx.save();
+                    this.drawRoundedRect(this.ctx, data.x * this.cellSize, data.y * this.cellSize, data.w * this.cellSize, data.h * this.cellSize, radius);
+                    this.ctx.fillStyle = isRepeatDark
+                        ? "rgba(0, 0, 0, 0.45)"
+                        : "rgba(255, 255, 255, 0.52)";
+                    this.ctx.fill();
+                    this.ctx.restore();
+                });
+                // 3-2. 行く側のマス枠をネオン/ゴールド発光ハイライト
+                branchInfo.activeSquares.forEach((idx) => {
+                    const data = this.gridMap[idx];
+                    if (!data)
+                        return;
+                    const px = data.x * this.cellSize;
+                    const py = data.y * this.cellSize;
+                    const pw = data.w * this.cellSize;
+                    const ph = data.h * this.cellSize;
+                    const radius = this.specialSquareThemes[idx] ? 10 : 6;
+                    this.ctx.save();
+                    this.drawRoundedRect(this.ctx, px - 3, py - 3, pw + 6, ph + 6, radius + 2);
+                    this.ctx.lineWidth = 3.5;
+                    this.ctx.strokeStyle = branchInfo.borderColor;
+                    this.ctx.shadowColor = branchInfo.glowColor;
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.stroke();
+                    this.ctx.shadowBlur = 0;
+                    this.drawRoundedRect(this.ctx, px - 1, py - 1, pw + 2, ph + 2, radius);
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.strokeStyle = "#ffffff";
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                });
+                // 3-3. 分岐マスから1歩目のマスへ向かう光る進行方向矢印を描画
+                const fromC = this.getCoordinates(branchInfo.branchPos);
+                const toC = this.getCoordinates(branchInfo.firstStepSq);
+                const dx = toC.x - fromC.x;
+                const dy = toC.y - fromC.y;
+                const angle = Math.atan2(dy, dx);
+                const ax = fromC.x + dx * 0.58;
+                const ay = fromC.y + dy * 0.58;
+                const arrowSize = Math.max(8, this.cellSize * 0.65);
+                this.ctx.save();
+                this.ctx.translate(ax, ay);
+                this.ctx.rotate(angle);
+                this.ctx.beginPath();
+                this.ctx.moveTo(arrowSize, 0);
+                this.ctx.lineTo(-arrowSize * 0.65, -arrowSize * 0.72);
+                this.ctx.lineTo(-arrowSize * 0.3, 0);
+                this.ctx.lineTo(-arrowSize * 0.65, arrowSize * 0.72);
+                this.ctx.closePath();
                 this.ctx.shadowColor = branchInfo.glowColor;
                 this.ctx.shadowBlur = 10;
-                this.ctx.stroke();
+                this.ctx.fillStyle = branchInfo.borderColor;
+                this.ctx.fill();
                 this.ctx.shadowBlur = 0;
-                this.drawRoundedRect(this.ctx, px - 1, py - 1, pw + 2, ph + 2, radius);
-                this.ctx.lineWidth = 1.5;
+                this.ctx.lineWidth = 2;
                 this.ctx.strokeStyle = "#ffffff";
                 this.ctx.stroke();
                 this.ctx.restore();
-            });
-            // 3-3. 分岐マスから1歩目のマスへ向かう光る進行方向矢印を描画
-            const fromC = this.getCoordinates(branchInfo.branchPos);
-            const toC = this.getCoordinates(branchInfo.firstStepSq);
-            const dx = toC.x - fromC.x;
-            const dy = toC.y - fromC.y;
-            const angle = Math.atan2(dy, dx);
-            const ax = fromC.x + dx * 0.58;
-            const ay = fromC.y + dy * 0.58;
-            const arrowSize = Math.max(8, this.cellSize * 0.65);
-            this.ctx.save();
-            this.ctx.translate(ax, ay);
-            this.ctx.rotate(angle);
-            this.ctx.beginPath();
-            this.ctx.moveTo(arrowSize, 0);
-            this.ctx.lineTo(-arrowSize * 0.65, -arrowSize * 0.72);
-            this.ctx.lineTo(-arrowSize * 0.3, 0);
-            this.ctx.lineTo(-arrowSize * 0.65, arrowSize * 0.72);
-            this.ctx.closePath();
-            this.ctx.shadowColor = branchInfo.glowColor;
-            this.ctx.shadowBlur = 10;
-            this.ctx.fillStyle = branchInfo.borderColor;
-            this.ctx.fill();
-            this.ctx.shadowBlur = 0;
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeStyle = "#ffffff";
-            this.ctx.stroke();
-            this.ctx.restore();
-        }
-        // 3. ピンの描画（プレイヤー番号入りで視認性アップ）
-        if (playersList && Array.isArray(playersList)) {
-            const positionCounts = {};
-            playersList.forEach((pl, idx) => {
-                const currentPos = pl.position !== undefined ? pl.position : 0;
-                const coords = this.getCoordinates(currentPos);
-                if (positionCounts[currentPos] === undefined)
-                    positionCounts[currentPos] = 0;
-                const offsetIdx = positionCounts[currentPos];
-                positionCounts[currentPos]++;
-                let offsetX = 0;
-                let offsetY = 0;
-                if (offsetIdx > 0) {
-                    const angle = (offsetIdx * Math.PI * 2) / 4;
-                    offsetX = Math.cos(angle) * 11;
-                    offsetY = Math.sin(angle) * 11;
-                }
-                const pinX = coords.x + offsetX;
-                const pinY = coords.y + offsetY;
-                const pinColor = pl.color || this.playerColors[idx % this.playerColors.length];
-                const isCurrent = idx === activeIdx;
-                const radius = isCurrent ? 9.5 : 7.5;
-                this.ctx.save();
-                // 手番プレイヤーの強調グロー
-                if (isCurrent) {
+            }
+            // 3. ピンの描画（プレイヤー番号入りで視認性アップ）
+            if (playersList && Array.isArray(playersList)) {
+                const positionCounts = {};
+                playersList.forEach((pl, idx) => {
+                    const currentPos = pl.position !== undefined ? pl.position : 0;
+                    const coords = this.getCoordinates(currentPos);
+                    if (positionCounts[currentPos] === undefined)
+                        positionCounts[currentPos] = 0;
+                    const offsetIdx = positionCounts[currentPos];
+                    positionCounts[currentPos]++;
+                    let offsetX = 0;
+                    let offsetY = 0;
+                    if (offsetIdx > 0) {
+                        const angle = (offsetIdx * Math.PI * 2) / 4;
+                        offsetX = Math.cos(angle) * 11;
+                        offsetY = Math.sin(angle) * 11;
+                    }
+                    const pinX = coords.x + offsetX;
+                    const pinY = coords.y + offsetY;
+                    const pinColor = pl.color || this.playerColors[idx % this.playerColors.length];
+                    const isCurrent = idx === activeIdx;
+                    const radius = isCurrent ? 9.5 : 7.5;
+                    this.ctx.save();
+                    // 手番プレイヤーの強調グロー
+                    if (isCurrent) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(pinX, pinY, radius + 3, 0, Math.PI * 2);
+                        this.ctx.fillStyle = "rgba(255, 235, 59, 0.75)";
+                        this.ctx.fill();
+                    }
+                    // ピンの影と外枠
                     this.ctx.beginPath();
-                    this.ctx.arc(pinX, pinY, radius + 3, 0, Math.PI * 2);
-                    this.ctx.fillStyle = "rgba(255, 235, 59, 0.75)";
+                    this.ctx.arc(pinX, pinY + 1.5, radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
                     this.ctx.fill();
-                }
-                // ピンの影と外枠
-                this.ctx.beginPath();
-                this.ctx.arc(pinX, pinY + 1.5, radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-                this.ctx.fill();
-                this.ctx.beginPath();
-                this.ctx.arc(pinX, pinY, radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = pinColor;
-                this.ctx.fill();
-                this.ctx.lineWidth = isCurrent ? 2.5 : 1.5;
-                this.ctx.strokeStyle = "#ffffff";
-                this.ctx.stroke();
-                // ピンの中のプレイヤー番号
-                this.ctx.fillStyle = "#ffffff";
-                this.ctx.font = "bold 9px sans-serif";
-                this.ctx.textAlign = "center";
-                this.ctx.textBaseline = "middle";
-                this.ctx.fillText(String(idx + 1), pinX, pinY + 0.5);
-                this.ctx.restore();
-            });
+                    this.ctx.beginPath();
+                    this.ctx.arc(pinX, pinY, radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = pinColor;
+                    this.ctx.fill();
+                    this.ctx.lineWidth = isCurrent ? 2.5 : 1.5;
+                    this.ctx.strokeStyle = "#ffffff";
+                    this.ctx.stroke();
+                    // ピンの中のプレイヤー番号
+                    this.ctx.fillStyle = "#ffffff";
+                    this.ctx.font = "bold 9px sans-serif";
+                    this.ctx.textAlign = "center";
+                    this.ctx.textBaseline = "middle";
+                    this.ctx.fillText(String(idx + 1), pinX, pinY + 0.5);
+                    this.ctx.restore();
+                });
+            }
+            this.ctx.restore(); // originX, originY の配置終了
         }
-        this.ctx.restore(); // originX, originY の配置終了
+        finally {
+            this.ctx = prevCtx;
+        }
     },
     bindSocketListeners() {
         if (typeof socket === "undefined" || this.hasBound)

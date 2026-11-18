@@ -217,24 +217,66 @@
 .event-roulette-wheel .num-10  { transform: rotate(342deg) translate(0, -95px); }
 
 /* ==========================================================================
-   💀 留年確定時：地獄のダークモード演出スタイル
+   💀 留年確定時：地獄のダークモード演出スタイル（3.5秒かけて徐々に暗転）
    ========================================================================== */
 body.theme-repeat-dark {
   background-color: #120b18 !important;
   color: #e1bee7 !important;
-  transition: background-color 1.5s ease;
+  transition: background-color 3.5s ease-in-out, color 3.5s ease-in-out;
+}
+
+body.theme-repeat-dark .map-card-maximized,
+body.theme-repeat-dark .card,
+body.theme-repeat-dark .phone-card,
+body.theme-repeat-dark .color-legend-item,
+body.theme-repeat-dark .event-card-container {
+  transition:
+    background-color 3.5s ease-in-out,
+    border-color 3.5s ease-in-out,
+    box-shadow 3.5s ease-in-out,
+    color 3.5s ease-in-out;
 }
 
 body.theme-repeat-dark .map-card-maximized,
 body.theme-repeat-dark .card,
 body.theme-repeat-dark .phone-card {
-  background: #1e1226 !important;
+  background-color: #1e1226 !important;
   border-color: #6a1b9a !important;
   box-shadow: 0 0 25px rgba(106, 27, 154, 0.4) !important;
 }
 
+body.theme-repeat-dark #pc-event-modal .event-card-container {
+  border-color: #ab47bc !important;
+  box-shadow: 0 0 40px rgba(171, 71, 188, 0.65), inset 0 0 0 999px rgba(30, 14, 46, 0.92) !important;
+  color: #f3e5f5 !important;
+}
+
+body.theme-repeat-dark #pc-event-modal .event-title {
+  color: #ea80fc !important;
+  transition: color 3.5s ease-in-out;
+}
+
+body.theme-repeat-dark #pc-event-modal .event-desc,
+body.theme-repeat-dark #pc-event-modal .result-display-zone {
+  color: #e1bee7 !important;
+  transition: color 3.5s ease-in-out;
+}
+
+body.theme-repeat-dark #pc-event-modal .event-table-area {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(171, 71, 188, 0.4) !important;
+  transition: background-color 3.5s ease-in-out, border-color 3.5s ease-in-out;
+}
+
+body.theme-repeat-dark #pc-event-modal .event-table-item {
+  background-color: rgba(38, 18, 54, 0.9) !important;
+  color: #f3e5f5 !important;
+  transition: background-color 3.5s ease-in-out, color 3.5s ease-in-out;
+}
+
 body.theme-repeat-dark #board-canvas {
   filter: drop-shadow(0 0 10px #7b1fa2) contrast(1.1);
+  transition: filter 3.5s ease-in-out;
 }
 
 /* 🌊 入学式イベント（theme-entrance）用カラー連動 */

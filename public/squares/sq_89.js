@@ -12,9 +12,9 @@ window.SQ_MODULES[89] = {
       themeClass: "theme-rankup",
       repeatThemeClass: "theme-repeat-dark",
       pcTitle: "🎓 運命の卒業判定 🎓",
-      pcDesc: "出目 6以上で卒業！5以下は留年...",
+      pcDesc: "ランダムに選ばれた5枠（50%）で卒業！外れると留年...",
       mobileTitle: "🎓 運命の卒業判定 🎓",
-      mobileDesc: "出目 6以上で卒業！<br>5以下は留年...",
+      mobileDesc: "ランダムに選ばれた5枠（50%）で卒業！<br>外れると留年...",
       mobileBtn: "⚡ 卒業判定ルーレットを回す！",
       mobileRepeatBtn: "💀 留年ルートへ進む！",
       mobileRepeatDisplay: "💀 5年生編スタート..."
@@ -62,11 +62,20 @@ window.SQ_MODULES[89] = {
         pcModal.className = "event-modal-overlay active " + cfg.themeClass;
         pcModal.style.display = "flex";
 
+        const passNumbers =
+          Array.isArray(square && square.passNumbers) &&
+          square.passNumbers.length === 5
+            ? square.passNumbers
+            : [6, 7, 8, 9, 10];
+        const passSet = new Set(passNumbers);
+
         const titleEl = document.getElementById("modal-event-title");
         if (titleEl) titleEl.textContent = cfg.pcTitle;
 
         const descEl = document.getElementById("modal-event-desc");
-        if (descEl) descEl.textContent = cfg.pcDesc;
+        if (descEl) {
+          descEl.textContent = `${player.name} さんの運命の卒業判定！当たり（${passNumbers.join("・")}）で卒業、それ以外は留年...`;
+        }
 
         const modalResultBox = document.getElementById("modal-event-result-box");
         if (modalResultBox) {
@@ -84,13 +93,19 @@ window.SQ_MODULES[89] = {
 
         const dynamicTableZone = document.getElementById("pc-event-table-dynamic-zone");
         if (dynamicTableZone) {
-          dynamicTableZone.innerHTML = `
-            <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定基準</div>
-            <ul class="event-table-list">
-              <li class="event-table-item"><div class="event-table-num-badge" style="background:#4caf50;">6〜10</div><div><span style="color:#2e7d32; font-weight:bold;">卒業！</span></div></li>
-              <li class="event-table-item"><div class="event-table-num-badge" style="background:#f44336;">1〜5</div><div><span style="color:#c62828; font-weight:bold;">留年...</span></div></li>
-            </ul>
-          `;
+          let tableHTML = `
+            <div class="event-title" style="font-size:1.3rem; color:#b78103; margin-bottom:8px; font-weight:bold; border-bottom:2px solid #f5a623; padding-bottom:4px;">📜 卒業判定対応表（ランダム50%）</div>
+            <ul class="event-table-list">`;
+          for (let i = 1; i <= 10; i++) {
+            const isPassSlot = passSet.has(i);
+            const badgeBg = isPassSlot ? "#4caf50" : "#f44336";
+            const rowText = isPassSlot
+              ? '<span style="color:#2e7d32; font-weight:bold;">🌸 卒業！</span>'
+              : '<span style="color:#c62828; font-weight:bold;">💀 留年...</span>';
+            tableHTML += `<li class="event-table-item"><div class="event-table-num-badge" style="background:${badgeBg};">${i}</div><div>${rowText}</div></li>`;
+          }
+          tableHTML += `</ul>`;
+          dynamicTableZone.innerHTML = tableHTML;
         }
 
         // 🎓 卒業ルーレット回転リスナー（3秒回転 ➔ 回り終えた時点で出目を表示）
@@ -138,7 +153,16 @@ window.SQ_MODULES[89] = {
             tileDescEl.innerHTML = `<p style="color: #9c27b0; font-weight: 900; font-size: 1.2rem; animation: pulse 1s infinite;">💀 ${data.playerName} は留年した...！留年ルート（90〜98）が開通！ 💀</p>`;
           }
 
-          if (window.boardManager) {
+          if (
+            window.boardManager &&
+            typeof window.boardManager.transitionToRepeatDark === "function"
+          ) {
+            window.boardManager.transitionToRepeatDark(
+              players,
+              activePlayerIndex,
+              3500
+            );
+          } else if (window.boardManager) {
             window.boardManager.draw(players, activePlayerIndex);
           }
         };
@@ -227,6 +251,19 @@ window.SQ_MODULES[89] = {
         socket.on("graduateFailedRepeat", mod._onFail);
 
         setTimeout(() => {
+          if (mod._onMobileShow)
+            socket.off("showGraduateEvent", mod._onMobileShow);
+          mod._onMobileShow = (data) => {
+            if (data && Array.isArray(data.passNumbers)) {
+              const modalEl = document.getElementById("mobile-couple-event-modal");
+              const desc = modalEl && modalEl.querySelector(".couple-desc");
+              if (desc) {
+                desc.innerHTML = `当たり（<strong>${data.passNumbers.join("・")}</strong>）で卒業！<br>外れると留年...`;
+              }
+            }
+          };
+          socket.once("showGraduateEvent", mod._onMobileShow);
+
           socket.emit("showGraduateEvent", {
             roomCode: targetRoom,
             playerName: player.name

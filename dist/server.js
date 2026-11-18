@@ -200,6 +200,17 @@ function applySubstituteDrinkIfNeeded(room) {
     });
 }
 // ==========================================================================
+// 🎓 89番マス（卒業判定）：1〜10からランダムに5つ（50%）を抽選
+// ==========================================================================
+function pickRandomGraduatePassNumbers() {
+    const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    for (let i = nums.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [nums[i], nums[j]] = [nums[j], nums[i]];
+    }
+    return nums.slice(0, 5).sort((a, b) => a - b);
+}
+// ==========================================================================
 // 🧭 ターン開始時共通ルーティン（休み消化・分岐判定・フェーズ自動決定）
 // ==========================================================================
 function startTurnRoutine(room, roomCode) {
@@ -210,6 +221,7 @@ function startTurnRoutine(room, roomCode) {
     room.currentPhase = PHASES.TURN_START;
     room.hasResolvedCurrentLanding = false;
     room.currentRankupFails = undefined;
+    room.currentGraduatePassNumbers = undefined;
     room.pendingKanpaiLocation = null;
     room.koreanModeActive = false;
     if (Array.isArray(room.gamePlayers)) {
@@ -410,9 +422,14 @@ io.on("connection", (socket) => {
                     activeP &&
                     Number(activeP.position) === 89 &&
                     !activeP.isRepeat) {
+                    if (!Array.isArray(room.currentGraduatePassNumbers) ||
+                        room.currentGraduatePassNumbers.length !== 5) {
+                        room.currentGraduatePassNumbers = pickRandomGraduatePassNumbers();
+                    }
                     socket.emit("showGraduateEvent", {
                         roomCode,
                         playerName: activeP.name,
+                        passNumbers: room.currentGraduatePassNumbers,
                     });
                 }
             }
@@ -788,14 +805,14 @@ io.on("connection", (socket) => {
             io.to(roomCode).emit("showGoalModal", data);
     });
     // ==========================================================================
-    // 🎲 【宅飲みミニゲーム：スマホで負けたプレイヤーを選択】
+    // 🎲 【宅飲みミニゲーム：スマホで負けたプレイヤーを選択（複数人対応）】
     // ==========================================================================
     socket.on("takunomiLoserSelected", (data) => {
         const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
         const room = roomCode ? rooms[roomCode] : null;
         if (!room || !room.gamePlayers)
             return;
-        const drinkAmount = data && data.drinkAmount !== undefined ? Number(data.drinkAmount) : 1;
+        const defaultDrinkAmount = data && data.drinkAmount !== undefined ? Number(data.drinkAmount) : 1;
         const squareHappiness = data && data.squareHappiness !== undefined
             ? Number(data.squareHappiness)
             : 0;
@@ -806,26 +823,60 @@ io.on("connection", (socket) => {
                 (activeP.happiness !== undefined ? activeP.happiness : 100) +
                     squareHappiness;
         }
-        // 選択された敗者プレイヤーに飲酒＆HP減少＆二日酔い判定を適用
-        const loser = room.gamePlayers.find((p) => String(p.id) === String(data.loserId) || p.name === data.loserName) || activeP;
-        if (loser) {
-            loser.drinkCount = (loser.drinkCount || 0) + drinkAmount;
+        const rawLosers = Array.isArray(data?.losers) && data.losers.length > 0
+            ? data.losers
+            : [
+                {
+                    loserId: data?.loserId,
+                    loserName: data?.loserName,
+                    drinkAmount: defaultDrinkAmount,
+                },
+            ];
+        const seenIds = new Set();
+        const appliedLosers = [];
+        for (const item of rawLosers) {
+            const loser = room.gamePlayers.find((p) => String(p.id) === String(item.loserId) || p.name === item.loserName) || (rawLosers.length === 1 ? activeP : null);
+            if (!loser)
+                continue;
+            const pid = String(loser.id);
+            if (seenIds.has(pid))
+                continue;
+            seenIds.add(pid);
+            const drinkAmt = item.drinkAmount !== undefined
+                ? Number(item.drinkAmount)
+                : defaultDrinkAmount;
+            loser.drinkCount = (loser.drinkCount || 0) + drinkAmt;
             const mHp = (loser.baseCap || 80) + (loser.bonusCap || 0);
             loser.currentHp = Math.max(0, (loser.currentHp !== undefined ? loser.currentHp : mHp) -
-                drinkAmount * 10);
+                drinkAmt * 10);
             if (loser.currentHp <= 0) {
                 loser.happiness = Math.max(0, (loser.happiness !== undefined ? loser.happiness : 100) - 30);
                 loser.skipTurn = true;
                 loser.currentHp = mHp;
             }
-            console.log(`🍻 [SERVER 宅飲み決着] ${loser.name} アウト！（+${drinkAmount}杯）`);
+            appliedLosers.push({ player: loser, drinkAmount: drinkAmt });
+            console.log(`🍻 [SERVER 宅飲み決着] ${loser.name} アウト！（+${drinkAmt}杯）`);
         }
         applySubstituteDrinkIfNeeded(room);
         room.currentPhase = PHASES.WAIT_NEXT;
+        const loserNames = appliedLosers.map((x) => x.player.name).join("・");
+        const firstDrink = appliedLosers[0]?.drinkAmount ?? defaultDrinkAmount;
+        const allSameDrink = appliedLosers.every((x) => x.drinkAmount === firstDrink);
+        const drinkSummary = appliedLosers.length > 0
+            ? allSameDrink
+                ? `🍺 ${loserNames} さんが ＋${firstDrink}杯 飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`
+                : `🍺 ${appliedLosers.map((x) => `${x.player.name}(＋${x.drinkAmount}杯)`).join("・")} が飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`
+            : `🍺 ${data?.loserName || "プレイヤー"} さんが ＋${defaultDrinkAmount}杯 飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`;
         io.to(roomCode).emit("takunomiEventFinished", {
-            loserId: loser ? loser.id : data.loserId,
-            loserName: loser ? loser.name : data.loserName,
-            drinkAmount,
+            loserId: appliedLosers[0]?.player.id ?? data?.loserId,
+            loserName: loserNames || data?.loserName,
+            losers: appliedLosers.map((x) => ({
+                loserId: x.player.id,
+                loserName: x.player.name,
+                drinkAmount: x.drinkAmount,
+            })),
+            drinkAmount: firstDrink,
+            drinkSummary,
         });
         io.to(roomCode).emit("enableNextTurnButton");
         io.to(roomCode).emit("syncGameState", {
@@ -839,8 +890,21 @@ io.on("connection", (socket) => {
     // ==========================================================================
     socket.on("showGraduateEvent", (data) => {
         const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
-        if (roomCode)
+        const room = roomCode ? rooms[roomCode] : null;
+        if (room && roomCode) {
+            if (!Array.isArray(room.currentGraduatePassNumbers) ||
+                room.currentGraduatePassNumbers.length !== 5) {
+                room.currentGraduatePassNumbers = pickRandomGraduatePassNumbers();
+            }
+            console.log(`🎓 [SERVER 卒業判定枠] 当たり(50%): [${room.currentGraduatePassNumbers.join(", ")}]`);
+            io.to(roomCode).emit("showGraduateEvent", {
+                ...data,
+                passNumbers: room.currentGraduatePassNumbers,
+            });
+        }
+        else if (roomCode) {
             io.to(roomCode).emit("showGraduateEvent", data);
+        }
     });
     socket.on("requestGraduateSpin", (data) => {
         const roomCode = data && data.roomCode ? data.roomCode : socket.roomCode;
@@ -850,9 +914,14 @@ io.on("connection", (socket) => {
         const p = room.gamePlayers[room.activePlayerIndex];
         if (!p)
             return;
+        if (!Array.isArray(room.currentGraduatePassNumbers) ||
+            room.currentGraduatePassNumbers.length !== 5) {
+            room.currentGraduatePassNumbers = pickRandomGraduatePassNumbers();
+        }
+        const passNumbers = room.currentGraduatePassNumbers;
         const resultNum = Math.floor(Math.random() * 10) + 1;
-        const isPass = resultNum >= 6;
-        console.log(`🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`);
+        const isPass = passNumbers.includes(resultNum);
+        console.log(`🎓 [SERVER 卒業判定] プレイヤー: ${p.name} / 出目: ${resultNum} / 合格枠: [${passNumbers.join(", ")}] / 結果: ${isPass ? "🌸 合格" : "💀 留年"}`);
         io.to(roomCode).emit("spinGraduateRoulette", {
             result: resultNum,
             isPass: isPass,

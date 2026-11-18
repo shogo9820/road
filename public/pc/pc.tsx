@@ -2320,7 +2320,11 @@ function appendSocketListeners() {
         const p = players[activePlayerIndex] || {
           name: data && data.playerName ? data.playerName : "プレイヤー",
         };
-        targetModule.event(p, { ...targetModule, isTurnStart: true });
+        targetModule.event(p, {
+          ...targetModule,
+          isTurnStart: true,
+          passNumbers: data && data.passNumbers,
+        });
       }
     });
   });
@@ -2411,9 +2415,17 @@ function appendSocketListeners() {
             const rankLabel = medals[i] || `${i + 1}位`;
             const hp = pl.happiness !== undefined ? pl.happiness : 100;
             const dr = pl.drinkCount || 0;
-            return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.18); padding:10px 18px; border-radius:12px; margin-bottom:8px; font-size:1.35rem;">
-              <span>${rankLabel} <strong>${pl.name}</strong></span>
-              <span>✨ ${hp}pt ／ 🍺 ${dr}杯</span>
+            const rowBg =
+              i === 0
+                ? "linear-gradient(90deg, rgba(255, 215, 0, 0.28), rgba(255, 152, 0, 0.18))"
+                : "rgba(255, 255, 255, 0.14)";
+            const rowBorder =
+              i === 0
+                ? "2px solid #ffd700"
+                : "1px solid rgba(255, 255, 255, 0.35)";
+            return `<div style="display:flex; justify-content:space-between; align-items:center; background:${rowBg}; border:${rowBorder}; color:#ffffff; text-shadow:0 2px 4px rgba(0,0,0,0.7); padding:12px 18px; border-radius:12px; margin-bottom:10px; font-size:1.35rem; font-weight:bold;">
+              <span style="color:#ffffff;">${rankLabel} <strong>${pl.name}</strong></span>
+              <span><span style="color:#ffeb3b;">✨ ${hp}pt</span> <span style="color:rgba(255,255,255,0.65);">／</span> <span style="color:#ffcc80;">🍺 ${dr}杯</span></span>
             </div>`;
           })
           .join("");
@@ -2468,7 +2480,9 @@ function appendSocketListeners() {
         mainEl.style.color = "#ffeb3b";
       }
       if (subEl) {
-        subEl.textContent = `🍺 ${data.loserName} さんが ＋${data.drinkAmount || 1}杯 飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`;
+        subEl.textContent =
+          data.drinkSummary ||
+          `🍺 ${data.loserName} さんが ＋${data.drinkAmount || 1}杯 飲む！（※スマホの「➡ 次のプレイヤーへ」で進行）`;
       }
     }
   });

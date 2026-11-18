@@ -464,19 +464,26 @@ button:active { transform: scale(0.98); }
 body.theme-repeat-dark .card,
 body.theme-repeat-dark .card *:not(.tile-badge):not(.tile-badge *):not(.tile-cups):not(.tile-cond):not(.tile-happy):not(button) {
   color: #fff !important;
+  transition: color 3.5s ease-in-out;
 }
 body.theme-repeat-dark .card,
 body.theme-repeat-dark .map-card-maximized {
-  background: #2b1838 !important;
+  background-color: #2b1838 !important;
   border-color: #ab47bc !important;
+  transition:
+    background-color 3.5s ease-in-out,
+    border-color 3.5s ease-in-out,
+    box-shadow 3.5s ease-in-out,
+    color 3.5s ease-in-out;
 }
 body.theme-repeat-dark .card .card-title {
   border-bottom-color: #ab47bc !important;
   color: #ffd54f !important;
 }
 body.theme-repeat-dark .color-legend-item {
-  background: #3b2350 !important;
+  background-color: #3b2350 !important;
   border-color: #7e57c2 !important;
+  transition: background-color 3.5s ease-in-out, border-color 3.5s ease-in-out;
 }
 body.theme-repeat-dark .color-legend-item[style*="fff8e1"] {
   background: #5a3a00 !important;
