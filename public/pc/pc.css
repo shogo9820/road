@@ -462,9 +462,13 @@ button:active { transform: scale(0.98); }
    💀 留年ルート（theme-repeat-dark）: 暗い背景でも読めるよう文字を明るく統一
    ========================================================================== */
 body.theme-repeat-dark .card,
-body.theme-repeat-dark .card *:not(.tile-badge):not(.tile-badge *):not(.tile-cups):not(.tile-cond):not(.tile-happy):not(button) {
+body.theme-repeat-dark .card *:not(.tile-badge):not(.tile-badge *):not(.tile-cups):not(.tile-cond):not(.tile-happy):not(.job-badge):not(button) {
   color: #fff !important;
   transition: color 3.5s ease-in-out;
+}
+body.theme-repeat-dark .job-badge {
+  background-color: #ffffff !important;
+  color: #222222 !important;
 }
 body.theme-repeat-dark .card,
 body.theme-repeat-dark .map-card-maximized {
@@ -487,6 +491,15 @@ body.theme-repeat-dark .color-legend-item {
 }
 body.theme-repeat-dark .color-legend-item[style*="fff8e1"] {
   background: #5a3a00 !important;
+}
+body.theme-repeat-dark .location-table th {
+  background-color: #3b2350 !important;
+  color: #ffd54f !important;
+  border-bottom-color: #7e57c2 !important;
+  transition: background-color 3.5s ease-in-out, color 3.5s ease-in-out, border-color 3.5s ease-in-out;
+}
+body.theme-repeat-dark .location-table td {
+  border-bottom-color: rgba(126, 87, 194, 0.4) !important;
 }
 body.theme-repeat-dark .tile-text { color: #fff !important; }
 body.theme-repeat-dark .tile-cups { background: #ffcc80 !important; color: #b71c1c !important; }
