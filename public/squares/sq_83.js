@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[83] = {
   normal: {
     id: 83,
-    type: "normal",
+    type: "normalj",
     text: "【秋キャン】HOT LIMIT（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[83] = {
   },
   salaryman: {
     id: 83,
-    type: "normal",
+    type: "normalj",
     text: "【秋キャン】HOT LIMIT（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[83] = {
   },
   short: {
     id: 83,
-    type: "normal",
+    type: "normalj",
     text: "【秋キャン】HOT LIMIT（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,

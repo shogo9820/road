@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[43] = {
   normal: {
     id: 43,
-    type: "normal",
+    type: "normalj",
     text: "討伐会（【おもしろキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -5,
@@ -73,7 +73,7 @@ window.SQ_MODULES[43] = {
   },
   salaryman: {
     id: 43,
-    type: "normal",
+    type: "normalj",
     text: "討伐会（【おもしろキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -5,
@@ -82,7 +82,7 @@ window.SQ_MODULES[43] = {
   },
   short: {
     id: 43,
-    type: "normal",
+    type: "normalj",
     text: "討伐会（【おもしろキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -5,

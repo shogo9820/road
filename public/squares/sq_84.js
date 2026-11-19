@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[84] = {
   normal: {
     id: 84,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】ガイモン参上！（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[84] = {
   },
   salaryman: {
     id: 84,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】ガイモン参上！（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[84] = {
   },
   short: {
     id: 84,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】ガイモン参上！（１杯飲む【サッカーキャラの場合】２杯飲む）",
     drink: 1,
     happiness: 10,

@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[56] = {
   normal: {
     id: 56,
-    type: "normal",
+    type: "normalj",
     text: "チャミスルはカルチャー（【韓国人の場合】２杯飲む）",
     drink: 0,
     happiness: 5,
@@ -73,7 +73,7 @@ window.SQ_MODULES[56] = {
   },
   salaryman: {
     id: 56,
-    type: "normal",
+    type: "normalj",
     text: "チャミスルはカルチャー（【韓国人の場合】２杯飲む）",
     drink: 0,
     happiness: 5,
@@ -82,7 +82,7 @@ window.SQ_MODULES[56] = {
   },
   short: {
     id: 56,
-    type: "normal",
+    type: "normalj",
     text: "チャミスルはカルチャー（【韓国人の場合】２杯飲む）",
     drink: 0,
     happiness: 5,

@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[48] = {
   normal: {
     id: 48,
-    type: "normal",
+    type: "normalj",
     text: "【夏合宿】4位（【サッカーキャラの場合】２杯飲む）",
     drink: 0,
     happiness: 5,
@@ -73,7 +73,7 @@ window.SQ_MODULES[48] = {
   },
   salaryman: {
     id: 48,
-    type: "normal",
+    type: "normalj",
     text: "【夏合宿】4位（【サッカーキャラの場合】２杯飲む）",
     drink: 0,
     happiness: 5,
@@ -82,7 +82,7 @@ window.SQ_MODULES[48] = {
   },
   short: {
     id: 48,
-    type: "normal",
+    type: "normalj",
     text: "【夏合宿】4位（【サッカーキャラの場合】２杯飲む）",
     drink: 0,
     happiness: 5,

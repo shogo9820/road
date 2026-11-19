@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[67] = {
   normal: {
     id: 67,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
     happiness: 20,
@@ -80,7 +80,7 @@ window.SQ_MODULES[67] = {
   },
   salaryman: {
     id: 67,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
     happiness: 20,
@@ -89,7 +89,7 @@ window.SQ_MODULES[67] = {
   },
   short: {
     id: 67,
-    type: "normal",
+    type: "normalj",
     text: "【龍祭】バケツタピオカでぼろ儲け（【美人の場合】他のプレイヤー全員で乾杯）",
     drink: 0,
     happiness: 20,

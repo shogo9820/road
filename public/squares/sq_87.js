@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[87] = {
   normal: {
     id: 87,
-    type: "normal",
+    type: "normal1",
     text: "【追いコン】みんな今までありがとう！全員で乾杯！（全員１杯飲む）",
     drink: 1,
     degree: 25,
@@ -80,7 +80,7 @@ window.SQ_MODULES[87] = {
   },
   salaryman: {
     id: 87,
-    type: "normal",
+    type: "normal1",
     text: "送別会で花束をもらい感涙の乾杯！",
     drink: 2,
     degree: 25,
@@ -89,7 +89,7 @@ window.SQ_MODULES[87] = {
   },
   short: {
     id: 87,
-    type: "normal",
+    type: "normal1",
     text: "追いコンで全員感謝の乾杯！",
     drink: 2,
     degree: 25,

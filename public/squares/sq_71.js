@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[71] = {
   normal: {
     id: 71,
-    type: "normal",
+    type: "normalj",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -15,
@@ -73,7 +73,7 @@ window.SQ_MODULES[71] = {
   },
   salaryman: {
     id: 71,
-    type: "normal",
+    type: "normalj",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -15,
@@ -82,7 +82,7 @@ window.SQ_MODULES[71] = {
   },
   short: {
     id: 71,
-    type: "normal",
+    type: "normalj",
     text: "【忘年会】お外で脱いではいけません（【いじられキャラの場合】２杯飲む）",
     drink: 0,
     happiness: -15,

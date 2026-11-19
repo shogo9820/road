@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[66] = {
   normal: {
     id: 66,
-    type: "normal",
+    type: "normalj",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
     happiness: -15,
@@ -71,7 +71,7 @@ window.SQ_MODULES[66] = {
   },
   salaryman: {
     id: 66,
-    type: "normal",
+    type: "normalj",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
     happiness: -15,
@@ -80,7 +80,7 @@ window.SQ_MODULES[66] = {
   },
   short: {
     id: 66,
-    type: "normal",
+    type: "normalj",
     text: "【悲報】代表荷台に乗せて運ばれる（【代表の場合】２杯飲む）",
     drink: 0,
     happiness: -15,

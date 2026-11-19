@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[44] = {
   normal: {
     id: 44,
-    type: "normal",
+    type: "normalj",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
     happiness: 10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[44] = {
   },
   salaryman: {
     id: 44,
-    type: "normal",
+    type: "normalj",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
     happiness: 10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[44] = {
   },
   short: {
     id: 44,
-    type: "normal",
+    type: "normalj",
     text: "こいつは逸材や（【酒豪の場合】２杯飲む）",
     drink: 0,
     happiness: 10,

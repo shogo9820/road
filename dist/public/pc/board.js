@@ -23,6 +23,10 @@ window.boardManager = {
         jobChallenge: "#8e24aa",
         location: "#fffdf5",
         normal: "#fffdf5",
+        normal0: "#dcedc8",
+        normal1: "#ffffff",
+        normal2: "#ffcdd2",
+        normalj: "#fff59d",
         heal: "#26a69a",
         repeat: "#311b92",
     },
@@ -775,6 +779,26 @@ window.boardManager = {
                         fillColor = this.squareColors.repeat;
                         strokeColor = "#ba68c8";
                         textColor = "#ffffff";
+                    }
+                    else if (sq.type === "normal0") {
+                        fillColor = "#dcedc8";
+                        strokeColor = "#9ccc65";
+                        textColor = "#33691e";
+                    }
+                    else if (sq.type === "normal1") {
+                        fillColor = "#ffffff";
+                        strokeColor = "#cfd8dc";
+                        textColor = "#455a64";
+                    }
+                    else if (sq.type === "normal2") {
+                        fillColor = "#ffcdd2";
+                        strokeColor = "#e57373";
+                        textColor = "#8e2424";
+                    }
+                    else if (sq.type === "normalj") {
+                        fillColor = "#fff59d";
+                        strokeColor = "#e6c24c";
+                        textColor = "#6d4c00";
                     }
                     else if (sq.text && sq.text.trim() !== "") {
                         // イベントテキストが入っている通常マスは温かみのあるクリーム色＋オレンジ枠

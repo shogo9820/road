@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[35] = {
   normal: {
     id: 35,
-    type: "normal",
+    type: "normalj",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
     drink: 0,
     happiness: 5,
@@ -78,7 +78,7 @@ window.SQ_MODULES[35] = {
   },
   salaryman: {
     id: 35,
-    type: "normal",
+    type: "normalj",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
     drink: 0,
     happiness: 5,
@@ -87,7 +87,7 @@ window.SQ_MODULES[35] = {
   },
   short: {
     id: 35,
-    type: "normal",
+    type: "normalj",
     text: "飲んだら平安（【平安生の場合】平安生全員で乾杯）",
     drink: 0,
     happiness: 5,

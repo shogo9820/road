@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[47] = {
   normal: {
     id: 47,
-    type: "normal",
+    type: "normalj",
     text: "俺は捕まったのだろうか？？（【沖縄出身の場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[47] = {
   },
   salaryman: {
     id: 47,
-    type: "normal",
+    type: "normalj",
     text: "俺は捕まったのだろうか？？（【沖縄出身の場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[47] = {
   },
   short: {
     id: 47,
-    type: "normal",
+    type: "normalj",
     text: "俺は捕まったのだろうか？？（【沖縄出身の場合】２杯飲む）",
     drink: 0,
     happiness: -10,

@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[74] = {
   normal: {
     id: 74,
-    type: "normal",
+    type: "normalj",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
     happiness: -5,
@@ -73,7 +73,7 @@ window.SQ_MODULES[74] = {
   },
   salaryman: {
     id: 74,
-    type: "normal",
+    type: "normalj",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
     happiness: -5,
@@ -82,7 +82,7 @@ window.SQ_MODULES[74] = {
   },
   short: {
     id: 74,
-    type: "normal",
+    type: "normalj",
     text: "【冬合宿】お酒が足りません！（１杯飲む【pの場合】は回避）",
     drink: 1,
     happiness: -5,

@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[57] = {
   normal: {
     id: 57,
-    type: "normal",
+    type: "normalj",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[57] = {
   },
   salaryman: {
     id: 57,
-    type: "normal",
+    type: "normalj",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[57] = {
   },
   short: {
     id: 57,
-    type: "normal",
+    type: "normalj",
     text: "かわいそうな雑魚（【雑魚の場合】２杯飲む）",
     drink: 0,
     happiness: -10,

@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[52] = {
   normal: {
     id: 52,
-    type: "normal",
+    type: "normalj",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 0,
     happiness: 15,
@@ -84,7 +84,7 @@ window.SQ_MODULES[52] = {
   },
   salaryman: {
     id: 52,
-    type: "normal",
+    type: "normalj",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 0,
     happiness: 15,
@@ -93,7 +93,7 @@ window.SQ_MODULES[52] = {
   },
   short: {
     id: 52,
-    type: "normal",
+    type: "normalj",
     text: "恋人とデートに行く（【恋人がいない場合】２杯、【恋人がいる場合】それぞれ１杯飲む）",
     drink: 0,
     happiness: 15,

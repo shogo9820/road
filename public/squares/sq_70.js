@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[70] = {
   normal: {
     id: 70,
-    type: "normal",
+    type: "normalj",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
     happiness: -5,
@@ -84,7 +84,7 @@ window.SQ_MODULES[70] = {
   },
   salaryman: {
     id: 70,
-    type: "normal",
+    type: "normalj",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
     happiness: -5,
@@ -93,7 +93,7 @@ window.SQ_MODULES[70] = {
   },
   short: {
     id: 70,
-    type: "normal",
+    type: "normalj",
     text: "リア充は爆発しろ！（１杯飲む【恋人がいる場合】それぞれ２杯飲む）",
     drink: 1,
     happiness: -5,

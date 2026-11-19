@@ -2,7 +2,7 @@ window.SQ_MODULES = window.SQ_MODULES || {};
 window.SQ_MODULES[46] = {
   normal: {
     id: 46,
-    type: "normal",
+    type: "normalj",
     text: "人に花火は向けたらだめだよ？（【サイコパスの場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -73,7 +73,7 @@ window.SQ_MODULES[46] = {
   },
   salaryman: {
     id: 46,
-    type: "normal",
+    type: "normalj",
     text: "人に花火は向けたらだめだよ？（【サイコパスの場合】２杯飲む）",
     drink: 0,
     happiness: -10,
@@ -82,7 +82,7 @@ window.SQ_MODULES[46] = {
   },
   short: {
     id: 46,
-    type: "normal",
+    type: "normalj",
     text: "人に花火は向けたらだめだよ？（【サイコパスの場合】２杯飲む）",
     drink: 0,
     happiness: -10,
