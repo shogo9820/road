@@ -2261,7 +2261,10 @@ function initMobileListeners() {
         if (drinkAmount > 0) {
           p.drinkCount = (p.drinkCount || 0) + drinkAmount;
           p.currentHp = Math.max(0, p.currentHp - drinkAmount * 10);
-        } else if (targetModule.type === "heal") {
+        } else if (
+          targetModule.type === "heal" ||
+          Number(targetModule.degree) < 0
+        ) {
           p.currentHp = maxHp;
         }
 

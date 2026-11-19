@@ -284,7 +284,7 @@ const MAP_SQUARES = [
   { id: 83, type: "normalj", text: "【秋キャン】HOT LIMIT（１杯飲む【サッカーキャラの場合】２杯飲む）", mode: "all", nextId: [84]},
   { id: 84, type: "normalj", text: "【龍祭】ガイモン参上！（１杯飲む【サッカーキャラの場合】２杯飲む）", mode: "all", nextId: [85]},
   { id: 85, type: "normal1", text: "【忘年会】まんぱんまんぱんゲーム！（まんぱん１杯飲む）", mode: "all", nextId: [86]},
-  { id: 86, type: "heal", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", mode: "all", nextId: [87]},
+  { id: 86, type: "normal0", text: "【冬合宿】ゲレンデのカレーが美味しすぎるのだが", mode: "all", nextId: [87]},
   { id: 87, type: "normal1", text: "【追いコン】みんな今までありがとう！全員で乾杯！（全員１杯飲む）", mode: "all", nextId: [88]},
   { id: 88, type: "normal1", text: "単位が足りない！？そんなの関係ねぇ！（１杯飲む）", mode: "all", nextId: [89]},
   
