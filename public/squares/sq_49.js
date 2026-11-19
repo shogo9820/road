@@ -47,7 +47,7 @@ window.SQ_MODULES[49] = {
       pcTitle: "🔥 ランクアップチャンス 🔥",
       pcDesc: "さんの実力が試される時！1と4以外（80%）を出して役職ランクアップを掴み取れ！",
       mobileDisplay: "🎯 1・4以外（80%）を出して役職ランクアップを狙え！",
-      mobileBtn: "🔥 運命のランクアップスピンを回す！"
+      mobileBtn: "🔥 ランクアップスピンを回す！"
     },
 
     event: function (player, square) {

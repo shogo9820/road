@@ -16,7 +16,7 @@ window.SQ_MODULES[41] = {
       pcSecondDesc: "スマホから最終決着スピンを回して、意中の相手を射止めろ！",
 
       mobileFirstDisplay: "🎯 偶数（告白チャンス）を狙ってね！",
-      mobileFirstBtn: "🎲 運命 of 1回目スピンを回す！",
+      mobileFirstBtn: "🎲 1回目スピンを回す！",
       mobileSecondBtn: "💘 決着の2回目（告白）スピン！"
     },
 

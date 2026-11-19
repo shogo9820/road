@@ -13,7 +13,7 @@ window.SQ_MODULES[18] = {
       pcFirstTitle: "🌸 入学式 🌸",
       pcFirstDesc: "さんの大学生活がスタート！洗礼ルーレットを回せ！",
       mobileFirstDisplay: "🎯 洗礼を回避する出目を狙え！",
-      mobileFirstBtn: "⚡ 運命の入学式スピンを回す！"
+      mobileFirstBtn: "⚡ 入学式スピンを回す！"
     },
     
     event: function (player, square) {
