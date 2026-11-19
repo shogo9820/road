@@ -517,7 +517,10 @@ function showJobChoiceDialog(jobId: string, jobName: string, playerId: string) {
       targetP.job = jobName;
       targetP.hasJob = true;
       if (typeof JOBS !== "undefined") {
-        const jobObj = JOBS.find((j: any) => j.id === jobId);
+        const jobObj = JOBS.find(
+          (j: any) =>
+            j.id === jobId || j.label === jobName || j.title === jobName,
+        );
         if (jobObj) {
           targetP.baseCap = jobObj.cap;
           targetP.currentHp = jobObj.cap + (targetP.bonusCap || 0);

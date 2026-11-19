@@ -152,7 +152,7 @@ window.SQ_MODULES[54] = {
                       : "副代表"
                     : rankUpJobName;
                 rankupMapping[i] = {
-                  name: `🎉 ランクアップ成功！【${targetTitle}】に昇格！`,
+                  name: `🎉 ランクアップ成功！【${targetTitle}】に昇格！（最大HP+20＆全回復！）`,
                   drinks: 0,
                   isRankUp: true,
                   newJobTitle: targetTitle
@@ -221,14 +221,22 @@ window.SQ_MODULES[54] = {
 
           const resNum = data && data.result !== undefined ? data.result : 1;
           if (!failSet.has(resNum)) {
+            const wasRankedUp = Boolean(player.isRankedUp);
             const targetTitle =
               player.jobId === "mob" || currentJobName === "モブ"
                 ? daihyoSet.has(resNum)
                   ? "代表"
                   : "副代表"
                 : rankUpJobName;
+            if (jobMaster) {
+              player.baseCap = jobMaster.cap;
+            }
+            if (!wasRankedUp) {
+              player.bonusCap = (player.bonusCap || 0) + 20;
+            }
             player.job = targetTitle;
             player.isRankedUp = true;
+            player.currentHp = (player.baseCap || 90) + (player.bonusCap || 0);
             if (typeof updatePhoneStatusDisplay === "function") {
               updatePhoneStatusDisplay();
             }

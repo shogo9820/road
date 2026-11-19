@@ -567,6 +567,7 @@ io.on("connection", (socket) => {
                 if (target) {
                     const prevJobId = target.jobId;
                     const prevHasJob = target.hasJob;
+                    const prevRankedUp = Boolean(target.isRankedUp);
                     target.drinkCount =
                         data.updatedPlayer.drinkCount !== undefined
                             ? data.updatedPlayer.drinkCount
@@ -595,6 +596,10 @@ io.on("connection", (socket) => {
                         data.updatedPlayer.job !== undefined
                             ? data.updatedPlayer.job
                             : target.job;
+                    if (data.updatedPlayer.baseCap !== undefined)
+                        target.baseCap = data.updatedPlayer.baseCap;
+                    if (data.updatedPlayer.bonusCap !== undefined)
+                        target.bonusCap = data.updatedPlayer.bonusCap;
                     if (data.updatedPlayer.position !== undefined)
                         target.position = data.updatedPlayer.position;
                     if (data.updatedPlayer.location !== undefined)
@@ -617,7 +622,7 @@ io.on("connection", (socket) => {
                         target.skillUsesLeft = data.updatedPlayer.skillUsesLeft;
                     if (data.updatedPlayer.hasFinished !== undefined)
                         target.hasFinished = data.updatedPlayer.hasFinished;
-                    // 役職が決定した場合、JOBSマスタのcap(最大HP)を反映
+                    // 役職が決定した場合、JOBSマスタのcap(最大HP)を反映＆HP全回復
                     if (target.hasJob && target.jobId && typeof gameMaster_js_1.JOBS !== "undefined") {
                         ensureSkillUsesInitialized(target);
                         const jobObj = gameMaster_js_1.JOBS.find((j) => j.id === target.jobId);
@@ -633,9 +638,17 @@ io.on("connection", (socket) => {
                                     : jobObj.label || target.job;
                             }
                             if (!prevHasJob || prevJobId !== target.jobId) {
-                                target.currentHp = jobObj.cap + (target.bonusCap || 0);
+                                target.currentHp = target.baseCap + (target.bonusCap || 0);
                             }
                         }
+                    }
+                    // 新たにランクアップが成立した場合は最大体力+20＆HP全回復
+                    if (!prevRankedUp && target.isRankedUp) {
+                        if (data.updatedPlayer.bonusCap === undefined) {
+                            target.bonusCap = (target.bonusCap || 0) + 20;
+                        }
+                        target.currentHp =
+                            (target.baseCap || 90) + (target.bonusCap || 0);
                     }
                 }
             }
@@ -999,10 +1012,18 @@ io.on("connection", (socket) => {
                     const jobObj = gameMaster_js_1.JOBS.find((j) => j.id === p.jobId || j.label === p.job || j.title === p.job);
                     const nextTitle = outcome.newJobTitle || (jobObj && jobObj.title) || p.job;
                     if (nextTitle) {
+                        const wasRankedUp = Boolean(p.isRankedUp);
+                        if (jobObj) {
+                            p.baseCap = jobObj.cap;
+                        }
+                        if (!wasRankedUp) {
+                            p.bonusCap = (p.bonusCap || 0) + 20;
+                        }
                         p.job = nextTitle;
                         p.isRankedUp = true;
+                        p.currentHp = (p.baseCap || 90) + (p.bonusCap || 0);
                         ensureSkillUsesInitialized(p);
-                        console.log(`👑 [SERVER ランクアップ] ${p.name} さんが「${nextTitle}」にランクアップ！`);
+                        console.log(`👑 [SERVER ランクアップ] ${p.name} さんが「${nextTitle}」にランクアップ！（最大HP: ${p.currentHp}）`);
                     }
                 }
                 if (outcome.name && outcome.name.includes("他全員1杯")) {
@@ -1092,6 +1113,18 @@ io.on("connection", (socket) => {
         // 移動が完了したので、前回の進路選択を破棄（次の分岐マスでの誤表示防止）
         delete p.chosenRouteIdx;
         console.log(`🚨 [SERVER ROUTINE] ➔ 4. マス着地確定: ${p.name} 氏 (マスID: ${p.position}, 場所: ${p.location})`);
+        // 🎓 18番マス（入学式）に未就職のまま着地した場合、モブ役職が確定しHPを最大にする
+        if (Number(p.position) === 18 && !p.hasJob) {
+            const mobObj = typeof gameMaster_js_1.JOBS !== "undefined"
+                ? gameMaster_js_1.JOBS.find((j) => j.id === (p.jobId || "mob"))
+                : null;
+            p.hasJob = true;
+            p.jobId = p.jobId || "mob";
+            p.job = p.job || (mobObj ? mobObj.label : "モブ");
+            p.baseCap = mobObj ? mobObj.cap : p.baseCap || 90;
+            p.currentHp = p.baseCap + (p.bonusCap || 0);
+            console.log(`🌸 [SERVER 入学式] ${p.name} さんの役職「${p.job}」が確定しHPを最大(${p.currentHp})にしました`);
+        }
         // 👑 ランクアップマスの場合は外れの2枠（20%）をランダムに決定
         let rankupFails;
         if (p.position === 49 || p.position === 54 || p.position === 63) {
@@ -1237,6 +1270,10 @@ io.on("connection", (socket) => {
                         target.jobId =
                             updatedP.jobId !== undefined ? updatedP.jobId : target.jobId;
                         target.job = updatedP.job !== undefined ? updatedP.job : target.job;
+                        if (updatedP.baseCap !== undefined)
+                            target.baseCap = updatedP.baseCap;
+                        if (updatedP.bonusCap !== undefined)
+                            target.bonusCap = updatedP.bonusCap;
                         target.insurance =
                             updatedP.insurance !== undefined
                                 ? updatedP.insurance
